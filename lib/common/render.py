@@ -33,7 +33,7 @@ from pytorch3d.renderer import (
 )
 from pytorch3d.renderer.mesh import TexturesVertex
 from pytorch3d.structures import Meshes
-from lib.dataset.mesh_util import SMPLX, get_visibility
+from lib.dataset.mesh_util import get_visibility
 
 import lib.common.render_utils as util
 import torch
@@ -51,7 +51,7 @@ def image2vid(images, vid_path):
     w, h = images[0].size
     videodims = (w, h)
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    video = cv2.VideoWriter(vid_path, fourcc, 30, videodims)
+    video = cv2.VideoWriter(vid_path, fourcc, len(images)/5.0, videodims)
     for image in images:
         video.write(cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR))
     video.release()
@@ -111,28 +111,35 @@ class cleanShader(torch.nn.Module):
 class Render:
     def __init__(self, size=512, device=torch.device("cuda:0")):
         self.device = device
-        self.mesh_y_center = 100.0
-        self.dis = 100.0
-        self.scale = 1.0
         self.size = size
-        self.cam_pos = [(0, 100, 100)]
+        
+        # camera setting
+        self.dis = 100.0
+        self.scale = 100.0
+        self.mesh_y_center = 0.0
+
+        self.reload_cam()
+        
+        self.type = "color"
 
         self.mesh = None
         self.deform_mesh = None
         self.pcd = None
         self.renderer = None
         self.meshRas = None
-        self.type = None
-        self.knn = None
-        self.knn_inverse = None
-
-        self.smpl_seg = None
-        self.smpl_cmap = None
-
-        self.smplx = SMPLX()
 
         self.uv_rasterizer = util.Pytorch3dRasterizer(self.size)
-
+        
+    def reload_cam(self):
+        
+        self.cam_pos = [
+            (0, self.mesh_y_center, self.dis),
+            (self.dis, self.mesh_y_center, 0),
+            (0, self.mesh_y_center, -self.dis),
+            (-self.dis, self.mesh_y_center, 0),
+        ]
+        
+        
     def get_camera(self, cam_id):
 
         R, T = look_at_view_transform(
@@ -266,19 +273,6 @@ class Render:
             offset ([N,3]): offset
         """
 
-        # camera setting
-        self.scale = 100.0
-        self.mesh_y_center = 0.0
-
-        self.cam_pos = [
-            (0, self.mesh_y_center, 100.0),
-            (100.0, self.mesh_y_center, 0),
-            (0, self.mesh_y_center, -100.0),
-            (-100.0, self.mesh_y_center, 0),
-        ]
-
-        self.type = "color"
-
         if isinstance(verts, list):
             self.meshes = []
             for V, F in zip(verts, faces):
@@ -342,7 +336,7 @@ class Render:
 
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         video = cv2.VideoWriter(
-            save_path, fourcc, 30, (self.size * len(self.meshes) +
+            save_path, fourcc, 10, (self.size * len(self.meshes) +
                                     new_shape[1] * len(images), self.size)
         )
 
@@ -372,6 +366,7 @@ class Render:
             video.write(final_img)
 
         video.release()
+        self.reload_cam()
 
     def get_silhouette_image(self, cam_ids=[0, 2]):
 

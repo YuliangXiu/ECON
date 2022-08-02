@@ -547,11 +547,11 @@ if __name__ == "__main__":
         # always export visualized video regardless of the cloth refinment
         if args.export_video:
             if final is not None:
-                verts_lst = [verts_pr, final.vertices]
-                faces_lst = [faces_pr, final.faces]
+                verts_lst = [smpl_obj.vertices, final.vertices]
+                faces_lst = [smpl_obj.faces, final.faces]
             else:
-                verts_lst = [verts_pr]
-                faces_lst = [faces_pr]
+                verts_lst = [smpl_obj.vertices, verts_pr]
+                faces_lst = [smpl_obj.faces, faces_pr]
 
             # self-rotated video
             dataset.render.load_meshes(
