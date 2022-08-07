@@ -1,5 +1,5 @@
 matplotlib==3.5.0
-Pillow==9.0.0
+Pillow>=9.0.1
 PyOpenGL
 PyOpenGL_accelerate
 PyYAML>=6.0
@@ -21,7 +21,6 @@ PyMCubes
 kornia
 chumpy
 cython==0.29.20
-rembg>=2.0.3
 opencv-python
 opencv_contrib_python
 scikit-learn
@@ -29,7 +28,9 @@ simple-romp==1.0.4
 protobuf==3.20.0
 pymeshlab
 dataclasses>=0.6
+numpy==1.22.4
 git+https://github.com/Project-Splinter/human_det
 git+https://github.com/facebookresearch/pytorch3d.git
 git+https://github.com/YuliangXiu/neural_voxelization_layer.git
 git+https://github.com/NVIDIAGameWorks/kaolin.git
+git+https://github.com/YuliangXiu/rembg.git@hf
