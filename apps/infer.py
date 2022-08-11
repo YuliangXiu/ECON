@@ -58,7 +58,7 @@ if __name__ == "__main__":
     parser.add_argument("-colab", action="store_true")
     parser.add_argument("-loop_smpl", "--loop_smpl", type=int, default=100)
     parser.add_argument("-patience", "--patience", type=int, default=5)
-    parser.add_argument("-vis_freq", "--vis_freq", type=int, default=10)
+    parser.add_argument("-vis_freq", "--vis_freq", type=int, default=1000)
     parser.add_argument("-loop_cloth", "--loop_cloth", type=int, default=200)
     parser.add_argument("-hps_type", "--hps_type", type=str, default="pymaf")
     parser.add_argument("-export_video", action="store_true")

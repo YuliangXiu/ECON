@@ -55,22 +55,10 @@
       <a href="#who-needs-ICON">Who needs ICON</a>
     </li>
     <li>
-      <a href="#installation">Installation</a>
+      <a href="#instructions">Instructions</a>
     </li>
     <li>
-    <a href="#dataset">Dataset</a>
-    </li>
-    <li>
-    <a href="#training">Training</a>
-    </li>
-    <li>
-    <a href="#evaluation">Evaluation</a>
-    </li>
-    <li>
-    <a href="#add-on">Add-on</a>
-    </li>
-    <li>
-      <a href="#demo">Demo</a>
+      <a href="#running-demo">Running Demo</a>
     </li>
     <li>
       <a href="#citation">Citation</a>
@@ -121,43 +109,31 @@
 
 
 
-<br><br>
-## Installation
+<br>
 
-Please follow the [Installation Instruction](docs/installation.md) to setup all the required packages, extra data, and models.
+## Instructions
 
-## Dataset
+- See [docs/installation.md](docs/installation.md) to install all the required packages and setup the models
+- See [docs/dataset.md](docs/dataset.md) to synthesize the train/val/test dataset from THuman2.0
+- See [docs/training.md](docs/training.md) to train your own model using THuman2.0
+- See [docs/evaluation.md](docs/evaluation.md) to benchmark trained models on THuman2.0
+- Add-on: [Garment Extraction from Fashion Images](docs/garment-extraction.md), supported by ETH Zürich students as 3DV course project.
 
-Please follow the [Dataset Instruction](docs/dataset.md) to generate the train/val/test dataset from THuman2.0
+<br>
 
-## Training
-
-Please follow the [Training Instruction](docs/training.md) to train your own model using THuman2.0
-
-## Evaluation
-
-Please follow the [Evaluation Instruction](docs/evaluation.md) to benchmark trained models on THuman2.0
-
-## Add-on
-1. [Garment Extraction from Fashion Images](docs/garment-extraction.md), supported by ETH Zürich students as 3DV course project.
-
-
-## Demo
+## Running Demo
 
 ```bash
 cd ICON
 
-# PIFu* (*: re-implementation)
-python -m apps.infer -cfg ./configs/pifu.yaml -gpu 0 -in_dir ./examples -out_dir ./results -loop_cloth 100 -export_video
+# model_type: 
+#   "pifu"            reimplemented PIFu
+#   "pamir"           reimplemented PaMIR
+#   "icon-filter"     ICON w/ global encoder (continous local wrinkles)
+#   "icon-nofilter"   ICON w/o global encoder (correct global pose)
 
-# PaMIR* (*: re-implementation)
-python -m apps.infer -cfg ./configs/pamir.yaml -gpu 0 -in_dir ./examples -out_dir ./results -loop_smpl 100 -loop_cloth 200 -export_video
+python -m apps.infer -cfg ./configs/icon-filter.yaml -gpu 0 -in_dir ./examples -out_dir ./results -export_video -loop_smpl 100 -loop_cloth 200 -hps_type pymaf
 
-# ICON w/ global filter (better visual details --> lower Normal Error))
-python -m apps.infer -cfg ./configs/icon-filter.yaml -gpu 0 -in_dir ./examples -out_dir ./results -hps_type {pymaf/pixie/pare/hybrik/bev} -loop_smpl 100 -loop_cloth 200 -export_video
-
-# ICON w/o global filter (higher evaluation scores --> lower P2S/Chamfer Error))
-python -m apps.infer -cfg ./configs/icon-nofilter.yaml -gpu 0 -in_dir ./examples -out_dir ./results -hps_type {pymaf/pixie/pare/hybrik/bev} -loop_smpl 100 -loop_cloth 200 -export_video
 ```
 
 ## More Qualitative Results
