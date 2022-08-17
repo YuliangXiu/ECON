@@ -1,27 +1,57 @@
-## Evaluation
+## CAPE Testset
 
-## Prerequirement
+![CAPE testset](../assets/cape.png)
 
-Make sure you have already generated all the required synthetic data (refer to [Dataset Instruction](dataset.md)) under `./data/thuman2_{num_views}views`, which includes the rendered RGB (`render/`), normal images(`normal_B/`, `normal_F/`, `T_normal_B/`, `T_normal_F/`), corresponding calibration matrix (`calib/`) and pre-computed visibility arrays (`vis/`).
+```bash
+# 1. Register at http://icon.is.tue.mpg.de/ or https://cape.is.tue.mpg.de/
+# 2. Download CAPE testset (Easy: 50, Hard: 100)
+bash fetch_cape.sh 
 
-:warning: Don't support headless mode currently, `unset PYOPENGL_PLATFORM` before training.
+# 3. Check CAPE testset via 3D visualization
+python -m lib.dataloader_demo -v -c ./configs/train/icon-filter.yaml -d cape
+```
 
 ## Command
 
 ```bash
 conda activate icon
 
-# ICON w/ filter
-CUDA_VISIBLE_DEVICES=0 python -m apps.train -cfg ./configs/train/icon-filter.yaml -test
+# model_type: 
+#   "pifu"            reimplemented PIFu
+#   "pamir"           reimplemented PaMIR
+#   "icon-filter"     ICON w/ global encoder (continous local wrinkles)
+#   "icon-nofilter"   ICON w/o global encoder (correct global pose)
 
-# ICON w/o filter
-CUDA_VISIBLE_DEVICES=0 python -m apps.train -cfg ./configs/train/icon-nofilter.yaml -test
+python -m apps.train -cfg ./configs/train/icon-filter.yaml -test
 
-# PIFu* (*: re-implementation)
-CUDA_VISIBLE_DEVICES=0 python -m apps.train -cfg ./configs/train/pifu.yaml -test
-
-# PaMIR* (*: re-implementation)
-CUDA_VISIBLE_DEVICES=0 python -m apps.train -cfg ./configs/train/pamir.yaml -test
+# TIP: reduce "mcube_res" as 128 in apps/train.py for faster evaluation
 ```
 
-The qualitative results are located at `./results/`
+The qualitative results are located at `./results/icon-filter`
+
+## Citation
+
+:+1: Please cite these CAPE-related papers
+
+```
+@inproceedings{CAPE:CVPR:20,
+  title = {{Learning to Dress 3D People in Generative Clothing}},
+  author = {Ma, Qianli and Yang, Jinlong and Ranjan, Anurag and Pujades, Sergi and Pons-Moll, Gerard and Tang, Siyu and Black, Michael J.},
+  booktitle = {Computer Vision and Pattern Recognition (CVPR)},
+  month = June,
+  year = {2020},
+  month_numeric = {6}
+}
+
+@article{Pons-Moll:Siggraph2017,
+  title = {ClothCap: Seamless 4D Clothing Capture and Retargeting},
+  author = {Pons-Moll, Gerard and Pujades, Sergi and Hu, Sonny and Black, Michael},
+  journal = {ACM Transactions on Graphics, (Proc. SIGGRAPH)},
+  volume = {36},
+  number = {4},
+  year = {2017},
+  note = {Two first authors contributed equally},
+  crossref = {},
+  url = {http://dx.doi.org/10.1145/3072959.3073711}
+}
+```

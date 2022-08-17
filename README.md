@@ -116,7 +116,7 @@
 - See [docs/installation.md](docs/installation.md) to install all the required packages and setup the models
 - See [docs/dataset.md](docs/dataset.md) to synthesize the train/val/test dataset from THuman2.0
 - See [docs/training.md](docs/training.md) to train your own model using THuman2.0
-- See [docs/evaluation.md](docs/evaluation.md) to benchmark trained models on THuman2.0
+- See [docs/evaluation.md](docs/evaluation.md) to benchmark trained models on CAPE testset
 - Add-on: [Garment Extraction from Fashion Images](docs/garment-extraction.md), supported by ETH Zürich students as 3DV course project.
 
 <br>

@@ -21,14 +21,33 @@ if __name__ == '__main__':
                         '--config',
                         default='./configs/train/icon-filter.yaml',
                         help='vis sampler 3D')
+    parser.add_argument('-d',
+                        '--dataset',
+                        default='thuman2')
     args_c = parser.parse_args()
 
     args = get_cfg_defaults()
     args.merge_from_file(args_c.config)
+    
+    if args.dataset == 'cape':
+        
+        # for cape test set
+        cfg_test_mode = [
+                "test_mode",
+                True,
+                "dataset.types",
+                ["cape"],
+                "dataset.scales",
+                [100.0],
+                "dataset.rotation_num",
+                3
+            ]
+        args.merge_from_list(cfg_test_mode)
 
-    dataset = PIFuDataset(args, split='train', vis=args_c.show)
+    # dataset sampler
+    dataset = PIFuDataset(args, split='test', vis=args_c.show)
     print(f"Number of subjects :{len(dataset.subject_list)}")
-    data_dict = dataset[0]
+    data_dict = dataset[1]
 
     if args_c.list:
         for k in data_dict.keys():
@@ -40,7 +59,11 @@ if __name__ == '__main__':
     if args_c.show:
         # for item in dataset:
         item = dataset[0]
-        dataset.visualize_sampling3D(item, mode='occ')
+        dataset.visualize_sampling3D(item, mode='cmap')
+        # dataset.visualize_sampling3D(item, mode='occ')
+        # dataset.visualize_sampling3D(item, mode='normal')
+        # dataset.visualize_sampling3D(item, mode='sdf')
+        # dataset.visualize_sampling3D(item, mode='vis')
 
     if args_c.speed:
         # original: 2 it/s

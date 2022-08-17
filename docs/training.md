@@ -1,5 +1,3 @@
-## Training
-
 ## Prerequirement
 
 Make sure you have already generated all the required synthetic data (refer to [Dataset Instruction](dataset.md)) under `./data/thuman2_{num_views}views`, which includes the rendered RGB (`render/`), normal images(`normal_B/`, `normal_F/`, `T_normal_B/`, `T_normal_F/`), corresponding calibration matrix (`calib/`) and pre-computed visibility arrays (`vis/`).
@@ -25,23 +23,17 @@ python -m lib.dataloader_demo -v -c ./configs/train/pamir.yaml
 ```bash
 conda activate icon
 
-# ICON w/ filter (name: icon-filter)
+# model_type: 
+#   "pifu"            reimplemented PIFu
+#   "pamir"           reimplemented PaMIR
+#   "icon-filter"     ICON w/ global encoder (continous local wrinkles)
+#   "icon-nofilter"   ICON w/o global encoder (correct global pose)
+#   "icon-mvp"        minimal viable product, simple yet efficient
+
+# Training for implicit MLP
 CUDA_VISIBLE_DEVICES=0 python -m apps.train -cfg ./configs/train/icon-filter.yaml
 
-# ICON w/o filter (name: icon-nofilter)
-CUDA_VISIBLE_DEVICES=0 python -m apps.train -cfg ./configs/train/icon-nofilter.yaml
-
-# ICON-MVP (name: icon-mvp), mvp = minimal viable product, simple (used features) yet efficient (GPU usage)
-# https://en.wikipedia.org/wiki/Minimum_viable_product
-CUDA_VISIBLE_DEVICES=0 python -m apps.train -cfg ./configs/train/icon-mvp.yaml
-
-# PIFu (name: pifu)
-CUDA_VISIBLE_DEVICES=0 python -m apps.train -cfg ./configs/train/pifu.yaml
-
-# PaMIR (name: pamir)
-CUDA_VISIBLE_DEVICES=0 python -m apps.train -cfg ./configs/train/pamir.yaml
-
-# Normal network Training
+# Training for normal network
 CUDA_VISIBLE_DEVICES=0 python -m apps.train-normal -cfg ./configs/train/normal.yaml
 ```
 

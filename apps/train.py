@@ -103,9 +103,15 @@ if __name__ == "__main__":
             "test_mode",
             True,
             "dataset.types",
-            ["thuman2"],
+            ["cape"],
             "dataset.scales",
             [100.0],
+            "dataset.rotation_num",
+            3,
+            "mcube_res",
+            256,
+            "clean_mesh",
+            True,
         ]
         cfg.merge_from_list(cfg_test_mode)
 

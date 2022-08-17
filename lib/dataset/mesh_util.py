@@ -370,7 +370,7 @@ def cal_sdf_batch(verts, faces, cmaps, vis, points):
     normals = face_vertices(normals, faces)
     cmaps = face_vertices(cmaps, faces)
     vis = face_vertices(vis, faces)
-
+    
     residues, pts_ind, _ = point_to_mesh_distance(points, triangles)
     closest_triangles = torch.gather(
         triangles, 1, pts_ind[:, :, None, None].expand(-1, -1, 3, 3)).view(-1, 3, 3)
@@ -382,7 +382,7 @@ def cal_sdf_batch(verts, faces, cmaps, vis, points):
         vis, 1, pts_ind[:, :, None, None].expand(-1, -1, 3, 1)).view(-1, 3, 1)
     bary_weights = barycentric_coordinates_of_projection(
         points.view(-1, 3), closest_triangles)
-
+    
     pts_cmap = (closest_cmaps*bary_weights[:, :, None]).sum(1).unsqueeze(0)
     pts_vis = (closest_vis*bary_weights[:,
                :, None]).sum(1).unsqueeze(0).ge(1e-1)
@@ -826,6 +826,17 @@ def mesh_move(mesh_lst, step, scale=1.0):
 
     return results
 
+def rescale_smpl(fitted_path, scale=100, translate=(0,0,0)):
+    
+    fitted_body = trimesh.load(fitted_path, process=False, maintain_order=True, skip_materials=True)
+    resize_matrix = trimesh.transformations.scale_and_translate(
+                            scale=(scale), 
+                            translate=translate)
+
+    fitted_body.apply_transform(resize_matrix)
+    
+    return np.array(fitted_body.vertices)
+
 
 class SMPLX():
     def __init__(self):
@@ -835,16 +846,19 @@ class SMPLX():
 
         self.smpl_verts_path = osp.join(self.current_dir,
                                         "smpl_data/smpl_verts.npy")
+        self.smpl_faces_path = osp.join(self.current_dir,
+                                        "smpl_data/smpl_faces.npy")
         self.smplx_verts_path = osp.join(self.current_dir,
                                          "smpl_data/smplx_verts.npy")
-        self.faces_path = osp.join(self.current_dir,
+        self.smplx_faces_path = osp.join(self.current_dir,
                                    "smpl_data/smplx_faces.npy")
         self.cmap_vert_path = osp.join(self.current_dir,
                                        "smpl_data/smplx_cmap.npy")
 
-        self.faces = np.load(self.faces_path)
+        self.faces = np.load(self.smplx_faces_path)
         self.verts = np.load(self.smplx_verts_path)
         self.smpl_verts = np.load(self.smpl_verts_path)
+        self.smpl_faces = np.load(self.smpl_faces_path)
 
         self.model_dir = osp.join(self.current_dir, "models")
         self.tedra_dir = osp.join(self.current_dir, "../tedra_data")

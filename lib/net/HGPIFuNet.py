@@ -281,7 +281,7 @@ class HGPIFuNet(BasePIFuNet):
             # smpl_verts [B, N_vert, 3]
             # smpl_faces [B, N_face, 3]
             # points [B, 3, N]
-
+            
             smpl_sdf, smpl_norm, smpl_cmap, smpl_vis = cal_sdf_batch(
                 self.smpl_feat_dict['smpl_verts'],
                 self.smpl_feat_dict['smpl_faces'],

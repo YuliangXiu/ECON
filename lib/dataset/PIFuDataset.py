@@ -20,13 +20,13 @@ from lib.renderer.mesh import load_fit_body
 from lib.dataset.hoppeMesh import HoppeMesh
 from lib.dataset.body_model import TetraSMPLModel
 from lib.common.render import Render
-from lib.dataset.mesh_util import SMPLX, projection, cal_sdf_batch, get_visibility
+from lib.dataset.mesh_util import SMPLX, projection, cal_sdf_batch, get_visibility, rescale_smpl
 from lib.pare.pare.utils.geometry import rotation_matrix_to_angle_axis
 from termcolor import colored
 import os.path as osp
 import numpy as np
 from PIL import Image
-import random
+import random, os
 import trimesh
 import torch
 import vedo
@@ -98,18 +98,23 @@ class PIFuDataset():
 
             dataset_dir = osp.join(self.root, dataset)
 
-            if dataset in ['thuman2']:
-                mesh_dir = osp.join(dataset_dir, "scans")
-                smplx_dir = osp.join(dataset_dir, "fits")
-                smpl_dir = osp.join(dataset_dir, "smpl")
+            mesh_dir = osp.join(dataset_dir, "scans")
+            smplx_dir = osp.join(dataset_dir, "fits")
+            smpl_dir = osp.join(dataset_dir, "smpl")
 
             self.datasets_dict[dataset] = {
-                "subjects": np.loadtxt(osp.join(dataset_dir, "all.txt"), dtype=str),
                 "smplx_dir": smplx_dir,
                 "smpl_dir": smpl_dir,
                 "mesh_dir": mesh_dir,
                 "scale": self.scales[dataset_id]
             }
+
+            if split == 'train':
+                self.datasets_dict[dataset].update(
+                    {"subjects": np.loadtxt(osp.join(dataset_dir, "all.txt"), dtype=str)})
+            else:
+                self.datasets_dict[dataset].update(
+                    {"subjects": np.loadtxt(osp.join(dataset_dir, "test.txt"), dtype=str)})
 
         self.subject_list = self.get_subject_list(split)
         self.smplx = SMPLX()
@@ -198,13 +203,22 @@ class PIFuDataset():
             'subject': subject,
             'rotation': rotation,
             'scale': self.datasets_dict[dataset]["scale"],
-            'mesh_path': osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}/{subject}.obj"),
-            'smplx_path': osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}/smplx_param.pkl"),
-            'smpl_path': osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.pkl"),
             'calib_path': osp.join(self.root, render_folder, 'calib', f'{rotation:03d}.txt'),
-            'vis_path': osp.join(self.root, render_folder, 'vis', f'{rotation:03d}.pt'),
             'image_path': osp.join(self.root, render_folder, 'render', f'{rotation:03d}.png')
         }
+
+        if dataset == 'thuman2':
+            data_dict.update({
+                'mesh_path': osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}/{subject}.obj"),
+                'smplx_path': osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}/smplx_param.pkl"),
+                'smpl_path': osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.pkl"),
+                'vis_path': osp.join(self.root, render_folder, 'vis', f'{rotation:03d}.pt')
+            })
+        elif dataset == 'cape':
+            data_dict.update({
+                'mesh_path': osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}.obj"),
+                'smpl_path': osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.obj")
+            })
 
         # load training data
         data_dict.update(self.load_calib(data_dict))
@@ -218,10 +232,11 @@ class PIFuDataset():
                 })
 
             # tensor update
-            data_dict.update({
-                name: self.imagepath2tensor(
-                    data_dict[f'{name}_path'], channel, inv=False)
-            })
+            if os.path.exists(data_dict[f'{name}_path']):
+                data_dict.update({
+                    name: self.imagepath2tensor(
+                        data_dict[f'{name}_path'], channel, inv=False)
+                })
 
         data_dict.update(self.load_mesh(data_dict))
         data_dict.update(self.get_sampling_geo(
@@ -379,7 +394,7 @@ class PIFuDataset():
         smpl_model.set_params(pose=smpl_pose.reshape(-1, 3),
                               beta=smpl_betas,
                               trans=smpl_param["transl"])
-        
+
         verts = (np.concatenate([smpl_model.verts, smpl_model.verts_added],
                                 axis=0) * smplx_param["scale"] + smplx_param["translation"]
                  ) * self.datasets_dict[data_dict['dataset']]['scale']
@@ -395,22 +410,32 @@ class PIFuDataset():
         faces = np.pad(faces, ((0, pad_f_num), (0, 0)),
                        mode='constant',
                        constant_values=0.0).astype(np.int32)
-        
 
         return verts, faces, pad_v_num, pad_f_num
 
     def load_smpl(self, data_dict, vis=False):
 
-        smplx_verts, smplx_dict = self.compute_smpl_verts(
-            data_dict, self.noise_type,
-            self.noise_scale)  # compute using smpl model
+        if 'smplx_path' in data_dict.keys() and data_dict['smplx_path'].endswith("pkl"):
+            smplx_verts, smplx_dict = self.compute_smpl_verts(
+                data_dict, self.noise_type,
+                self.noise_scale)
+            smplx_vis = torch.load(data_dict['vis_path']).float()
+            smplx_faces = torch.as_tensor(self.smplx.faces).long()
+            smplx_cmap = torch.as_tensor(np.load(self.smplx.cmap_vert_path)).float()
+            
+            return_dict = {'smpl_vis': smplx_vis}
+            return_dict.update(smplx_dict)
+
+        elif data_dict['smpl_path'].endswith("obj"):
+            smplx_verts = rescale_smpl(data_dict['smpl_path'], scale=100.0)
+            smpl_ind = self.smplx.smpl2smplx(np.arange(self.smplx.smpl_verts.shape[0]))
+            smplx_faces = torch.as_tensor(self.smplx.smpl_faces).long()
+            smplx_cmap = torch.as_tensor(np.load(self.smplx.cmap_vert_path)).float()[smpl_ind]
+            
+            return_dict = {}
 
         smplx_verts = projection(smplx_verts, data_dict['calib']).float()
-        smplx_faces = torch.as_tensor(self.smplx.faces).long()
-        smplx_vis = torch.load(data_dict['vis_path']).float()
-        smplx_cmap = torch.as_tensor(
-            np.load(self.smplx.cmap_vert_path)).float()
-
+        
         # get smpl_signs
         query_points = projection(data_dict['samples_geo'],
                                   data_dict['calib']).float()
@@ -419,15 +444,12 @@ class PIFuDataset():
                                       smplx_faces,
                                       query_points.unsqueeze(0)).float() - 0.5).squeeze(0)
 
-        return_dict = {
+        return_dict.update({
             'smpl_verts': smplx_verts,
             'smpl_faces': smplx_faces,
-            'smpl_vis': smplx_vis,
             'smpl_cmap': smplx_cmap,
             'pts_signs': pts_signs
-        }
-        if smplx_dict is not None:
-            return_dict.update(smplx_dict)
+        })
 
         if vis:
 
@@ -444,14 +466,14 @@ class PIFuDataset():
                                 "T_normal_B": T_normal_B.squeeze(0)})
             query_points = projection(data_dict['samples_geo'],
                                       data_dict['calib']).float()
-
+            
             smplx_sdf, smplx_norm, smplx_cmap, smplx_vis = cal_sdf_batch(
                 smplx_verts.unsqueeze(0).to(self.device),
                 smplx_faces.unsqueeze(0).to(self.device),
                 smplx_cmap.unsqueeze(0).to(self.device),
                 smplx_vis.unsqueeze(0).to(self.device),
                 query_points.unsqueeze(0).contiguous().to(self.device))
-
+            
             return_dict.update({
                 'smpl_feat':
                 torch.cat(
@@ -632,7 +654,7 @@ class PIFuDataset():
         elif mode == 'cmap':
             labels = data_dict[f'smpl_feat'][:, -7:-4]  # colormap
             colors = np.array(labels)
-
+            
         points = projection(data_dict['samples_geo'], data_dict['calib'])
         verts = projection(data_dict['verts'], data_dict['calib'])
         points[:, 1] *= -1
@@ -665,7 +687,7 @@ class PIFuDataset():
 
         # create a picure
         img_pos = [1.0, 0.0, -1.0]
-        for img_id, img_key in enumerate(['normal_F', 'image', 'T_normal_B']):
+        for img_id, img_key in enumerate(['T_normal_F', 'image', 'T_normal_B']):
             image_arr = (data_dict[img_key].detach().cpu().permute(
                 1, 2, 0).numpy() + 1.0) * 0.5 * 255.0
             image_dim = image_arr.shape[0]

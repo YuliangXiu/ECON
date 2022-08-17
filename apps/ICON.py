@@ -536,14 +536,6 @@ class ICON(pl.LightningModule):
         mesh_rot = batch["rotation"][0].item()
         ckpt_dir = self.cfg.name
 
-        for kid, key in enumerate(self.cfg.dataset.noise_type):
-            ckpt_dir += f"_{key}_{self.cfg.dataset.noise_scale[kid]}"
-
-        if self.cfg.optim_cloth:
-            ckpt_dir += "_optim_cloth"
-        if self.cfg.optim_body:
-            ckpt_dir += "_optim_body"
-
         self.export_dir = osp.join(self.cfg.results_path, ckpt_dir, mesh_name)
         os.makedirs(self.export_dir, exist_ok=True)
 
@@ -559,17 +551,19 @@ class ICON(pl.LightningModule):
 
         # update the new smpl_vis
         (xy, z) = batch["smpl_verts"][0].split([2, 1], dim=1)
+        
         smpl_vis = get_visibility(
             xy,
             z,
-            torch.as_tensor(self.smpl_data.faces).type_as(
+            torch.as_tensor(batch["smpl_faces"][0]).type_as(
                 batch["smpl_verts"]).long(),
         )
-        in_tensor_dict.update({"smpl_vis": smpl_vis.unsqueeze(0)})
+        in_tensor_dict.update({"smpl_vis": smpl_vis.unsqueeze(0).to(self.device)})
 
         if self.prior_type == "icon":
             for key in self.icon_keys:
-                in_tensor_dict.update({key: batch[key]})
+                if key not in in_tensor_dict.keys():
+                    in_tensor_dict.update({key: batch[key]})
         elif self.prior_type == "pamir":
             for key in self.pamir_keys:
                 in_tensor_dict.update({key: batch[key]})
@@ -577,12 +571,8 @@ class ICON(pl.LightningModule):
             pass
 
         with torch.no_grad():
-            if self.cfg.optim_body:
-                features, inter, in_tensor_dict = self.optim_body(
-                    in_tensor_dict, batch)
-            else:
-                features, inter = self.netG.filter(
-                    in_tensor_dict, return_inter=True)
+            features, inter = self.netG.filter(
+                in_tensor_dict, return_inter=True)
             sdf = self.reconEngine(
                 opt=self.cfg, netG=self.netG, features=features, proj_matrix=None
             )
@@ -613,9 +603,6 @@ class ICON(pl.LightningModule):
 
         if self.clean_mesh_flag:
             verts_pr, faces_pr = clean_mesh(verts_pr, faces_pr)
-
-        if self.cfg.optim_cloth:
-            verts_pr = self.optim_cloth(verts_pr, faces_pr, inter[0].detach())
 
         verts_gt = batch["verts"][0]
         faces_gt = batch["faces"][0]
@@ -652,7 +639,8 @@ class ICON(pl.LightningModule):
             outputs,
             rot_num=3,
             split={
-                "thuman2": (0, 5),
+                "cape-easy": (0, 50),
+                "cape-hard": (50, 100)
             },
         )
 
