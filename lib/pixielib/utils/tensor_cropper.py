@@ -83,7 +83,7 @@ def crop_tensor(image, center, bbox_size, crop_size, interpolation='bilinear', a
     # warp images
     cropped_image = warp_affine(
         image, dst_trans_src[:, :2, :], (crop_size, crop_size),
-        flags=interpolation, align_corners=align_corners)
+        mode=interpolation, align_corners=align_corners)
 
     tform = torch.transpose(dst_trans_src, 2, 1)
     # tform = torch.inverse(dst_trans_src)

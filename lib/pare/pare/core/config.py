@@ -18,7 +18,6 @@ import os
 import time
 import yaml
 import shutil
-import argparse
 import operator
 import itertools
 from os.path import join
@@ -133,9 +132,9 @@ hparams.OPTIMIZER.WD = 0.0
 
 # Training process hparams
 hparams.TRAINING = CN()
-hparams.TRAINING.RESUME = None
-hparams.TRAINING.PRETRAINED = None
-hparams.TRAINING.PRETRAINED_LIT = None
+hparams.TRAINING.RESUME = ""
+hparams.TRAINING.PRETRAINED = ""
+hparams.TRAINING.PRETRAINED_LIT = ""
 hparams.TRAINING.MAX_EPOCHS = 100
 hparams.TRAINING.LOG_SAVE_INTERVAL = 50
 hparams.TRAINING.LOG_FREQ_TB_IMAGES = 500
@@ -174,8 +173,8 @@ hparams.PARE.USE_KEYPOINT_FEATURES_FOR_SMPL_REGRESSION = False
 hparams.PARE.USE_POSTCONV_KEYPOINT_ATTENTION = False
 hparams.PARE.KEYPOINT_ATTENTION_ACT = 'softmax'
 hparams.PARE.USE_SCALE_KEYPOINT_ATTENTION = False
-hparams.PARE.USE_FINAL_NONLOCAL = None
-hparams.PARE.USE_BRANCH_NONLOCAL = None
+hparams.PARE.USE_FINAL_NONLOCAL = ""
+hparams.PARE.USE_BRANCH_NONLOCAL = ""
 hparams.PARE.USE_HMR_REGRESSION = False
 hparams.PARE.USE_COATTENTION = False
 hparams.PARE.NUM_COATTENTION_ITER = 1

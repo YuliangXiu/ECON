@@ -428,9 +428,8 @@ class PIFuDataset():
 
         elif data_dict['smpl_path'].endswith("obj"):
             smplx_verts = rescale_smpl(data_dict['smpl_path'], scale=100.0)
-            smpl_ind = self.smplx.smpl2smplx(np.arange(self.smplx.smpl_verts.shape[0]))
             smplx_faces = torch.as_tensor(self.smplx.smpl_faces).long()
-            smplx_cmap = torch.as_tensor(np.load(self.smplx.cmap_vert_path)).float()[smpl_ind]
+            smplx_cmap = self.smplx.cmap_smpl_vids('smpl')
             
             return_dict = {}
 

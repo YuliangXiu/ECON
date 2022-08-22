@@ -318,11 +318,7 @@ class ICON(pl.LightningModule):
 
         (xy, z) = torch.as_tensor(smpl_verts).split([2, 1], dim=1)
         smpl_vis = get_visibility(xy, -z, torch.as_tensor(smpl_faces).long())
-        if smpl_type == "smpl":
-            smplx_ind = self.smpl_data.smpl2smplx(np.arange(smpl_vis.shape[0]))
-        else:
-            smplx_ind = np.arange(smpl_vis.shape[0])
-        smpl_cmap = self.smpl_data.get_smpl_mat(smplx_ind)
+        smpl_cmap = self.smpl_data.cmap_smpl_vids(smpl_type)
 
         return {
             "smpl_vis": smpl_vis.unsqueeze(0).to(self.device),

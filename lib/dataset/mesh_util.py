@@ -26,6 +26,7 @@ import os
 from termcolor import colored
 import os.path as osp
 from scipy.spatial import cKDTree
+import _pickle as cPickle
 
 from pytorch3d.structures import Meshes
 import torch.nn.functional as F
@@ -854,47 +855,33 @@ class SMPLX():
                                    "smpl_data/smplx_faces.npy")
         self.cmap_vert_path = osp.join(self.current_dir,
                                        "smpl_data/smplx_cmap.npy")
+        
+        self.smplx_to_smplx_path = osp.join(self.current_dir,
+                                       "smpl_data/smplx_to_smpl.pkl")
 
         self.faces = np.load(self.smplx_faces_path)
         self.verts = np.load(self.smplx_verts_path)
         self.smpl_verts = np.load(self.smpl_verts_path)
         self.smpl_faces = np.load(self.smpl_faces_path)
+        
+        self.smplx_to_smpl = cPickle.load(open(self.smplx_to_smplx_path, 'rb'))
 
         self.model_dir = osp.join(self.current_dir, "models")
         self.tedra_dir = osp.join(self.current_dir, "../tedra_data")
-
-    def get_smpl_mat(self, vert_ids):
-
-        mat = torch.as_tensor(np.load(self.cmap_vert_path)).float()
-        return mat[vert_ids, :]
-
-    def smpl2smplx(self, vert_ids=None):
-        """convert vert_ids in smpl to vert_ids in smplx
-
-        Args:
-            vert_ids ([int.array]): [n, knn_num]
-        """
-        smplx_tree = cKDTree(self.verts, leafsize=1)
-        _, ind = smplx_tree.query(self.smpl_verts, k=1)  # ind: [smpl_num, 1]
-
-        if vert_ids is not None:
-            smplx_vert_ids = ind[vert_ids]
-        else:
-            smplx_vert_ids = ind
-
-        return smplx_vert_ids
-
-    def smplx2smpl(self, vert_ids=None):
-        """convert vert_ids in smplx to vert_ids in smpl
-
-        Args:
-            vert_ids ([int.array]): [n, knn_num]
-        """
-        smpl_tree = cKDTree(self.smpl_verts, leafsize=1)
-        _, ind = smpl_tree.query(self.verts, k=1)  # ind: [smplx_num, 1]
-        if vert_ids is not None:
-            smpl_vert_ids = ind[vert_ids]
-        else:
-            smpl_vert_ids = ind
-
-        return smpl_vert_ids
+    
+    def cmap_smpl_vids(self, type):
+        
+        # keys:
+        # closest_faces -   [6890, 3] with smplx vert_idx
+        # bc            -   [6890, 3] with barycentric weights
+        
+        cmap_smplx = torch.as_tensor(np.load(self.cmap_vert_path)).float()
+        if type == 'smplx':
+            return cmap_smplx
+        elif type == 'smpl':
+            bc = torch.as_tensor(self.smplx_to_smpl['bc'].astype(np.float32))
+            closest_faces = self.smplx_to_smpl['closest_faces'].astype(np.int32)
+            
+            cmap_smpl = torch.einsum('bij, bi->bj', cmap_smplx[closest_faces], bc)
+            
+            return cmap_smpl
