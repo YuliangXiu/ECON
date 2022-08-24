@@ -1,4 +1,6 @@
 import argparse
+import cProfile, pstats
+from tqdm import tqdm
 from lib.common.config import get_cfg_defaults
 from lib.dataset.PIFuDataset import PIFuDataset
 
@@ -45,7 +47,7 @@ if __name__ == '__main__':
         args.merge_from_list(cfg_test_mode)
 
     # dataset sampler
-    dataset = PIFuDataset(args, split='test', vis=args_c.show)
+    dataset = PIFuDataset(args, split='train', vis=args_c.show)
     print(f"Number of subjects :{len(dataset.subject_list)}")
     data_dict = dataset[1]
 
@@ -59,8 +61,8 @@ if __name__ == '__main__':
     if args_c.show:
         # for item in dataset:
         item = dataset[0]
-        dataset.visualize_sampling3D(item, mode='cmap')
-        # dataset.visualize_sampling3D(item, mode='occ')
+        # dataset.visualize_sampling3D(item, mode='cmap')
+        dataset.visualize_sampling3D(item, mode='occ')
         # dataset.visualize_sampling3D(item, mode='normal')
         # dataset.visualize_sampling3D(item, mode='sdf')
         # dataset.visualize_sampling3D(item, mode='vis')
@@ -69,13 +71,23 @@ if __name__ == '__main__':
         # original: 2 it/s
         # smpl online compute: 2 it/s
         # normal online compute: 1.5 it/s
-        from tqdm import tqdm
+        prof = cProfile.Profile()
+        prof.enable()
+        step = 0
         for item in tqdm(dataset):
-            # pass
-            for k in item.keys():
-                if 'voxel' in k:
-                    if not hasattr(item[k], "shape"):
-                        print(f"{k}: {item[k]}")
-                    else:
-                        print(f"{k}: {item[k].shape}")
-            print("--------------------")
+            step += 1
+            if step > 3:
+                prof.disable()
+                break
+            # for k in item.keys():
+            #     if 'voxel' in k:
+            #         if not hasattr(item[k], "shape"):
+            #             print(f"{k}: {item[k]}")
+            #         else:
+            #             print(f"{k}: {item[k].shape}")
+            # print("--------------------")
+        prof.dump_stats("/tmp/prof_log")
+        
+        p = pstats.Stats("/tmp/prof_log")
+        p.sort_stats(pstats.SortKey.CUMULATIVE, pstats.SortKey.TIME)
+        p.print_stats(30)

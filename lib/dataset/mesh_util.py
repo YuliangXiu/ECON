@@ -42,6 +42,52 @@ from pytorch3d.loss import (
     mesh_laplacian_smoothing,
     mesh_normal_consistency
 )
+import tinyobjloader
+
+def obj_loader(path):
+       # Create reader.
+    reader = tinyobjloader.ObjReader()
+
+    # Load .obj(and .mtl) using default configuration
+    ret = reader.ParseFromFile(path)
+
+    if ret == False:
+        print("Failed to load : ", path)
+        return None
+
+    # note here for wavefront obj, #v might not equal to #vt, same as #vn.
+    attrib = reader.GetAttrib()
+    verts = np.array(attrib.vertices).reshape(-1, 3)
+
+    shapes = reader.GetShapes()
+    tri = shapes[0].mesh.numpy_indices().reshape(-1, 9)
+    faces = tri[:, [0, 3, 6]]
+    
+    return verts, faces
+
+class HoppeMesh:
+    def __init__(self, verts, faces):
+        '''
+        The HoppeSDF calculates signed distance towards a predefined oriented point cloud
+        http://hhoppe.com/recon.pdf
+        For clean and high-resolution pcl data, this is the fastest and accurate approximation of sdf
+        :param points: pts
+        :param normals: normals
+        '''
+        self.trimesh = trimesh.Trimesh(verts, faces, process=True)
+        self.verts = np.array(self.trimesh.vertices)
+        self.faces = np.array(self.trimesh.faces)
+        self.vert_normals, self.faces_normals = compute_normal(self.verts, self.faces)
+        
+    def contains(self, points):
+
+        labels = check_sign(torch.as_tensor(self.verts).unsqueeze(0), 
+                            torch.as_tensor(self.faces),
+                            torch.as_tensor(points).unsqueeze(0))
+        return labels.squeeze(0).numpy()
+    
+    def triangles(self):
+        return self.verts[self.faces]  # [n, 3, 3]
 
 
 def tensor2variable(tensor, device):
@@ -388,7 +434,8 @@ def cal_sdf_batch(verts, faces, cmaps, vis, points):
     pts_vis = (closest_vis*bary_weights[:,
                :, None]).sum(1).unsqueeze(0).ge(1e-1)
     pts_norm = (closest_normals*bary_weights[:, :, None]).sum(
-        1).unsqueeze(0) * torch.tensor([-1.0, 1.0, -1.0]).type_as(normals)
+        1).unsqueeze(0) * torch.tensor(np.array([-1.0, 1.0, -1.0])).type_as(normals)
+    pts_norm = F.normalize(pts_norm, dim=2)
     pts_dist = torch.sqrt(residues) / torch.sqrt(torch.tensor(3))
 
     pts_signs = 2.0 * (check_sign(verts, faces[0], points).float() - 0.5)
@@ -859,8 +906,8 @@ class SMPLX():
         self.smplx_to_smplx_path = osp.join(self.current_dir,
                                        "smpl_data/smplx_to_smpl.pkl")
 
-        self.faces = np.load(self.smplx_faces_path)
-        self.verts = np.load(self.smplx_verts_path)
+        self.smplx_faces = np.load(self.smplx_faces_path)
+        self.smplx_verts = np.load(self.smplx_verts_path)
         self.smpl_verts = np.load(self.smpl_verts_path)
         self.smpl_faces = np.load(self.smpl_faces_path)
         
@@ -871,17 +918,18 @@ class SMPLX():
     
     def cmap_smpl_vids(self, type):
         
-        # keys:
-        # closest_faces -   [6890, 3] with smplx vert_idx
-        # bc            -   [6890, 3] with barycentric weights
+        # smplx_to_smpl.pkl
+        # KEYS:
+            # closest_faces -   [6890, 3] with smplx vert_idx
+            # bc            -   [6890, 3] with barycentric weights
         
         cmap_smplx = torch.as_tensor(np.load(self.cmap_vert_path)).float()
+        
         if type == 'smplx':
             return cmap_smplx
+        
         elif type == 'smpl':
             bc = torch.as_tensor(self.smplx_to_smpl['bc'].astype(np.float32))
             closest_faces = self.smplx_to_smpl['closest_faces'].astype(np.int32)
-            
             cmap_smpl = torch.einsum('bij, bi->bj', cmap_smplx[closest_faces], bc)
-            
             return cmap_smpl

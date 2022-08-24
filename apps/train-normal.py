@@ -28,7 +28,7 @@ if __name__ == "__main__":
     os.makedirs(osp.join(cfg.results_path, cfg.name), exist_ok=True)
     os.makedirs(osp.join(cfg.ckpt_dir, cfg.name), exist_ok=True)
 
-    tb_logger = pl_loggers.TensorBoardLogger(
+    tb_logger = pl_loggers.WandbLogger(
         save_dir=cfg.results_path, name=cfg.name, default_hp_metric=False
     )
 

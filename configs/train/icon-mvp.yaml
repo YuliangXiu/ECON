@@ -1,6 +1,6 @@
 name: icon-mvp
 ckpt_dir: "./data/ckpt/"
-resume_path: "./data/ckpt/icon-filter.ckpt"
+resume_path: "./data/ckpt/icon-mvp.ckpt"
 normal_path: "./data/ckpt/normal.ckpt"
 results_path: "./results"
 
@@ -53,7 +53,7 @@ lr_G: 1e-4
 weight_decay: 0.0 
 momentum: 0.0
 batch_size: 12
-num_threads: 24
+num_threads: 12
 gpus: [0]
 test_gpus: [0]
 

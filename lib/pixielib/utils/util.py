@@ -1,12 +1,8 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-import math
 from collections import OrderedDict
 import os
-from scipy.ndimage import morphology
-import PIL.Image as pil_img
-from skimage.io import imsave
 import cv2
 import pickle
 

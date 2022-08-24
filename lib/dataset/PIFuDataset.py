@@ -17,22 +17,22 @@
 
 
 from lib.renderer.mesh import load_fit_body
-from lib.dataset.hoppeMesh import HoppeMesh
 from lib.dataset.body_model import TetraSMPLModel
 from lib.common.render import Render
-from lib.dataset.mesh_util import SMPLX, projection, cal_sdf_batch, get_visibility, rescale_smpl
+from lib.dataset.mesh_util import SMPLX, projection, cal_sdf_batch, get_visibility, rescale_smpl, HoppeMesh, obj_loader
 from lib.pare.pare.utils.geometry import rotation_matrix_to_angle_axis
 from termcolor import colored
 import os.path as osp
 import numpy as np
 from PIL import Image
-import random, os
+import tinyobjloader
+import random
+import os
 import trimesh
 import torch
 import vedo
 from kaolin.ops.mesh import check_sign
 import torchvision.transforms as transforms
-from ipdb import set_trace
 
 
 class PIFuDataset():
@@ -42,7 +42,7 @@ class PIFuDataset():
         self.root = cfg.root
         self.bsize = cfg.batch_size
         self.overfit = cfg.overfit
-
+        
         # for debug, only used in visualize_sampling3D
         self.vis = vis
 
@@ -99,13 +99,15 @@ class PIFuDataset():
             dataset_dir = osp.join(self.root, dataset)
 
             mesh_dir = osp.join(dataset_dir, "scans")
-            smplx_dir = osp.join(dataset_dir, "fits")
+            param_dir = osp.join(dataset_dir, "fits")
+            smplx_dir = osp.join(dataset_dir, "smplx")
             smpl_dir = osp.join(dataset_dir, "smpl")
 
             self.datasets_dict[dataset] = {
                 "smplx_dir": smplx_dir,
                 "smpl_dir": smpl_dir,
                 "mesh_dir": mesh_dir,
+                "param_dir": param_dir,
                 "scale": self.scales[dataset_id]
             }
 
@@ -204,20 +206,21 @@ class PIFuDataset():
             'rotation': rotation,
             'scale': self.datasets_dict[dataset]["scale"],
             'calib_path': osp.join(self.root, render_folder, 'calib', f'{rotation:03d}.txt'),
-            'image_path': osp.join(self.root, render_folder, 'render', f'{rotation:03d}.png')
+            'image_path': osp.join(self.root, render_folder, 'render', f'{rotation:03d}.png'),
+            'smpl_path': osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.obj"),
         }
 
         if dataset == 'thuman2':
             data_dict.update({
                 'mesh_path': osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}/{subject}.obj"),
-                'smplx_path': osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}/smplx_param.pkl"),
-                'smpl_path': osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.pkl"),
+                'smplx_path': osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}.obj"),
+                'smpl_param': osp.join(self.datasets_dict[dataset]["param_dir"], f"{subject}/smpl_param.pkl"),
+                'smplx_param': osp.join(self.datasets_dict[dataset]["param_dir"], f"{subject}/smplx_param.pkl"),
                 'vis_path': osp.join(self.root, render_folder, 'vis', f'{rotation:03d}.pt')
             })
         elif dataset == 'cape':
             data_dict.update({
                 'mesh_path': osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}.obj"),
-                'smpl_path': osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.obj")
             })
 
         # load training data
@@ -282,25 +285,18 @@ class PIFuDataset():
         return {'calib': calib_mat}
 
     def load_mesh(self, data_dict):
+        
         mesh_path = data_dict['mesh_path']
         scale = data_dict['scale']
 
-        mesh_ori = trimesh.load(mesh_path,
-                                skip_materials=True,
-                                process=False,
-                                maintain_order=True)
-        verts = mesh_ori.vertices * scale
-        faces = mesh_ori.faces
-
-        vert_normals = np.array(mesh_ori.vertex_normals)
-        face_normals = np.array(mesh_ori.face_normals)
-
-        mesh = HoppeMesh(verts, faces, vert_normals, face_normals)
+        verts, faces = obj_loader(mesh_path)
+        
+        mesh = HoppeMesh(verts * scale, faces)
 
         return {
             'mesh': mesh,
-            'verts': torch.as_tensor(mesh.verts).float(),
-            'faces': torch.as_tensor(mesh.faces).long()
+            'verts': torch.as_tensor(verts * scale).float(),
+            'faces': torch.as_tensor(faces).long()
         }
 
     def add_noise(self,
@@ -339,7 +335,7 @@ class PIFuDataset():
         dataset = data_dict['dataset']
         smplx_dict = {}
 
-        smplx_param = np.load(data_dict['smplx_path'], allow_pickle=True)
+        smplx_param = np.load(data_dict['smplx_param'], allow_pickle=True)
         smplx_pose = smplx_param["body_pose"]  # [1,63]
         smplx_betas = smplx_param["betas"]  # [1,10]
         smplx_pose, smplx_betas = self.add_noise(
@@ -351,7 +347,7 @@ class PIFuDataset():
             type='smplx',
             hashcode=(hash(f"{data_dict['subject']}_{data_dict['rotation']}")) % (10**8))
 
-        smplx_out, _ = load_fit_body(fitted_path=data_dict['smplx_path'],
+        smplx_out, _ = load_fit_body(fitted_path=data_dict['smplx_param'],
                                      scale=self.datasets_dict[dataset]['scale'],
                                      smpl_type='smplx',
                                      smpl_gender='male',
@@ -414,27 +410,31 @@ class PIFuDataset():
         return verts, faces, pad_v_num, pad_f_num
 
     def load_smpl(self, data_dict, vis=False):
-
-        if 'smplx_path' in data_dict.keys() and data_dict['smplx_path'].endswith("pkl"):
+        
+        smpl_type = "smplx" if os.path.exists(data_dict['smplx_path']) else "smpl"
+        return_dict = {}
+        
+        if os.path.exists(data_dict['smplx_param']) and sum(self.noise_scale) > 0.0:
             smplx_verts, smplx_dict = self.compute_smpl_verts(
                 data_dict, self.noise_type,
                 self.noise_scale)
-            smplx_vis = torch.load(data_dict['vis_path']).float()
-            smplx_faces = torch.as_tensor(self.smplx.faces).long()
-            smplx_cmap = torch.as_tensor(np.load(self.smplx.cmap_vert_path)).float()
-            
-            return_dict = {'smpl_vis': smplx_vis}
+            smplx_faces = torch.as_tensor(self.smplx.smplx_faces).long()
+            smplx_cmap = torch.as_tensor(
+                np.load(self.smplx.cmap_vert_path)).float()
+
             return_dict.update(smplx_dict)
 
-        elif data_dict['smpl_path'].endswith("obj"):
-            smplx_verts = rescale_smpl(data_dict['smpl_path'], scale=100.0)
-            smplx_faces = torch.as_tensor(self.smplx.smpl_faces).long()
-            smplx_cmap = self.smplx.cmap_smpl_vids('smpl')
+        else:
+            if smpl_type == "smplx":
+                smplx_vis = torch.load(data_dict['vis_path']).float()
+                return_dict.update({'smpl_vis': smplx_vis})
             
-            return_dict = {}
-
-        smplx_verts = projection(smplx_verts, data_dict['calib']).float()
+            smplx_verts = rescale_smpl(data_dict[f"{smpl_type}_path"], scale=100.0)
+            smplx_faces = torch.as_tensor(getattr(self.smplx, f"{smpl_type}_faces")).long()
+            smplx_cmap = self.smplx.cmap_smpl_vids(smpl_type)
         
+        smplx_verts = projection(smplx_verts, data_dict['calib']).float()
+
         # get smpl_signs
         query_points = projection(data_dict['samples_geo'],
                                   data_dict['calib']).float()
@@ -458,21 +458,21 @@ class PIFuDataset():
                 smplx_faces).to(self.device).long())
 
             T_normal_F, T_normal_B = self.render_normal(
-                (smplx_verts*torch.tensor([1.0, -1.0, 1.0])).to(self.device),
+                (smplx_verts*torch.tensor(np.array([1.0, -1.0, 1.0]))).to(self.device),
                 smplx_faces.to(self.device))
 
             return_dict.update({"T_normal_F": T_normal_F.squeeze(0),
                                 "T_normal_B": T_normal_B.squeeze(0)})
             query_points = projection(data_dict['samples_geo'],
                                       data_dict['calib']).float()
-            
+
             smplx_sdf, smplx_norm, smplx_cmap, smplx_vis = cal_sdf_batch(
                 smplx_verts.unsqueeze(0).to(self.device),
                 smplx_faces.unsqueeze(0).to(self.device),
                 smplx_cmap.unsqueeze(0).to(self.device),
                 smplx_vis.unsqueeze(0).to(self.device),
                 query_points.unsqueeze(0).contiguous().to(self.device))
-            
+
             return_dict.update({
                 'smpl_feat':
                 torch.cat(
@@ -509,22 +509,10 @@ class PIFuDataset():
         # Samples are around the true surface with an offset
         n_samples_surface = 4 * self.opt.num_sample_geo
         vert_ids = np.arange(mesh.verts.shape[0])
-        thickness_sample_ratio = np.ones_like(vert_ids).astype(np.float32)
-
-        thickness_sample_ratio /= thickness_sample_ratio.sum()
 
         samples_surface_ids = np.random.choice(vert_ids,
                                                n_samples_surface,
-                                               replace=True,
-                                               p=thickness_sample_ratio)
-
-        samples_normal_ids = np.random.choice(vert_ids,
-                                              self.opt.num_sample_geo // 2,
-                                              replace=False,
-                                              p=thickness_sample_ratio)
-
-        surf_samples = mesh.verts[samples_normal_ids, :]
-        surf_normals = mesh.vert_normals[samples_normal_ids, :]
+                                               replace=True)
 
         samples_surface = mesh.verts[samples_surface_ids, :]
 
@@ -539,91 +527,31 @@ class PIFuDataset():
         samples_space_img = 2.0 * np.random.rand(n_samples_space, 3) - 1.0
         samples_space = projection(samples_space_img, calib_inv)
 
-        # z-ray direction samples
-        if self.opt.zray_type and not is_valid:
-            n_samples_rayz = self.opt.ray_sample_num
-            samples_surface_cube = projection(samples_surface, calib)
-            samples_surface_cube_repeat = np.repeat(samples_surface_cube,
-                                                    n_samples_rayz,
-                                                    axis=0)
-
-            thickness_repeat = np.repeat(0.5 *
-                                         np.ones_like(samples_surface_ids),
-                                         n_samples_rayz,
-                                         axis=0)
-
-            noise_repeat = np.random.normal(scale=0.40,
-                                            size=(n_samples_surface *
-                                                  n_samples_rayz, ))
-            samples_surface_cube_repeat[:,
-                                        -1] += thickness_repeat * noise_repeat
-            samples_surface_rayz = projection(samples_surface_cube_repeat,
-                                              calib_inv)
-
-            samples = np.concatenate(
-                [samples_surface, samples_space, samples_surface_rayz], 0)
-        else:
-            samples = np.concatenate([samples_surface, samples_space], 0)
-
+        samples = np.concatenate([samples_surface, samples_space], 0)
         np.random.shuffle(samples)
 
         # labels: in->1.0; out->0.0.
-        if is_sdf:
-            sdfs = mesh.get_sdf(samples)
-            inside_samples = samples[sdfs < 0]
-            outside_samples = samples[sdfs >= 0]
-
-            inside_sdfs = sdfs[sdfs < 0]
-            outside_sdfs = sdfs[sdfs >= 0]
-        else:
-            inside = mesh.contains(samples)
-            inside_samples = samples[inside >= 0.5]
-            outside_samples = samples[inside < 0.5]
+        inside = mesh.contains(samples)
+        inside_samples = samples[inside >= 0.5]
+        outside_samples = samples[inside < 0.5]
 
         nin = inside_samples.shape[0]
 
         if nin > self.opt.num_sample_geo // 2:
             inside_samples = inside_samples[:self.opt.num_sample_geo // 2]
             outside_samples = outside_samples[:self.opt.num_sample_geo // 2]
-            if is_sdf:
-                inside_sdfs = inside_sdfs[:self.opt.num_sample_geo // 2]
-                outside_sdfs = outside_sdfs[:self.opt.num_sample_geo // 2]
         else:
             outside_samples = outside_samples[:(self.opt.num_sample_geo - nin)]
-            if is_sdf:
-                outside_sdfs = outside_sdfs[:(self.opt.num_sample_geo - nin)]
 
-        if is_sdf:
-            samples = np.concatenate(
-                [inside_samples, outside_samples, surf_samples], 0)
+        samples = np.concatenate([inside_samples, outside_samples])
+        labels = np.concatenate([
+            np.ones(inside_samples.shape[0]),
+            np.zeros(outside_samples.shape[0])
+        ])
 
-            labels = np.concatenate([
-                inside_sdfs, outside_sdfs, 0.0 * np.ones(surf_samples.shape[0])
-            ])
-
-            normals = np.zeros_like(samples)
-            normals[-self.opt.num_sample_geo // 2:, :] = surf_normals
-
-            # convert sdf from [-14, 130] to [0, 1]
-            # outside: 0, inside: 1
-            # Note: Marching cubes is defined on occupancy space (inside=1.0, outside=0.0)
-
-            labels = -labels.clip(min=-self.sdf_clip, max=self.sdf_clip)
-            labels += self.sdf_clip
-            labels /= (self.sdf_clip * 2)
-
-        else:
-            samples = np.concatenate([inside_samples, outside_samples])
-            labels = np.concatenate([
-                np.ones(inside_samples.shape[0]),
-                np.zeros(outside_samples.shape[0])
-            ])
-
-            normals = np.zeros_like(samples)
 
         samples = torch.from_numpy(samples).float()
         labels = torch.from_numpy(labels).float()
-        normals = torch.from_numpy(normals).float()
 
         return {'samples_geo': samples, 'labels_geo': labels}
 
@@ -653,7 +581,7 @@ class PIFuDataset():
         elif mode == 'cmap':
             labels = data_dict[f'smpl_feat'][:, -7:-4]  # colormap
             colors = np.array(labels)
-            
+
         points = projection(data_dict['samples_geo'], data_dict['calib'])
         verts = projection(data_dict['verts'], data_dict['calib'])
         points[:, 1] *= -1

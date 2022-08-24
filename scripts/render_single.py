@@ -1,5 +1,5 @@
 import lib.renderer.opengl_util as opengl_util
-from lib.renderer.mesh import load_fit_body, load_scan, compute_tangent, load_ori_fit_body
+from lib.renderer.mesh import load_fit_body, load_scan, compute_tangent
 import lib.renderer.prt_util as prt_util
 from lib.renderer.gl.init_gl import initialize_GL_context
 from lib.renderer.gl.prt_render import PRTRender
@@ -77,16 +77,14 @@ else:
 # center
 
 scan_scale = 1.8/(vertices.max(0)[up_axis] - vertices.min(0)[up_axis])
-rescale_fitted_body, joints = load_fit_body(fit_file,
-                                            scale,
-                                            smpl_type='smplx',
-                                            smpl_gender='male')
+rescale_smplx, joints = load_fit_body(fit_file,
+                                      scale,
+                                      smpl_type='smplx',
+                                      smpl_gender='male')
 
 os.makedirs(os.path.dirname(smplx_file), exist_ok=True)
-ori_smplx = load_ori_fit_body(fit_file,
-                              smpl_type='smplx',
-                              smpl_gender='male')
-ori_smplx.export(smplx_file)
+trimesh.Trimesh(rescale_smplx.vertices * 0.01, rescale_smplx.faces,
+                process=False, maintain_order=True).export(smplx_file)
 
 vertices *= scale
 vmin = vertices.min(0)
@@ -95,10 +93,10 @@ vmed = joints[0]
 vmed[up_axis] = 0.5*(vmax[up_axis] + vmin[up_axis])
 
 rndr_depth = ColorRender(width=size, height=size, egl=egl)
-rndr_depth.set_mesh(rescale_fitted_body.vertices,
-                    rescale_fitted_body.faces,
-                    rescale_fitted_body.vertices,
-                    rescale_fitted_body.vertex_normals)
+rndr_depth.set_mesh(rescale_smplx.vertices,
+                    rescale_smplx.faces,
+                    rescale_smplx.vertices,
+                    rescale_smplx.vertex_normals)
 rndr_depth.set_norm_mat(scan_scale, vmed)
 
 

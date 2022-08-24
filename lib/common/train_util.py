@@ -19,17 +19,62 @@ import yaml
 import os.path as osp
 import torch
 import numpy as np
-import torch.nn.functional as F
 from ..dataset.mesh_util import *
 from ..net.geometry import orthogonal
 from pytorch3d.renderer.mesh import rasterize_meshes
 from .render_utils import Pytorch3dRasterizer
 from pytorch3d.structures import Meshes
-import cv2
-from PIL import Image
+import cv2, PIL
 from tqdm import tqdm
 import os
 from termcolor import colored
+
+import pytorch_lightning as pl
+from pytorch_lightning.core.lightning import LightningModule
+from pytorch_lightning.utilities.cloud_io import atomic_save
+from pytorch_lightning.utilities import rank_zero_warn
+
+
+class SubTrainer(pl.Trainer):
+    def save_checkpoint(self, filepath, weights_only=False):
+        """Save model/training states as a checkpoint file through state-dump and file-write.
+        Args:
+            filepath: write-target file's path
+            weights_only: saving model weights only
+        """
+        _checkpoint = self.checkpoint_connector.dump_checkpoint(weights_only)
+
+        del_keys = []
+        for key in _checkpoint["state_dict"].keys():
+            for ig_key in ["normal_filter", "voxelization", "reconEngine"]:
+                if ig_key in key:
+                    del_keys.append(key)
+        for key in del_keys:
+            del _checkpoint["state_dict"][key]
+
+        if self.is_global_zero:
+            # write the checkpoint dictionary on the file
+
+            if self.training_type_plugin:
+                checkpoint = self.training_type_plugin.on_save(_checkpoint)
+            try:
+                atomic_save(checkpoint, filepath)
+            except AttributeError as err:
+                if LightningModule.CHECKPOINT_HYPER_PARAMS_KEY in checkpoint:
+                    del checkpoint[LightningModule.CHECKPOINT_HYPER_PARAMS_KEY]
+                rank_zero_warn(
+                    "Warning, `hyper_parameters` dropped from checkpoint."
+                    f" An attribute is not picklable {err}"
+                )
+                atomic_save(checkpoint, filepath)
+
+
+def rename(old_dict, old_name, new_name):
+    new_dict = {}
+    for key, value in zip(old_dict.keys(), old_dict.values()):
+        new_key = key if key != old_name else new_name
+        new_dict[new_key] = old_dict[key]
+    return new_dict
 
 
 def reshape_sample_tensor(sample_tensor, num_views):
@@ -87,7 +132,7 @@ def gen_mesh(opt, net, cuda, data, save_path, resolution=None):
                         0.5)[:, :, ::-1] * 255.0
             save_img_list.append(save_img)
         save_img = np.concatenate(save_img_list, axis=1)
-        Image.fromarray(np.uint8(save_img[:, :, ::-1])).save(save_img_path)
+        PIL.Image.fromarray(np.uint8(save_img[:, :, ::-1])).save(save_img_path)
 
         verts, faces, _, _ = reconstruction_faster(net, cuda, calib_tensor,
                                                    resolution, b_min, b_max)
@@ -124,7 +169,7 @@ def gen_mesh_color(opt, netG, netC, cuda, data, save_path, use_octree=True):
                         0.5)[:, :, ::-1] * 255.0
             save_img_list.append(save_img)
         save_img = np.concatenate(save_img_list, axis=1)
-        Image.fromarray(np.uint8(save_img[:, :, ::-1])).save(save_img_path)
+        PIL.Image.fromarray(np.uint8(save_img[:, :, ::-1])).save(save_img_path)
 
         verts, faces, _, _ = reconstruction_faster(netG,
                                                    cuda,
@@ -398,10 +443,7 @@ def get_visibility(xy, z, faces):
 
 
 def batch_mean(res, key):
-    # recursive mean for multilevel dicts
-    return torch.stack([
-        x[key] if isinstance(x, dict) else batch_mean(x, key) for x in res
-    ]).mean()
+    return torch.stack([x[key] if torch.is_tensor(x[key]) else torch.as_tensor(x[key]) for x in res]).mean()
 
 
 def tf_log_convert(log_dict):
@@ -574,9 +616,9 @@ def make_test_gif(img_dir):
                         img_path = os.path.join(img_dir, dataset, subject,
                                                 file)
                         if im1 == None:
-                            im1 = Image.open(img_path)
+                            im1 = PIL.Image.open(img_path)
                         else:
-                            img_lst.append(Image.open(img_path))
+                            img_lst.append(PIL.Image.open(img_path))
 
                 print(os.path.join(img_dir, dataset, subject, "out.gif"))
                 im1.save(os.path.join(img_dir, dataset, subject, "out.gif"),
@@ -586,10 +628,9 @@ def make_test_gif(img_dir):
                          loop=0)
 
 
-def export_cfg(logger, cfg):
+def export_cfg(logger, dir, cfg):
 
-    cfg_export_file = osp.join(logger.save_dir, logger.name,
-                               f"version_{logger.version}", "cfg.yaml")
+    cfg_export_file = osp.join(dir, f"cfg_{logger.version}.yaml")
 
     if not osp.exists(cfg_export_file):
         os.makedirs(osp.dirname(cfg_export_file), exist_ok=True)
