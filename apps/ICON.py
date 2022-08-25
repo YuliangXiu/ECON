@@ -15,14 +15,13 @@
 # Contact: ps-license@tuebingen.mpg.de
 
 from lib.common.seg3d_lossless import Seg3dLossless
-from lib.dataset.Evaluator import Evaluator
+from lib.dataset.Evaluator_3d import Evaluator
 from lib.net import HGPIFuNet
 from lib.common.train_util import *
 from lib.common.render import Render
 from lib.dataset.mesh_util import SMPLX, get_visibility
 import torch
 import wandb
-import lib.smplx as smplx
 import numpy as np
 from torch import nn
 from skimage.transform import resize
@@ -50,7 +49,6 @@ class ICON(pl.LightningModule):
             error_term=nn.SmoothL1Loss() if self.use_sdf else nn.MSELoss(),
         )
 
-        # TODO: replace the renderer from opengl to pytorch3d
         self.evaluator = Evaluator(
             device=torch.device(f"cuda:{self.cfg.gpus[0]}"))
 
@@ -262,7 +260,7 @@ class ICON(pl.LightningModule):
             "val/recall": recall,
         }
 
-        self.log_dict(metrics_log, prog_bar=True, logger=True,
+        self.log_dict(metrics_log, prog_bar=True, logger=False,
                       on_step=True, on_epoch=False)
 
         return metrics_log
@@ -300,9 +298,8 @@ class ICON(pl.LightningModule):
         #            'z-trans', 'verts', 'faces', 'samples_geo', 'labels_geo',
         #            'smpl_verts', 'smpl_faces', 'smpl_vis', 'smpl_cmap', 'pts_signs',
         #            'type', 'gender', 'age', 'body_pose', 'global_orient', 'betas', 'transl'])
-
-        if self.evaluator._normal_render is None:
-            self.evaluator.init_gl()
+        
+        # 00127-shortlong-hips-000120
 
         self.netG.eval()
         self.netG.training = False
@@ -313,7 +310,7 @@ class ICON(pl.LightningModule):
         mesh_rot = batch["rotation"][0].item()
 
         self.export_dir = osp.join(
-            self.cfg.results_path, self.cfg.name, mesh_name)
+            self.cfg.results_path, self.cfg.name, "-".join(self.cfg.dataset.types), mesh_name)
         os.makedirs(self.export_dir, exist_ok=True)
 
         for name in self.in_total:
@@ -321,10 +318,11 @@ class ICON(pl.LightningModule):
                 in_tensor_dict.update({name: batch[name]})
 
         # update the new T_normal_F/B
+        self.render.load_meshes(batch["smpl_verts"] * torch.tensor([1.0, -1.0, 1.0]).to(self.device),
+                                batch["smpl_faces"])
+        T_normal_F, T_noraml_B = self.render.get_rgb_image()
         in_tensor_dict.update(
-            self.evaluator.render_normal(
-                batch["smpl_verts"], batch["smpl_faces"])
-        )
+            {'T_normal_F': T_normal_F, 'T_normal_B': T_noraml_B})
 
         # update the new smpl_vis
         (xy, z) = batch["smpl_verts"][0].split([2, 1], dim=1)
@@ -355,24 +353,17 @@ class ICON(pl.LightningModule):
                 opt=self.cfg, netG=self.netG, features=features, proj_matrix=None
             )
 
+        def tensor2arr(x): return (x[0].permute(
+            1, 2, 0).detach().cpu().numpy() + 1.0) * 0.5 * 255.0
+
         # save inter results
-        image = (
-            in_tensor_dict["image"][0].permute(
-                1, 2, 0).detach().cpu().numpy() + 1.0
-        ) * 0.5
-        smpl_F = (
-            in_tensor_dict["T_normal_F"][0].permute(
-                1, 2, 0).detach().cpu().numpy()
-            + 1.0
-        ) * 0.5
-        smpl_B = (
-            in_tensor_dict["T_normal_B"][0].permute(
-                1, 2, 0).detach().cpu().numpy()
-            + 1.0
-        ) * 0.5
+        image = tensor2arr(in_tensor_dict["image"])
+        smpl_F = tensor2arr(in_tensor_dict["T_normal_F"])
+        smpl_B = tensor2arr(in_tensor_dict["T_normal_B"])
         image_inter = np.concatenate(
             self.tensor2image(512, inter[0]) + [smpl_F, smpl_B, image], axis=1
         )
+        
         Image.fromarray((image_inter).astype(np.uint8)).save(
             osp.join(self.export_dir, f"{mesh_rot}_inter.png")
         )
@@ -395,26 +386,20 @@ class ICON(pl.LightningModule):
                 "calib": batch["calib"][0],
             }
         )
-
-        self.evaluator.set_mesh(self.result_eval, scale_factor=1.0)
-        self.evaluator.space_transfer()
-
-        chamfer, p2s = self.evaluator.calculate_chamfer_p2s(
-            sampled_points=1000)
+        
+        self.evaluator.set_mesh(self.result_eval)
+        chamfer, p2s = self.evaluator.calculate_chamfer_p2s(num_samples=1000)
         normal_consist = self.evaluator.calculate_normal_consist(
-            save_demo_img=osp.join(self.export_dir, f"{mesh_rot}_nc.png")
-        )
-
+            osp.join(self.export_dir, f"{mesh_rot}_nc.png"))
+        
         test_log = {"chamfer": chamfer, "p2s": p2s, "NC": normal_consist}
 
-        self.log_dict(test_log, prog_bar=True, logger=True,
+        self.log_dict(test_log, prog_bar=True, logger=False,
                       on_step=True, on_epoch=False)
 
         return test_log
 
     def test_epoch_end(self, outputs):
-
-        # make_test_gif("/".join(self.export_dir.split("/")[:-2]))
 
         accu_outputs = accumulate(
             outputs,
@@ -443,7 +428,8 @@ class ICON(pl.LightningModule):
         for dim in self.in_geo_dim:
             img = resize(
                 np.tile(
-                    ((inter[:dim].cpu().numpy() + 1.0) / 2.0 * 255.0).transpose(1, 2, 0),
+                    ((inter[:dim].cpu().numpy() + 1.0) /
+                     2.0 * 255.0).transpose(1, 2, 0),
                     (1, 1, int(3 / dim)),
                 ),
                 (height, height),

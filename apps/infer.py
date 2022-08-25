@@ -14,7 +14,12 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
+import warnings
 import logging
+warnings.filterwarnings('ignore')
+logging.getLogger("lightning").setLevel(logging.ERROR)
+logging.getLogger("trimesh").setLevel(logging.ERROR)
+
 from tqdm.auto import tqdm
 from lib.common.render import query_color, image2vid
 from lib.common.config import cfg
@@ -45,8 +50,6 @@ import numpy as np
 
 import torch
 torch.backends.cudnn.benchmark = True
-
-logging.getLogger("trimesh").setLevel(logging.ERROR)
 
 
 if __name__ == "__main__":
@@ -120,18 +123,10 @@ if __name__ == "__main__":
         in_tensor = {"smpl_faces": data["smpl_faces"], "image": data["image"]}
 
         # The optimizer and variables
-        optimed_pose = torch.tensor(
-            data["body_pose"], device=device, requires_grad=True
-        )  # [1,23,3,3]
-        optimed_trans = torch.tensor(
-            data["trans"], device=device, requires_grad=True
-        )  # [3]
-        optimed_betas = torch.tensor(
-            data["betas"], device=device, requires_grad=True
-        )  # [1,10]
-        optimed_orient = torch.tensor(
-            data["global_orient"], device=device, requires_grad=True
-        )  # [1,1,3,3]
+        optimed_pose = data["body_pose"].requires_grad_(True)
+        optimed_trans = data["trans"].requires_grad_(True)
+        optimed_betas = data["betas"].requires_grad_(True)
+        optimed_orient = data["global_orient"].requires_grad_(True)
 
         optimizer_smpl = torch.optim.SGD(
             [optimed_pose, optimed_trans, optimed_betas, optimed_orient],

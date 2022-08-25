@@ -105,7 +105,7 @@ class Seg3dLossless(nn.Module):
                 torch.tensor([-1, 0, 1]),
                 torch.tensor([-1, 0, 1]),
                 torch.tensor([-1, 0, 1])
-            ])).int().view(3, -1).t()  # [27, 3]
+            ], indexing='ij')).int().view(3, -1).t()  # [27, 3]
         self.register_buffer('gird8_offsets', gird8_offsets)
 
         # smooth convs

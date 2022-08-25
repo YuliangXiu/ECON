@@ -191,7 +191,7 @@ class PyMAF(nn.Module):
         xv, yv = torch.meshgrid([
             torch.linspace(-1, 1, grid_size),
             torch.linspace(-1, 1, grid_size)
-        ])
+        ], indexing='ij')
         points_grid = torch.stack([xv.reshape(-1),
                                    yv.reshape(-1)]).unsqueeze(0)
         self.register_buffer('points_grid', points_grid)

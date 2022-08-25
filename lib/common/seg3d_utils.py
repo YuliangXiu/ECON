@@ -129,7 +129,7 @@ def create_grid3D(min, max, steps):
     arrangeX = torch.linspace(min[0], max[0], steps[0]).long()
     arrangeY = torch.linspace(min[1], max[1], steps[1]).long()
     arrangeZ = torch.linspace(min[2], max[2], steps[2]).long()
-    gridD, girdH, gridW = torch.meshgrid([arrangeZ, arrangeY, arrangeX])
+    gridD, girdH, gridW = torch.meshgrid([arrangeZ, arrangeY, arrangeX], indexing='ij')
     coords = torch.stack([gridW, girdH,
                           gridD])  # [2, steps[0], steps[1], steps[2]]
     coords = coords.view(3, -1).t()  # [N, 3]
@@ -145,7 +145,7 @@ def create_grid2D(min, max, steps):
         steps = (steps, steps)  # (x, y)
     arrangeX = torch.linspace(min[0], max[0], steps[0]).long()
     arrangeY = torch.linspace(min[1], max[1], steps[1]).long()
-    girdH, gridW = torch.meshgrid([arrangeY, arrangeX])
+    girdH, gridW = torch.meshgrid([arrangeY, arrangeX], indexing='ij')
     coords = torch.stack([gridW, girdH])  # [2, steps[0], steps[1]]
     coords = coords.view(2, -1).t()  # [N, 2]
     return coords

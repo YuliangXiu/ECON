@@ -42,7 +42,7 @@ class PIFuDataset():
         self.root = cfg.root
         self.bsize = cfg.batch_size
         self.overfit = cfg.overfit
-        
+
         # for debug, only used in visualize_sampling3D
         self.vis = vis
 
@@ -285,12 +285,12 @@ class PIFuDataset():
         return {'calib': calib_mat}
 
     def load_mesh(self, data_dict):
-        
+
         mesh_path = data_dict['mesh_path']
         scale = data_dict['scale']
 
         verts, faces = obj_loader(mesh_path)
-        
+
         mesh = HoppeMesh(verts * scale, faces)
 
         return {
@@ -410,11 +410,15 @@ class PIFuDataset():
         return verts, faces, pad_v_num, pad_f_num
 
     def load_smpl(self, data_dict, vis=False):
-        
-        smpl_type = "smplx" if os.path.exists(data_dict['smplx_path']) else "smpl"
+
+        smpl_type = "smplx" if ('smplx_path' in data_dict.keys(
+        ) and os.path.exists(data_dict['smplx_path'])) else "smpl"
+
         return_dict = {}
-        
-        if os.path.exists(data_dict['smplx_param']) and sum(self.noise_scale) > 0.0:
+
+        if 'smplx_param' in data_dict.keys() and \
+            os.path.exists(data_dict['smplx_param']) and \
+                sum(self.noise_scale) > 0.0:
             smplx_verts, smplx_dict = self.compute_smpl_verts(
                 data_dict, self.noise_type,
                 self.noise_scale)
@@ -428,11 +432,13 @@ class PIFuDataset():
             if smpl_type == "smplx":
                 smplx_vis = torch.load(data_dict['vis_path']).float()
                 return_dict.update({'smpl_vis': smplx_vis})
-            
-            smplx_verts = rescale_smpl(data_dict[f"{smpl_type}_path"], scale=100.0)
-            smplx_faces = torch.as_tensor(getattr(self.smplx, f"{smpl_type}_faces")).long()
+
+            smplx_verts = rescale_smpl(
+                data_dict[f"{smpl_type}_path"], scale=100.0)
+            smplx_faces = torch.as_tensor(
+                getattr(self.smplx, f"{smpl_type}_faces")).long()
             smplx_cmap = self.smplx.cmap_smpl_vids(smpl_type)
-        
+
         smplx_verts = projection(smplx_verts, data_dict['calib']).float()
 
         # get smpl_signs
@@ -458,7 +464,8 @@ class PIFuDataset():
                 smplx_faces).to(self.device).long())
 
             T_normal_F, T_normal_B = self.render_normal(
-                (smplx_verts*torch.tensor(np.array([1.0, -1.0, 1.0]))).to(self.device),
+                (smplx_verts *
+                 torch.tensor(np.array([1.0, -1.0, 1.0]))).to(self.device),
                 smplx_faces.to(self.device))
 
             return_dict.update({"T_normal_F": T_normal_F.squeeze(0),
@@ -548,7 +555,6 @@ class PIFuDataset():
             np.ones(inside_samples.shape[0]),
             np.zeros(outside_samples.shape[0])
         ])
-
 
         samples = torch.from_numpy(samples).float()
         labels = torch.from_numpy(labels).float()

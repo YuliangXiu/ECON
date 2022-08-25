@@ -25,7 +25,6 @@ from pytorch3d.io import load_obj
 import os
 from termcolor import colored
 import os.path as osp
-from scipy.spatial import cKDTree
 import _pickle as cPickle
 
 from pytorch3d.structures import Meshes
@@ -92,7 +91,7 @@ class HoppeMesh:
 
 def tensor2variable(tensor, device):
     # [1,23,3,3]
-    return torch.tensor(tensor, device=device, requires_grad=True)
+    return tensor.requires_grad_(True).to(device)
 
 class GMoF(torch.nn.Module):
     def __init__(self, rho=1):
@@ -157,8 +156,8 @@ def remesh(obj_path, perc, device):
 
     ms = pymeshlab.MeshSet()
     ms.load_new_mesh(obj_path)
-    ms.laplacian_smooth()
-    ms.remeshing_isotropic_explicit_remeshing(
+    ms.apply_coord_laplacian_smoothing()
+    ms.meshing_isotropic_explicit_remeshing(
         targetlen=pymeshlab.Percentage(perc), adaptive=True)
     ms.save_current_mesh(obj_path.replace("recon", "remesh"))
     polished_mesh = trimesh.load_mesh(obj_path.replace("recon", "remesh"))
@@ -462,8 +461,9 @@ def orthogonal(points, calibrations, transforms=None):
     return pts
 
 
-def projection(points, calib, format='numpy'):
-    if format == 'tensor':
+def projection(points, calib):
+    if torch.is_tensor(points):
+        calib = torch.as_tensor(calib) if not torch.is_tensor(calib) else calib
         return torch.mm(calib[:3, :3], points.T).T + calib[:3, 3]
     else:
         return np.matmul(calib[:3, :3], points.T).T + calib[:3, 3]

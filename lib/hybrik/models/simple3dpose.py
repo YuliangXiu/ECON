@@ -61,16 +61,16 @@ class HybrIKBaseSMPLCam(nn.Module):
         import torchvision.models as tm
         if cfg['NUM_LAYERS'] == 101:
             ''' Load pretrained model '''
-            x = tm.resnet101(pretrained=True)
+            x = tm.resnet101(weights=tm.ResNet101_Weights.DEFAULT)
             self.feature_channel = 2048
         elif cfg['NUM_LAYERS'] == 50:
-            x = tm.resnet50(pretrained=True)
+            x = tm.resnet50(weights=tm.ResNet50_Weights.DEFAULT)
             self.feature_channel = 2048
         elif cfg['NUM_LAYERS'] == 34:
-            x = tm.resnet34(pretrained=True)
+            x = tm.resnet34(weights=tm.ResNet34_Weights.DEFAULT)
             self.feature_channel = 512
         elif cfg['NUM_LAYERS'] == 18:
-            x = tm.resnet18(pretrained=True)
+            x = tm.resnet18(weights=tm.ResNet18_Weights.DEFAULT)
             self.feature_channel = 512
         else:
             raise NotImplementedError

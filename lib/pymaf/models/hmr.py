@@ -3,6 +3,8 @@
 import torch
 import torch.nn as nn
 import torchvision.models.resnet as resnet
+from torchvision import models
+
 import numpy as np
 import math
 from lib.pymaf.utils.geometry import rot6d_to_rotmat
@@ -89,7 +91,7 @@ class ResNet_Backbone(nn.Module):
         self.avgpool = nn.AvgPool2d(7, stride=1)
 
         if pretrained:
-            resnet_imagenet = resnet.resnet50(pretrained=True)
+            resnet_imagenet = resnet.resnet50(weights=models.ResNet50_Weights.DEFAULT)
             self.load_state_dict(resnet_imagenet.state_dict(), strict=False)
             logger.info('loaded resnet50 imagenet pretrained model')
 
@@ -298,6 +300,6 @@ def hmr(smpl_mean_params, pretrained=True, **kwargs):
     """
     model = HMR(Bottleneck, [3, 4, 6, 3], smpl_mean_params, **kwargs)
     if pretrained:
-        resnet_imagenet = resnet.resnet50(pretrained=True)
+        resnet_imagenet = resnet.resnet50(weights=models.ResNet50_Weights.DEFAULT)
         model.load_state_dict(resnet_imagenet.state_dict(), strict=False)
     return model

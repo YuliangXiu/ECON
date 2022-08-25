@@ -1,5 +1,4 @@
 import argparse
-import cProfile, pstats
 from tqdm import tqdm
 from lib.common.config import get_cfg_defaults
 from lib.dataset.PIFuDataset import PIFuDataset
@@ -71,6 +70,7 @@ if __name__ == '__main__':
         # original: 2 it/s
         # smpl online compute: 2 it/s
         # normal online compute: 1.5 it/s
+        import cProfile, pstats
         prof = cProfile.Profile()
         prof.enable()
         step = 0

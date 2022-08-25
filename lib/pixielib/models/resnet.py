@@ -18,10 +18,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 from torch.nn.parameter import Parameter
-import torch.optim as optim
 import numpy as np
 import math
 import torchvision
+from torchvision import models
 class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=1000):
         self.inplanes = 64
@@ -179,21 +179,21 @@ def copy_parameter_from_resnet(model, resnet_dict):
 def load_ResNet50Model():
     model = ResNet(Bottleneck, [3, 4, 6, 3])
     copy_parameter_from_resnet(
-        model, torchvision.models.resnet50(pretrained=True).state_dict())
+        model, torchvision.models.resnet50(weights=models.ResNet50_Weights.DEFAULT).state_dict())
     return model
 
 
 def load_ResNet101Model():
     model = ResNet(Bottleneck, [3, 4, 23, 3])
     copy_parameter_from_resnet(
-        model, torchvision.models.resnet101(pretrained=True).state_dict())
+        model, torchvision.models.resnet101(weights=models.ResNet101_Weights.DEFAULT).state_dict())
     return model
 
 
 def load_ResNet152Model():
     model = ResNet(Bottleneck, [3, 8, 36, 3])
     copy_parameter_from_resnet(
-        model, torchvision.models.resnet152(pretrained=True).state_dict())
+        model, torchvision.models.resnet152(weights=models.ResNet152_Weights.DEFAULT).state_dict())
     return model
 
 # model.load_state_dict(checkpoint['model_state_dict'])

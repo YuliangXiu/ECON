@@ -21,8 +21,8 @@ import torch
 import numpy as np
 from ..dataset.mesh_util import *
 from ..net.geometry import orthogonal
-from pytorch3d.renderer.mesh import rasterize_meshes
 from .render_utils import Pytorch3dRasterizer
+from pytorch3d.renderer.mesh import rasterize_meshes
 from pytorch3d.structures import Meshes
 import cv2, PIL
 from tqdm import tqdm
@@ -42,31 +42,17 @@ class SubTrainer(pl.Trainer):
             filepath: write-target file's path
             weights_only: saving model weights only
         """
-        _checkpoint = self.checkpoint_connector.dump_checkpoint(weights_only)
+        _checkpoint = self._checkpoint_connector.dump_checkpoint(weights_only)
 
         del_keys = []
         for key in _checkpoint["state_dict"].keys():
-            for ig_key in ["normal_filter", "voxelization", "reconEngine"]:
-                if ig_key in key:
+            for ignore_key in ["normal_filter", "voxelization", "reconEngine"]:
+                if ignore_key in key:
                     del_keys.append(key)
         for key in del_keys:
             del _checkpoint["state_dict"][key]
-
-        if self.is_global_zero:
-            # write the checkpoint dictionary on the file
-
-            if self.training_type_plugin:
-                checkpoint = self.training_type_plugin.on_save(_checkpoint)
-            try:
-                atomic_save(checkpoint, filepath)
-            except AttributeError as err:
-                if LightningModule.CHECKPOINT_HYPER_PARAMS_KEY in checkpoint:
-                    del checkpoint[LightningModule.CHECKPOINT_HYPER_PARAMS_KEY]
-                rank_zero_warn(
-                    "Warning, `hyper_parameters` dropped from checkpoint."
-                    f" An attribute is not picklable {err}"
-                )
-                atomic_save(checkpoint, filepath)
+            
+        pl.utilities.cloud_io.atomic_save(_checkpoint, filepath)
 
 
 def rename(old_dict, old_name, new_name):
@@ -75,6 +61,61 @@ def rename(old_dict, old_name, new_name):
         new_key = key if key != old_name else new_name
         new_dict[new_key] = old_dict[key]
     return new_dict
+
+def load_networks(cfg, model, mlp_path, normal_path):
+    
+    model_dict = model.state_dict()
+    main_dict = {}
+    normal_dict = {}
+
+    # MLP part loading
+    if os.path.exists(mlp_path) and mlp_path.endswith("ckpt"):
+        main_dict = torch.load(
+            mlp_path, map_location=torch.device(
+                f"cuda:{cfg.gpus[0]}")
+        )["state_dict"]
+
+        main_dict = {
+            k: v
+            for k, v in main_dict.items()
+            if k in model_dict
+            and v.shape == model_dict[k].shape
+            and ("reconEngine" not in k)
+            and ("normal_filter" not in k)
+            and ("voxelization" not in k)
+        }
+        print(
+            colored(f"Resume MLP weights from {mlp_path}", "green"))
+
+    # normal network part loading
+    if os.path.exists(normal_path) and normal_path.endswith("ckpt"):
+        normal_dict = torch.load(
+            normal_path, map_location=torch.device(
+                f"cuda:{cfg.gpus[0]}")
+        )["state_dict"]
+
+        for key in normal_dict.keys():
+            normal_dict = rename(
+                normal_dict, key, key.replace("netG", "netG.normal_filter")
+            )
+
+        normal_dict = {
+            k: v
+            for k, v in normal_dict.items()
+            if k in model_dict and v.shape == model_dict[k].shape
+        }
+        print(
+            colored(f"Resume normal model from {normal_path}", "green"))
+
+    model_dict.update(main_dict)
+    model_dict.update(normal_dict)
+    model.load_state_dict(model_dict)
+
+    # clean unused GPU memory
+    del main_dict
+    del normal_dict
+    del model_dict
+    torch.cuda.empty_cache()
 
 
 def reshape_sample_tensor(sample_tensor, num_views):

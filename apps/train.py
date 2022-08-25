@@ -5,16 +5,13 @@ warnings.filterwarnings('ignore')
 logging.getLogger("wandb").setLevel(logging.ERROR)
 logging.getLogger("lightning").setLevel(logging.ERROR)
 
-import numpy as np
-import torch
 import argparse
 import os.path as osp
 import os
-from lib.common.train_util import SubTrainer, rename
+from lib.common.train_util import SubTrainer, load_networks
 from lib.common.config import get_cfg_defaults
 from lib.dataset.PIFuDataModule import PIFuDataModule
 from apps.ICON import ICON
-from termcolor import colored
 from pytorch_lightning.profilers import AdvancedProfiler
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTheme
@@ -41,7 +38,7 @@ if __name__ == "__main__":
 
     os.environ["WANDB_NOTEBOOK_NAME"] = osp.join(cfg.results_path, f"wandb")
     wandb_logger = pl_loggers.WandbLogger(
-        project="ICON", save_dir=cfg.results_path, name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}"
+        offline=True, project="ICON", save_dir=cfg.results_path, name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}"
     )
 
     if cfg.overfit:
@@ -51,14 +48,14 @@ if __name__ == "__main__":
 
     checkpoint = ModelCheckpoint(
         dirpath=osp.join(cfg.ckpt_dir, cfg.name),
-        save_top_k=3,
+        save_top_k=1,
         verbose=False,
         save_weights_only=True,
         monitor="val/avgloss",
         mode="min",
-        filename="{epoch:02d}",
+        filename="{epoch:02d}-val_avgloss-{val/avgloss:.2f}",
     )
-
+    
     if cfg.test_mode or args.test_mode:
 
         cfg_test_mode = [
@@ -130,74 +127,13 @@ if __name__ == "__main__":
 
     trainer = SubTrainer(**trainer_kwargs)
 
-    if (
-        cfg.resume
-        and os.path.exists(cfg.resume_path)
-        and cfg.resume_path.endswith("ckpt")
-    ):
-
-        trainer_kwargs["resume_from_checkpoint"] = cfg.resume_path
-        trainer = SubTrainer(**trainer_kwargs)
-        print(
-            colored(f"Resume weights and hparams from {cfg.resume_path}", "green"))
-
-    elif not cfg.resume:
-
-        model_dict = model.state_dict()
-        main_dict = {}
-        normal_dict = {}
-
-        if os.path.exists(cfg.resume_path) and cfg.resume_path.endswith("ckpt"):
-            main_dict = torch.load(
-                cfg.resume_path, map_location=torch.device(
-                    f"cuda:{cfg.gpus[0]}")
-            )["state_dict"]
-
-            main_dict = {
-                k: v
-                for k, v in main_dict.items()
-                if k in model_dict
-                and v.shape == model_dict[k].shape
-                and ("reconEngine" not in k)
-                and ("normal_filter" not in k)
-                and ("voxelization" not in k)
-            }
-            print(
-                colored(f"Resume MLP weights from {cfg.resume_path}", "green"))
-
-        if os.path.exists(cfg.normal_path) and cfg.normal_path.endswith("ckpt"):
-            normal_dict = torch.load(
-                cfg.normal_path, map_location=torch.device(
-                    f"cuda:{cfg.gpus[0]}")
-            )["state_dict"]
-
-            for key in normal_dict.keys():
-                normal_dict = rename(
-                    normal_dict, key, key.replace("netG", "netG.normal_filter")
-                )
-
-            normal_dict = {
-                k: v
-                for k, v in normal_dict.items()
-                if k in model_dict and v.shape == model_dict[k].shape
-            }
-            print(
-                colored(f"Resume normal model from {cfg.normal_path}", "green"))
-
-        model_dict.update(main_dict)
-        model_dict.update(normal_dict)
-        model.load_state_dict(model_dict)
-
-        del main_dict
-        del normal_dict
-        del model_dict
-
-    else:
-        pass
+    # load checkpoints
+    load_networks(cfg, model, 
+                  mlp_path = cfg.resume_path, 
+                  normal_path = cfg.normal_path)
 
     if not cfg.test_mode:
         trainer.fit(model=model, datamodule=datamodule)
         trainer.test(model=model, datamodule=datamodule)
     else:
-        np.random.seed(1993)
         trainer.test(model=model, datamodule=datamodule)
