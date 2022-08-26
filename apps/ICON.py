@@ -29,7 +29,6 @@ import pytorch_lightning as pl
 
 torch.backends.cudnn.benchmark = True
 
-
 class ICON(pl.LightningModule):
     def __init__(self, cfg):
         super(ICON, self).__init__()
@@ -63,7 +62,7 @@ class ICON(pl.LightningModule):
             + 1.0
         )
         self.resolutions = self.resolutions.astype(np.int16).tolist()
-        
+
         self.icon_keys = ["smpl_verts", "smpl_faces", "smpl_vis", "smpl_cmap"]
         self.pamir_keys = ["voxel_verts",
                            "voxel_faces", "pad_v_num", "pad_f_num"]
@@ -198,7 +197,8 @@ class ICON(pl.LightningModule):
         if batch_idx % int(self.cfg.freq_show_train) == 0:
 
             with torch.no_grad():
-                self.render_func(in_tensor_dict, dataset="train")
+                self.render_func(
+                    in_tensor_dict, dataset="train", idx=self.global_step)
 
         return metrics_log
 
@@ -298,7 +298,6 @@ class ICON(pl.LightningModule):
         #            'z-trans', 'verts', 'faces', 'samples_geo', 'labels_geo',
         #            'smpl_verts', 'smpl_faces', 'smpl_vis', 'smpl_cmap', 'pts_signs',
         #            'type', 'gender', 'age', 'body_pose', 'global_orient', 'betas', 'transl'])
-        
 
         self.netG.eval()
         self.netG.training = False
@@ -315,7 +314,7 @@ class ICON(pl.LightningModule):
         for name in self.in_total:
             if name in batch.keys():
                 in_tensor_dict.update({name: batch[name]})
-                
+
         if self.prior_type == "icon":
             for key in self.icon_keys:
                 if key not in in_tensor_dict.keys():
@@ -325,9 +324,9 @@ class ICON(pl.LightningModule):
                 in_tensor_dict.update({key: batch[key]})
         else:
             pass
-        
+
         if "T_normal_F" not in in_tensor_dict.keys() or "T_normal_B" not in in_tensor_dict.keys():
-            
+
             # update the new T_normal_F/B
             self.render.load_meshes(batch["smpl_verts"] * torch.tensor([1.0, -1.0, 1.0]).to(self.device),
                                     batch["smpl_faces"])
@@ -336,7 +335,7 @@ class ICON(pl.LightningModule):
                 {'T_normal_F': T_normal_F, 'T_normal_B': T_noraml_B})
 
         if "smpl_vis" not in in_tensor_dict.keys():
-            
+
             (xy, z) = batch["smpl_verts"][0].split([2, 1], dim=1)
             smpl_vis = get_visibility(
                 xy,
@@ -346,7 +345,6 @@ class ICON(pl.LightningModule):
             )
             in_tensor_dict.update(
                 {"smpl_vis": smpl_vis.unsqueeze(0).to(self.device)})
-
 
         with torch.no_grad():
             features, inter = self.netG.filter(
@@ -365,7 +363,7 @@ class ICON(pl.LightningModule):
         image_inter = np.concatenate(
             self.tensor2image(512, inter[0]) + [smpl_F, smpl_B, image], axis=1
         )
-        
+
         Image.fromarray((image_inter).astype(np.uint8)).save(
             osp.join(self.export_dir, f"{mesh_rot}_inter.png")
         )
@@ -388,17 +386,17 @@ class ICON(pl.LightningModule):
                 "calib": batch["calib"][0],
             }
         )
-        
+
         self.evaluator.set_mesh(self.result_eval)
         chamfer, p2s = self.evaluator.calculate_chamfer_p2s(num_samples=1000)
         normal_consist = self.evaluator.calculate_normal_consist(
             osp.join(self.export_dir, f"{mesh_rot}_nc.png"))
-        
+
         test_log = {"chamfer": chamfer, "p2s": p2s, "NC": normal_consist}
 
         self.log_dict(test_log, prog_bar=True, logger=False,
                       on_step=True, on_epoch=False)
-        
+
         return test_log
 
     def test_epoch_end(self, outputs):

@@ -54,7 +54,7 @@ if __name__ == "__main__":
         save_weights_only=True,
         monitor="val/avgloss",
         mode="min",
-        filename="{epoch:02d}-loss-{loss:.2f}",
+        filename="{epoch:02d}-{loss:.2f}",
     )
 
     if cfg.test_mode or args.test_mode:
