@@ -14,3 +14,5 @@ kaolin/
 neural_voxelization_layer/
 pytorch3d/
 run.sh
+results
+results/

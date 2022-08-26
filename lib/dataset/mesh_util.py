@@ -413,6 +413,16 @@ def cal_sdf_batch(verts, faces, cmaps, vis, points):
     Bsize = points.shape[0]
 
     normals = Meshes(verts, faces).verts_normals_padded()
+    
+    # SMPL has watertight mesh, but SMPL-X has two eyeballs and open mouth
+    # 1. remove eye_ball faces from SMPL-X: 9928-9383, 10474-9929
+    # 2. fill mouth holes with 30 more faces
+
+    if verts.shape[1] == 10475:
+        faces = faces[:, ~SMPLX().smplx_eyeball_fid]
+        mouth_faces = torch.as_tensor(SMPLX().smplx_mouth_fid).unsqueeze(
+            0).repeat(Bsize, 1, 1).to(faces.device)
+        faces = torch.cat([faces, mouth_faces], dim=1)
 
     triangles = face_vertices(verts, faces)
     normals = face_vertices(normals, faces)
@@ -907,11 +917,19 @@ class SMPLX():
         
         self.smplx_to_smplx_path = osp.join(self.current_dir,
                                        "smpl_data/smplx_to_smpl.pkl")
+        
+        self.smplx_eyeball_fid = osp.join(self.current_dir,
+                                        "smpl_data/eyeball_fid.npy")
+        self.smplx_fill_mouth_fid = osp.join(self.current_dir,
+                                        "smpl_data/fill_mouth_fid.npy")
 
         self.faces = np.load(self.smplx_faces_path)
         self.verts = np.load(self.smplx_verts_path)
         self.smpl_verts = np.load(self.smpl_verts_path)
         self.smpl_faces = np.load(self.smpl_faces_path)
+        
+        self.smplx_eyeball_fid = np.load(self.smplx_eyeball_fid)
+        self.smplx_mouth_fid = np.load(self.smplx_fill_mouth_fid)
         
         self.smplx_to_smpl = cPickle.load(open(self.smplx_to_smplx_path, 'rb'))
 

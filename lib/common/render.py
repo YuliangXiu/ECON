@@ -293,13 +293,13 @@ class Render:
 
         return depth_maps
 
-    def get_rgb_image(self, cam_ids=[0, 2]):
+    def get_rgb_image(self, cam_ids=[0, 2], bg='gray'):
 
         images = []
         for cam_id in range(len(self.cam_pos)):
             if cam_id in cam_ids:
                 self.init_renderer(self.get_camera(
-                    cam_id), "clean_mesh", "black")
+                    cam_id), "clean_mesh", bg)
                 if len(cam_ids) == 4:
                     rendered_img = (
                         self.renderer(self.meshes[0])[

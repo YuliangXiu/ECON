@@ -84,9 +84,9 @@ class Evaluator:
     def calculate_normal_consist(self, normal_path):
 
         self.render.meshes = self.src_mesh
-        src_normal_imgs = self.render.get_rgb_image(cam_ids=[0, 1, 2, 3])
+        src_normal_imgs = self.render.get_rgb_image(cam_ids=[0, 1, 2, 3], bg='black')
         self.render.meshes = self.tgt_mesh
-        tgt_normal_imgs = self.render.get_rgb_image(cam_ids=[0, 1, 2, 3])
+        tgt_normal_imgs = self.render.get_rgb_image(cam_ids=[0, 1, 2, 3], bg='black')
 
         src_normal_arr = (
             make_grid(torch.cat(src_normal_imgs, dim=0), nrow=4)+1.0)*0.5  # [0,1]
