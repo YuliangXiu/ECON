@@ -4,20 +4,21 @@ import logging
 warnings.filterwarnings('ignore')
 logging.getLogger("wandb").setLevel(logging.ERROR)
 logging.getLogger("lightning").setLevel(logging.ERROR)
+logging.getLogger("trimesh").setLevel(logging.ERROR)
 
-import argparse
-import os.path as osp
-import os
-from lib.common.train_util import SubTrainer, load_networks
-from lib.common.config import get_cfg_defaults
-from lib.dataset.PIFuDataModule import PIFuDataModule
-from apps.ICON import ICON
-from pytorch_lightning.profilers import AdvancedProfiler
-from pytorch_lightning import loggers as pl_loggers
-from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTheme
-from pytorch_lightning.callbacks import RichProgressBar
-from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import RichProgressBar
+from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTheme
+from pytorch_lightning import loggers as pl_loggers
+from pytorch_lightning.profilers import AdvancedProfiler
+from apps.ICON import ICON
+from lib.dataset.PIFuDataModule import PIFuDataModule
+from lib.common.config import get_cfg_defaults
+from lib.common.train_util import SubTrainer, load_networks
+import os
+import os.path as osp
+import argparse
 
 
 if __name__ == "__main__":
@@ -38,7 +39,7 @@ if __name__ == "__main__":
 
     os.environ["WANDB_NOTEBOOK_NAME"] = osp.join(cfg.results_path, f"wandb")
     wandb_logger = pl_loggers.WandbLogger(
-        offline=True, project="ICON", save_dir=cfg.results_path, name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}"
+        offline=False, project="ICON", save_dir=cfg.results_path, name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}"
     )
 
     if cfg.overfit:
@@ -53,9 +54,9 @@ if __name__ == "__main__":
         save_weights_only=True,
         monitor="val/avgloss",
         mode="min",
-        filename="{epoch:02d}-val_avgloss-{val/avgloss:.2f}",
+        filename="{epoch:02d}-loss-{loss:.2f}",
     )
-    
+
     if cfg.test_mode or args.test_mode:
 
         cfg_test_mode = [
@@ -128,9 +129,9 @@ if __name__ == "__main__":
     trainer = SubTrainer(**trainer_kwargs)
 
     # load checkpoints
-    load_networks(cfg, model, 
-                  mlp_path = cfg.resume_path, 
-                  normal_path = cfg.normal_path)
+    load_networks(cfg, model,
+                  mlp_path=cfg.resume_path,
+                  normal_path=cfg.normal_path)
 
     if not cfg.test_mode:
         trainer.fit(model=model, datamodule=datamodule)

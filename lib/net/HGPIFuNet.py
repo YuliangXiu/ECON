@@ -78,23 +78,27 @@ class HGPIFuNet(BasePIFuNet):
         self.in_total = self.in_geo + self.in_nml
         self.smpl_feat_dict = None
         self.smplx_data = SMPLX()
+        
+        image_lst = [0,1,2]
+        normal_F_lst = [0,1,2] if 'image' not in self.in_geo else [3,4,5]
+        normal_B_lst = [3,4,5] if 'image' not in self.in_geo else [6,7,8]
 
         if self.prior_type == 'icon':
             if 'image' in self.in_geo:
-                self.channels_filter = [[0, 1, 2, 3, 4, 5], [0, 1, 2, 6, 7, 8]]
+                self.channels_filter = [image_lst + normal_F_lst, image_lst + normal_B_lst]
             else:
-                self.channels_filter = [[0, 1, 2], [3, 4, 5]]
+                self.channels_filter = [normal_F_lst, normal_B_lst]
 
         else:
             if 'image' in self.in_geo:
-                self.channels_filter = [[0, 1, 2, 3, 4, 5, 6, 7, 8]]
+                self.channels_filter = [image_lst + normal_F_lst + normal_B_lst]
             else:
-                self.channels_filter = [[0, 1, 2, 3, 4, 5]]
+                self.channels_filter = [normal_F_lst + normal_B_lst]
 
         channels_IF[0] = self.hourglass_dim if self.use_filter else len(
             self.channels_filter[0])
 
-        if self.prior_type == 'icon' and 'vis' not in self.smpl_feats:
+        if (self.prior_type == 'icon') and ('vis' not in self.smpl_feats):
             if self.use_filter:
                 channels_IF[0] += self.hourglass_dim
             else:
@@ -117,8 +121,10 @@ class HGPIFuNet(BasePIFuNet):
                 batch_size=cfg.batch_size,
                 device=torch.device(f"cuda:{cfg.gpus[0]}"))
             self.ve = VolumeEncoder(3, self.voxel_dim, self.opt.num_stack)
-        else:
+        elif self.prior_type == 'pifu':
             channels_IF[0] += 1
+        else:
+            print(f"don't support {self.prior_type}!")
 
         self.icon_keys = ["smpl_verts", "smpl_faces", "smpl_vis", "smpl_cmap"]
         self.pamir_keys = [
@@ -281,7 +287,7 @@ class HGPIFuNet(BasePIFuNet):
             # smpl_verts [B, N_vert, 3]
             # smpl_faces [B, N_face, 3]
             # points [B, 3, N]
-            
+
             smpl_sdf, smpl_norm, smpl_cmap, smpl_vis = cal_sdf_batch(
                 self.smpl_feat_dict['smpl_verts'],
                 self.smpl_feat_dict['smpl_faces'],

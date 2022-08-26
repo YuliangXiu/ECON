@@ -547,7 +547,7 @@ def accumulate(outputs, rot_num, split):
 
     for dataset in datasets:
         for metric in metrics:
-            keyword = f"hparam/{dataset}-{metric}"
+            keyword = f"{dataset}-{metric}"
             if keyword not in hparam_log_dict.keys():
                 hparam_log_dict[keyword] = 0
             for idx in range(split[dataset][0] * rot_num,

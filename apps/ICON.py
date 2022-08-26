@@ -15,7 +15,7 @@
 # Contact: ps-license@tuebingen.mpg.de
 
 from lib.common.seg3d_lossless import Seg3dLossless
-from lib.dataset.Evaluator_3d import Evaluator
+from lib.dataset.Evaluator import Evaluator
 from lib.net import HGPIFuNet
 from lib.common.train_util import *
 from lib.common.render import Render
@@ -63,7 +63,7 @@ class ICON(pl.LightningModule):
             + 1.0
         )
         self.resolutions = self.resolutions.astype(np.int16).tolist()
-
+        
         self.icon_keys = ["smpl_verts", "smpl_faces", "smpl_vis", "smpl_cmap"]
         self.pamir_keys = ["voxel_verts",
                            "voxel_faces", "pad_v_num", "pad_f_num"]
@@ -299,7 +299,6 @@ class ICON(pl.LightningModule):
         #            'smpl_verts', 'smpl_faces', 'smpl_vis', 'smpl_cmap', 'pts_signs',
         #            'type', 'gender', 'age', 'body_pose', 'global_orient', 'betas', 'transl'])
         
-        # 00127-shortlong-hips-000120
 
         self.netG.eval()
         self.netG.training = False
@@ -316,26 +315,7 @@ class ICON(pl.LightningModule):
         for name in self.in_total:
             if name in batch.keys():
                 in_tensor_dict.update({name: batch[name]})
-
-        # update the new T_normal_F/B
-        self.render.load_meshes(batch["smpl_verts"] * torch.tensor([1.0, -1.0, 1.0]).to(self.device),
-                                batch["smpl_faces"])
-        T_normal_F, T_noraml_B = self.render.get_rgb_image()
-        in_tensor_dict.update(
-            {'T_normal_F': T_normal_F, 'T_normal_B': T_noraml_B})
-
-        # update the new smpl_vis
-        (xy, z) = batch["smpl_verts"][0].split([2, 1], dim=1)
-
-        smpl_vis = get_visibility(
-            xy,
-            z,
-            torch.as_tensor(batch["smpl_faces"][0]).type_as(
-                batch["smpl_verts"]).long(),
-        )
-        in_tensor_dict.update(
-            {"smpl_vis": smpl_vis.unsqueeze(0).to(self.device)})
-
+                
         if self.prior_type == "icon":
             for key in self.icon_keys:
                 if key not in in_tensor_dict.keys():
@@ -345,6 +325,28 @@ class ICON(pl.LightningModule):
                 in_tensor_dict.update({key: batch[key]})
         else:
             pass
+        
+        if "T_normal_F" not in in_tensor_dict.keys() or "T_normal_B" not in in_tensor_dict.keys():
+            
+            # update the new T_normal_F/B
+            self.render.load_meshes(batch["smpl_verts"] * torch.tensor([1.0, -1.0, 1.0]).to(self.device),
+                                    batch["smpl_faces"])
+            T_normal_F, T_noraml_B = self.render.get_rgb_image()
+            in_tensor_dict.update(
+                {'T_normal_F': T_normal_F, 'T_normal_B': T_noraml_B})
+
+        if "smpl_vis" not in in_tensor_dict.keys():
+            
+            (xy, z) = batch["smpl_verts"][0].split([2, 1], dim=1)
+            smpl_vis = get_visibility(
+                xy,
+                z,
+                torch.as_tensor(batch["smpl_faces"][0]).type_as(
+                    batch["smpl_verts"]).long(),
+            )
+            in_tensor_dict.update(
+                {"smpl_vis": smpl_vis.unsqueeze(0).to(self.device)})
+
 
         with torch.no_grad():
             features, inter = self.netG.filter(
@@ -396,7 +398,7 @@ class ICON(pl.LightningModule):
 
         self.log_dict(test_log, prog_bar=True, logger=False,
                       on_step=True, on_epoch=False)
-
+        
         return test_log
 
     def test_epoch_end(self, outputs):
@@ -469,7 +471,7 @@ class ICON(pl.LightningModule):
             image = PIL.Image.fromarray(np.concatenate(
                 [image_pred, image_gt] + image_inter, axis=1).astype(np.uint8))
             self.logger.experiment.log(
-                {f"SDF/{dataset}/{self.global_step}": wandb.Image(image, caption="multi-views")})
+                {f"SDF/{dataset}/{idx}": wandb.Image(image, caption="multi-views")})
 
     def test_single(self, batch):
 

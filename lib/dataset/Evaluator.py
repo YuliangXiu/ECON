@@ -17,216 +17,106 @@
 
 from lib.dataset.mesh_util import projection
 from lib.common.render import Render
-from PIL import Image
 import numpy as np
 import torch
-from torch import nn
-import trimesh
 import os.path as osp
+from torchvision.utils import make_grid
+from pytorch3d.io import IO
+from pytorch3d.ops import sample_points_from_meshes
+from pytorch3d.loss.point_mesh_distance import _PointFaceDistance
+from pytorch3d.structures import Pointclouds
 from PIL import Image
+
+
+def point_mesh_distance(meshes, pcls):
+
+    if len(meshes) != len(pcls):
+        raise ValueError("meshes and pointclouds must be equal sized batches")
+    N = len(meshes)
+
+    # packed representation for pointclouds
+    points = pcls.points_packed()  # (P, 3)
+    points_first_idx = pcls.cloud_to_packed_first_idx()
+    max_points = pcls.num_points_per_cloud().max().item()
+
+    # packed representation for faces
+    verts_packed = meshes.verts_packed()
+    faces_packed = meshes.faces_packed()
+    tris = verts_packed[faces_packed]  # (T, 3, 3)
+    tris_first_idx = meshes.mesh_to_faces_packed_first_idx()
+
+    # point to face distance: shape (P,)
+    point_to_face = _PointFaceDistance.apply(
+        points, points_first_idx, tris, tris_first_idx, max_points, 5e-3
+    )
+
+    # weight each example by the inverse of number of points in the example
+    point_to_cloud_idx = pcls.packed_to_cloud_idx()  # (sum(P_i),)
+    num_points_per_cloud = pcls.num_points_per_cloud()  # (N,)
+    weights_p = num_points_per_cloud.gather(0, point_to_cloud_idx)
+    weights_p = 1.0 / weights_p.float()
+    point_to_face = torch.sqrt(point_to_face) * weights_p
+    point_dist = point_to_face.sum() / N
+
+    return point_dist
 
 
 class Evaluator:
 
-    _normal_render = None
-
-    @staticmethod
-    def init_gl():
-        from lib.renderer.gl.normal_render import NormalRender
-        Evaluator._normal_render = NormalRender(width=512, height=512)
-
     def __init__(self, device):
+
+        self.render = Render(size=512, device=device)
         self.device = device
-        self.render = Render(size=512, device=self.device)
-        self.error_term = nn.MSELoss()
 
-        self.offset = 0.0
-        self.scale_factor = None
-
-    def set_mesh(self, result_dict, scale_factor=1.0, offset=0.0):
-
-        for key in result_dict.keys():
-            if torch.is_tensor(result_dict[key]):
-                result_dict[key] = result_dict[key].detach().cpu().numpy()
+    def set_mesh(self, result_dict):
 
         for k, v in result_dict.items():
             setattr(self, k, v)
 
-        self.scale_factor = scale_factor
-        self.offset = offset
-
-    def _render_normal(self, mesh, deg, norms=None):
-        view_mat = np.identity(4)
-        rz = deg / 180.0 * np.pi
-        model_mat = np.identity(4)
-        model_mat[:3, :3] = self._normal_render.euler_to_rot_mat(0, rz, 0)
-        model_mat[1, 3] = self.offset
-        view_mat[2, 2] *= -1
-
-        self._normal_render.set_matrices(view_mat, model_mat)
-        if norms is None:
-            norms = mesh.vertex_normals
-        self._normal_render.set_normal_mesh(self.scale_factor * mesh.vertices,
-                                            mesh.faces, norms, mesh.faces)
-        self._normal_render.draw()
-        normal_img = self._normal_render.get_color()
-        return normal_img
-
-    def render_mesh_list(self, mesh_lst):
-
-        self.offset = 0.0
-        self.scale_factor = 1.0
-
-        full_list = []
-        for mesh in mesh_lst:
-            row_lst = []
-            for deg in np.arange(0, 360, 90):
-                normal = self._render_normal(mesh, deg)
-                row_lst.append(normal)
-            full_list.append(np.concatenate(row_lst, axis=1))
-
-        res_array = np.concatenate(full_list, axis=0)
-
-        return res_array
-
-    def _get_reproj_normal_error(self, deg):
-
-        tgt_normal = self._render_normal(self.tgt_mesh, deg)
-        src_normal = self._render_normal(self.src_mesh, deg)
-        error = (((src_normal[:, :, :3] -
-                   tgt_normal[:, :, :3])**2).sum(axis=2).mean(axis=(0, 1)))
-
-        return error, [src_normal, tgt_normal]
-
-    def render_normal(self, verts, faces):
-
-        verts = verts[0].detach().cpu().numpy()
-        faces = faces[0].detach().cpu().numpy()
-
-        mesh_F = trimesh.Trimesh(verts * np.array([1.0, -1.0, 1.0]), faces)
-        mesh_B = trimesh.Trimesh(verts * np.array([1.0, -1.0, -1.0]), faces)
-
-        self.scale_factor = 1.0
-
-        normal_F = self._render_normal(mesh_F, 0)
-        normal_B = self._render_normal(mesh_B,
-                                       0,
-                                       norms=mesh_B.vertex_normals *
-                                       np.array([-1.0, -1.0, 1.0]))
-
-        mask = normal_F[:, :, 3:4]
-        normal_F = (torch.as_tensor(2.0 * (normal_F - 0.5) * mask).permute(
-            2, 0, 1)[:3, :, :].float().unsqueeze(0).to(self.device))
-        normal_B = (torch.as_tensor(2.0 * (normal_B - 0.5) * mask).permute(
-            2, 0, 1)[:3, :, :].float().unsqueeze(0).to(self.device))
-
-        return {"T_normal_F": normal_F, "T_normal_B": normal_B}
-
-    def calculate_normal_consist(
-        self,
-        frontal=True,
-        back=True,
-        left=True,
-        right=True,
-        save_demo_img=None,
-        return_demo=False,
-    ):
-
-        # reproj error
-        # if save_demo_img is not None, save a visualization at the given path (etc, "./test.png")
-        if self._normal_render is None:
-            print(
-                "In order to use normal render, "
-                "you have to call init_gl() before initialing any evaluator objects."
-            )
-            return -1
-
-        side_cnt = 0
-        total_error = 0
-        demo_list = []
-
-        if frontal:
-            side_cnt += 1
-            error, normal_lst = self._get_reproj_normal_error(0)
-            total_error += error
-            demo_list.append(np.concatenate(normal_lst, axis=0))
-        if back:
-            side_cnt += 1
-            error, normal_lst = self._get_reproj_normal_error(180)
-            total_error += error
-            demo_list.append(np.concatenate(normal_lst, axis=0))
-        if left:
-            side_cnt += 1
-            error, normal_lst = self._get_reproj_normal_error(90)
-            total_error += error
-            demo_list.append(np.concatenate(normal_lst, axis=0))
-        if right:
-            side_cnt += 1
-            error, normal_lst = self._get_reproj_normal_error(270)
-            total_error += error
-            demo_list.append(np.concatenate(normal_lst, axis=0))
-        if save_demo_img is not None:
-            res_array = np.concatenate(demo_list, axis=1)
-            res_img = Image.fromarray((res_array * 255).astype(np.uint8))
-            res_img.save(save_demo_img)
-
-        if return_demo:
-            res_array = np.concatenate(demo_list, axis=1)
-            return res_array
-        else:
-            return total_error
-
-    def space_transfer(self):
-
-        # convert from GT to SDF
         self.verts_pr -= self.recon_size / 2.0
         self.verts_pr /= self.recon_size / 2.0
-
         self.verts_gt = projection(self.verts_gt, self.calib)
         self.verts_gt[:, 1] *= -1
 
-        self.tgt_mesh = trimesh.Trimesh(self.verts_gt, self.faces_gt)
-        self.src_mesh = trimesh.Trimesh(self.verts_pr, self.faces_pr)
+        self.src_mesh = self.render.VF2Mesh(self.verts_pr, self.faces_pr)
+        self.tgt_mesh = self.render.VF2Mesh(self.verts_gt, self.faces_gt)
 
-        # (self.tgt_mesh+self.src_mesh).show()
+    def calculate_normal_consist(self, normal_path):
+
+        self.render.meshes = self.src_mesh
+        src_normal_imgs = self.render.get_rgb_image(cam_ids=[0, 1, 2, 3])
+        self.render.meshes = self.tgt_mesh
+        tgt_normal_imgs = self.render.get_rgb_image(cam_ids=[0, 1, 2, 3])
+
+        src_normal_arr = (
+            make_grid(torch.cat(src_normal_imgs, dim=0), nrow=4)+1.0)*0.5  # [0,1]
+        tgt_normal_arr = (
+            make_grid(torch.cat(tgt_normal_imgs, dim=0), nrow=4)+1.0)*0.5  # [0,1]
+        
+        error = (((src_normal_arr - tgt_normal_arr)
+                 ** 2).sum(dim=0).mean()) * 4.0
+
+        normal_img = Image.fromarray((torch.cat([src_normal_arr, tgt_normal_arr], dim=1).permute(
+            1, 2, 0).detach().cpu().numpy() * 255.0).astype(np.uint8))
+        normal_img.save(normal_path)
+
+        return error
 
     def export_mesh(self, dir, name):
-        self.tgt_mesh.visual.vertex_colors = np.array([255, 0, 0])
-        self.src_mesh.visual.vertex_colors = np.array([0, 255, 0])
 
-        (self.tgt_mesh + self.src_mesh).export(
-            osp.join(dir, f"{name}_gt_pr.obj"))
-
-    def calculate_chamfer_p2s(self, sampled_points=1000):
-        """calculate the geometry metrics [chamfer, p2s, chamfer_H, p2s_H]
-
-        Args:
-            verts_gt (torch.cuda.tensor): [N, 3]
-            faces_gt (torch.cuda.tensor): [M, 3]
-            verts_pr (torch.cuda.tensor): [N', 3]
-            faces_pr (torch.cuda.tensor): [M', 3]
-            sampled_points (int, optional): use smaller number for faster testing. Defaults to 1000.
-
-        Returns:
-            tuple: chamfer, p2s, chamfer_H, p2s_H
-        """
-
-        gt_surface_pts, _ = trimesh.sample.sample_surface_even(
-            self.tgt_mesh, sampled_points)
-        pred_surface_pts, _ = trimesh.sample.sample_surface_even(
-            self.src_mesh, sampled_points)
-
-        _, dist_pred_gt, _ = trimesh.proximity.closest_point(
-            self.src_mesh, gt_surface_pts)
-        _, dist_gt_pred, _ = trimesh.proximity.closest_point(
-            self.tgt_mesh, pred_surface_pts)
-
-        dist_pred_gt[np.isnan(dist_pred_gt)] = 0
-        dist_gt_pred[np.isnan(dist_gt_pred)] = 0
-        chamfer_dist = 0.5 * (dist_pred_gt.mean() +
-                              dist_gt_pred.mean()).item() * 100
-        p2s_dist = dist_pred_gt.mean().item() * 100
-
+        IO().save_mesh(self.src_mesh, osp.join(dir, f"{name}_src.obj"))
+        IO().save_mesh(self.tgt_mesh, osp.join(dir, f"{name}_tgt.obj"))
+        
+    def calculate_chamfer_p2s(self, num_samples=1000):
+    
+        tgt_points = Pointclouds(
+            sample_points_from_meshes(self.tgt_mesh, num_samples))
+        src_points = Pointclouds(
+            sample_points_from_meshes(self.src_mesh, num_samples))
+        p2s_dist = point_mesh_distance(self.src_mesh, tgt_points) * 100.0
+        chamfer_dist = (point_mesh_distance(
+            self.tgt_mesh, src_points) * 100.0 + p2s_dist) * 0.5
+        
         return chamfer_dist, p2s_dist
 
     def calc_acc(self, output, target, thres=0.5, use_sdf=False):

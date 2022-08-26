@@ -25,9 +25,8 @@ from termcolor import colored
 import os.path as osp
 import numpy as np
 from PIL import Image
-import tinyobjloader
 import random
-import os
+import os, cv2
 import trimesh
 import torch
 import vedo
@@ -208,6 +207,7 @@ class PIFuDataset():
             'calib_path': osp.join(self.root, render_folder, 'calib', f'{rotation:03d}.txt'),
             'image_path': osp.join(self.root, render_folder, 'render', f'{rotation:03d}.png'),
             'smpl_path': osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.obj"),
+            'vis_path': osp.join(self.root, render_folder, 'vis', f'{rotation:03d}.pt')
         }
 
         if dataset == 'thuman2':
@@ -216,7 +216,6 @@ class PIFuDataset():
                 'smplx_path': osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}.obj"),
                 'smpl_param': osp.join(self.datasets_dict[dataset]["param_dir"], f"{subject}/smpl_param.pkl"),
                 'smplx_param': osp.join(self.datasets_dict[dataset]["param_dir"], f"{subject}/smplx_param.pkl"),
-                'vis_path': osp.join(self.root, render_folder, 'vis', f'{rotation:03d}.pt')
             })
         elif dataset == 'cape':
             data_dict.update({
@@ -268,8 +267,17 @@ class PIFuDataset():
     def imagepath2tensor(self, path, channel=3, inv=False):
 
         rgba = Image.open(path).convert('RGBA')
-        mask = rgba.split()[-1]
-        image = rgba.convert('RGB')
+        
+        # remove CAPE's noisy outliers using OpenCV's inpainting
+        if "cape" in path and 'T_' not in path:
+            mask = (cv2.imread(path.replace(path.split("/")[-2],"mask"),0) > 1)
+            img = np.asarray(rgba)[:,:,:3]
+            fill_mask = ((mask & (img.sum(axis=2)==0))).astype(np.uint8)
+            image = Image.fromarray(cv2.inpaint(img*mask[...,None], fill_mask, 3, cv2.INPAINT_TELEA))
+            mask = Image.fromarray(mask)
+        else:
+            mask = rgba.split()[-1]
+            image = rgba.convert('RGB')
         image = self.image_to_tensor(image)
         mask = self.mask_to_tensor(mask)
         image = (image * mask)[:channel]
@@ -416,6 +424,7 @@ class PIFuDataset():
 
         return_dict = {}
 
+        # add random noise to SMPL-(X) params
         if 'smplx_param' in data_dict.keys() and \
             os.path.exists(data_dict['smplx_param']) and \
                 sum(self.noise_scale) > 0.0:
@@ -428,10 +437,10 @@ class PIFuDataset():
 
             return_dict.update(smplx_dict)
 
+        # instead, directly load SMPL-(X) objs
         else:
-            if smpl_type == "smplx":
-                smplx_vis = torch.load(data_dict['vis_path']).float()
-                return_dict.update({'smpl_vis': smplx_vis})
+            smplx_vis = torch.load(data_dict['vis_path']).float()
+            return_dict.update({'smpl_vis': smplx_vis})
 
             smplx_verts = rescale_smpl(
                 data_dict[f"{smpl_type}_path"], scale=100.0)
@@ -620,7 +629,7 @@ class PIFuDataset():
 
         # create a picure
         img_pos = [1.0, 0.0, -1.0]
-        for img_id, img_key in enumerate(['T_normal_F', 'image', 'T_normal_B']):
+        for img_id, img_key in enumerate(['normal_F', 'image', 'T_normal_B']):
             image_arr = (data_dict[img_key].detach().cpu().permute(
                 1, 2, 0).numpy() + 1.0) * 0.5 * 255.0
             image_dim = image_arr.shape[0]
