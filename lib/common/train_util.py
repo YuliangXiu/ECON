@@ -19,7 +19,6 @@ import yaml
 import os.path as osp
 import torch
 import numpy as np
-import torch.nn.functional as F
 from ..dataset.mesh_util import *
 from ..net.geometry import orthogonal
 from pytorch3d.renderer.mesh import rasterize_meshes
@@ -31,7 +30,106 @@ from tqdm import tqdm
 import os
 from termcolor import colored
 
+import pytorch_lightning as pl
+from pytorch_lightning.core.lightning import LightningModule
+from pytorch_lightning.utilities.cloud_io import atomic_save
+from pytorch_lightning.utilities import rank_zero_warn
 
+def rename(old_dict, old_name, new_name):
+    new_dict = {}
+    for key, value in zip(old_dict.keys(), old_dict.values()):
+        new_key = key if key != old_name else new_name
+        new_dict[new_key] = old_dict[key]
+    return new_dict
+
+class SubTrainer(pl.Trainer):
+    def save_checkpoint(self, filepath, weights_only=False):
+        """Save model/training states as a checkpoint file through state-dump and file-write.
+        Args:
+            filepath: write-target file's path
+            weights_only: saving model weights only
+        """
+        _checkpoint = self.checkpoint_connector.dump_checkpoint(weights_only)
+
+        del_keys = []
+        for key in _checkpoint["state_dict"].keys():
+            for ig_key in ["normal_filter", "voxelization", "reconEngine"]:
+                if ig_key in key:
+                    del_keys.append(key)
+        for key in del_keys:
+            del _checkpoint["state_dict"][key]
+
+        if self.is_global_zero:
+            # write the checkpoint dictionary on the file
+
+            if self.training_type_plugin:
+                checkpoint = self.training_type_plugin.on_save(_checkpoint)
+            try:
+                atomic_save(checkpoint, filepath)
+            except AttributeError as err:
+                if LightningModule.CHECKPOINT_HYPER_PARAMS_KEY in checkpoint:
+                    del checkpoint[LightningModule.CHECKPOINT_HYPER_PARAMS_KEY]
+                rank_zero_warn(
+                    "Warning, `hyper_parameters` dropped from checkpoint."
+                    f" An attribute is not picklable {err}"
+                )
+                atomic_save(checkpoint, filepath)
+
+def load_networks(cfg, model, mlp_path, normal_path):
+    
+    model_dict = model.state_dict()
+    main_dict = {}
+    normal_dict = {}
+
+    # MLP part loading
+    if os.path.exists(mlp_path) and mlp_path.endswith("ckpt"):
+        main_dict = torch.load(
+            mlp_path, map_location=torch.device(
+                f"cuda:{cfg.gpus[0]}")
+        )["state_dict"]
+
+        main_dict = {
+            k: v
+            for k, v in main_dict.items()
+            if k in model_dict
+            and v.shape == model_dict[k].shape
+            and ("reconEngine" not in k)
+            and ("normal_filter" not in k)
+            and ("voxelization" not in k)
+        }
+        print(
+            colored(f"Resume MLP weights from {mlp_path}", "green"))
+
+    # normal network part loading
+    if os.path.exists(normal_path) and normal_path.endswith("ckpt"):
+        normal_dict = torch.load(
+            normal_path, map_location=torch.device(
+                f"cuda:{cfg.gpus[0]}")
+        )["state_dict"]
+
+        for key in normal_dict.keys():
+            normal_dict = rename(
+                normal_dict, key, key.replace("netG", "netG.normal_filter")
+            )
+
+        normal_dict = {
+            k: v
+            for k, v in normal_dict.items()
+            if k in model_dict and v.shape == model_dict[k].shape
+        }
+        print(
+            colored(f"Resume normal model from {normal_path}", "green"))
+
+    model_dict.update(main_dict)
+    model_dict.update(normal_dict)
+    model.load_state_dict(model_dict)
+
+    # clean unused GPU memory
+    del main_dict
+    del normal_dict
+    del model_dict
+    torch.cuda.empty_cache()
+    
 def reshape_sample_tensor(sample_tensor, num_views):
     if num_views == 1:
         return sample_tensor
@@ -464,7 +562,7 @@ def accumulate(outputs, rot_num, split):
 
     for dataset in datasets:
         for metric in metrics:
-            keyword = f"hparam/{dataset}-{metric}"
+            keyword = f"{dataset}-{metric}"
             if keyword not in hparam_log_dict.keys():
                 hparam_log_dict[keyword] = 0
             for idx in range(split[dataset][0] * rot_num,

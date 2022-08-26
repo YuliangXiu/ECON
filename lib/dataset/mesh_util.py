@@ -43,6 +43,53 @@ from pytorch3d.loss import (
     mesh_normal_consistency
 )
 
+import tinyobjloader
+
+def obj_loader(path):
+       # Create reader.
+    reader = tinyobjloader.ObjReader()
+
+    # Load .obj(and .mtl) using default configuration
+    ret = reader.ParseFromFile(path)
+
+    if ret == False:
+        print("Failed to load : ", path)
+        return None
+
+    # note here for wavefront obj, #v might not equal to #vt, same as #vn.
+    attrib = reader.GetAttrib()
+    verts = np.array(attrib.vertices).reshape(-1, 3)
+
+    shapes = reader.GetShapes()
+    tri = shapes[0].mesh.numpy_indices().reshape(-1, 9)
+    faces = tri[:, [0, 3, 6]]
+    
+    return verts, faces
+
+class HoppeMesh:
+    def __init__(self, verts, faces):
+        '''
+        The HoppeSDF calculates signed distance towards a predefined oriented point cloud
+        http://hhoppe.com/recon.pdf
+        For clean and high-resolution pcl data, this is the fastest and accurate approximation of sdf
+        :param points: pts
+        :param normals: normals
+        '''
+        self.trimesh = trimesh.Trimesh(verts, faces, process=True)
+        self.verts = np.array(self.trimesh.vertices)
+        self.faces = np.array(self.trimesh.faces)
+        self.vert_normals, self.faces_normals = compute_normal(self.verts, self.faces)
+        
+    def contains(self, points):
+
+        labels = check_sign(torch.as_tensor(self.verts).unsqueeze(0), 
+                            torch.as_tensor(self.faces),
+                            torch.as_tensor(points).unsqueeze(0))
+        return labels.squeeze(0).numpy()
+    
+    def triangles(self):
+        return self.verts[self.faces]  # [n, 3, 3]
+
 
 def tensor2variable(tensor, device):
     # [1,23,3,3]
@@ -416,8 +463,9 @@ def orthogonal(points, calibrations, transforms=None):
     return pts
 
 
-def projection(points, calib, format='numpy'):
-    if format == 'tensor':
+def projection(points, calib):
+    if torch.is_tensor(points):
+        calib = torch.as_tensor(calib) if not torch.is_tensor(calib) else calib
         return torch.mm(calib[:3, :3], points.T).T + calib[:3, 3]
     else:
         return np.matmul(calib[:3, :3], points.T).T + calib[:3, 3]

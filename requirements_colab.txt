@@ -21,6 +21,7 @@ pytorch_lightning==1.2.5
 PyMCubes
 kornia
 chumpy
+tinyobjloader
 cython==0.29.20
 opencv-python
 opencv_contrib_python
