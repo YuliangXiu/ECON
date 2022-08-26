@@ -5,6 +5,7 @@ __pycache__
 debug/
 log/
 results/*
+results
 .vscode
 !.gitignore
 force_push.sh

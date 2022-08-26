@@ -26,7 +26,8 @@ import os.path as osp
 import numpy as np
 from PIL import Image
 import random
-import os, cv2
+import os
+import cv2
 import trimesh
 import torch
 import vedo
@@ -41,6 +42,7 @@ class PIFuDataset():
         self.root = cfg.root
         self.bsize = cfg.batch_size
         self.overfit = cfg.overfit
+        self.laplacian_iters = cfg.dataset.laplacian_iters
 
         # for debug, only used in visualize_sampling3D
         self.vis = vis
@@ -267,13 +269,15 @@ class PIFuDataset():
     def imagepath2tensor(self, path, channel=3, inv=False):
 
         rgba = Image.open(path).convert('RGBA')
-        
+
         # remove CAPE's noisy outliers using OpenCV's inpainting
         if "cape" in path and 'T_' not in path:
-            mask = (cv2.imread(path.replace(path.split("/")[-2],"mask"),0) > 1)
-            img = np.asarray(rgba)[:,:,:3]
-            fill_mask = ((mask & (img.sum(axis=2)==0))).astype(np.uint8)
-            image = Image.fromarray(cv2.inpaint(img*mask[...,None], fill_mask, 3, cv2.INPAINT_TELEA))
+            mask = (cv2.imread(path.replace(
+                path.split("/")[-2], "mask"), 0) > 1)
+            img = np.asarray(rgba)[:, :, :3]
+            fill_mask = ((mask & (img.sum(axis=2) == 0))).astype(np.uint8)
+            image = Image.fromarray(cv2.inpaint(
+                img*mask[..., None], fill_mask, 3, cv2.INPAINT_TELEA))
             mask = Image.fromarray(mask)
         else:
             mask = rgba.split()[-1]
@@ -448,21 +452,22 @@ class PIFuDataset():
                 getattr(self.smplx, f"{smpl_type}_faces")).long()
             smplx_cmap = self.smplx.cmap_smpl_vids(smpl_type)
 
+        # laplacian smoothing for body meshes
+
+        if self.laplacian_iters > 0:
+            smplx_verts = trimesh.smoothing.filter_laplacian(
+                trimesh.Trimesh(smplx_verts, smplx_faces), lamb=1.0, iterations=self.laplacian_iters).vertices
+
         smplx_verts = projection(smplx_verts, data_dict['calib']).float()
 
         # get smpl_signs
         query_points = projection(data_dict['samples_geo'],
                                   data_dict['calib']).float()
 
-        pts_signs = 2.0 * (check_sign(smplx_verts.unsqueeze(0),
-                                      smplx_faces,
-                                      query_points.unsqueeze(0)).float() - 0.5).squeeze(0)
-
         return_dict.update({
             'smpl_verts': smplx_verts,
             'smpl_faces': smplx_faces,
             'smpl_cmap': smplx_cmap,
-            'pts_signs': pts_signs
         })
 
         if vis:

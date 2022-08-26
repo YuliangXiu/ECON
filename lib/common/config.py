@@ -156,6 +156,7 @@ _C.dataset.thickness_threshold = 20.0
 _C.dataset.ray_sample_num = 2
 _C.dataset.semantic_p = False
 _C.dataset.remove_outlier = False
+_C.dataset.laplacian_iters = 0
 
 _C.dataset.train_bsize = 1.0
 _C.dataset.val_bsize = 1.0

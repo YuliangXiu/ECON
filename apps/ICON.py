@@ -29,6 +29,7 @@ import pytorch_lightning as pl
 
 torch.backends.cudnn.benchmark = True
 
+
 class ICON(pl.LightningModule):
     def __init__(self, cfg):
         super(ICON, self).__init__()
@@ -149,9 +150,11 @@ class ICON(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
 
-        if not self.cfg.fast_dev:
+        # cfg log
+        if not self.cfg.fast_dev and self.global_step == 0:
             export_cfg(self.logger, osp.join(
                 self.cfg.results_path, self.cfg.name), self.cfg)
+            self.logger.experiment.config.update(convert_to_dict(self.cfg))
 
         self.netG.train()
 
@@ -296,7 +299,7 @@ class ICON(pl.LightningModule):
         # dict_keys(['dataset', 'subject', 'rotation', 'scale', 'calib',
         #            'normal_F', 'normal_B', 'image', 'T_normal_F', 'T_normal_B',
         #            'z-trans', 'verts', 'faces', 'samples_geo', 'labels_geo',
-        #            'smpl_verts', 'smpl_faces', 'smpl_vis', 'smpl_cmap', 'pts_signs',
+        #            'smpl_verts', 'smpl_faces', 'smpl_vis', 'smpl_cmap',
         #            'type', 'gender', 'age', 'body_pose', 'global_orient', 'betas', 'transl'])
 
         self.netG.eval()
@@ -467,7 +470,10 @@ class ICON(pl.LightningModule):
             )
             image_inter = self.tensor2image(height, inter[0])
             image = PIL.Image.fromarray(np.concatenate(
-                [image_pred, image_gt] + image_inter, axis=1).astype(np.uint8))
+                [image_pred, 
+                 np.concatenate([image_gt]+image_inter+[image_gt], axis=1)], 
+                axis=0).astype(np.uint8))
+            
             self.logger.experiment.log(
                 {f"SDF/{dataset}/{idx}": wandb.Image(image, caption="multi-views")})
 
