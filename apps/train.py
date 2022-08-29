@@ -13,7 +13,7 @@ from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTh
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.profilers import AdvancedProfiler
 from apps.ICON import ICON
-from lib.dataset.PIFuDataModule import PIFuDataModule
+from lib.dataset.PIFuDataModule import PIFuDataModule, cfg_test_mode
 from lib.common.config import get_cfg_defaults
 from lib.common.train_util import SubTrainer, load_networks
 import os
@@ -50,29 +50,16 @@ if __name__ == "__main__":
     checkpoint = ModelCheckpoint(
         dirpath=osp.join(cfg.ckpt_dir, cfg.name),
         save_top_k=1,
+        save_last=True,
+        auto_insert_metric_name=False,
         verbose=False,
         save_weights_only=True,
         monitor="val/avgloss",
         mode="min",
-        filename="{epoch:02d}-{loss:.2f}",
+        filename="epoch={epoch:02d}-val_avgloss={val/avgloss:.2f}",
     )
 
     if cfg.test_mode or args.test_mode:
-
-        cfg_test_mode = [
-            "test_mode",
-            True,
-            "dataset.types",
-            ["cape"],
-            "dataset.scales",
-            [100.0],
-            "dataset.rotation_num",
-            3,
-            "mcube_res",
-            256,
-            "clean_mesh",
-            True,
-        ]
         cfg.merge_from_list(cfg_test_mode)
 
     # customized progress_bar

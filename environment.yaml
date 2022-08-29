@@ -1,6 +1,6 @@
 name: icon
 channels:
-  - pytorch-lts
+  - pytorch
   - nvidia
   - conda-forge
   - fvcore

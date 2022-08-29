@@ -18,7 +18,6 @@ dataset:
   val_bsize: 1.0
   test_bsize: 1.0
   ray_sample_num: 1
-  zray_type: True
   semantic_p: False
   remove_outlier: False
 
@@ -75,6 +74,6 @@ overfit: False
 num_epoch: 10
 freq_show_train: 0.1
 freq_show_val: 0.3
-freq_plot: 0.1
+freq_plot: 0.01
 freq_eval: 0.2
 schedule: [3, 8]

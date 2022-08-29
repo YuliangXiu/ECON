@@ -6,6 +6,22 @@ from .PIFuDataset import PIFuDataset
 import pytorch_lightning as pl
 
 
+cfg_test_mode = [
+    "test_mode",
+    True,
+    "dataset.types",
+    ["cape"],
+    "dataset.scales",
+    [100.0],
+    "dataset.rotation_num",
+    3,
+    "mcube_res",
+    256,
+    "clean_mesh",
+    True,
+]
+
+
 class PIFuDataModule(pl.LightningDataModule):
     def __init__(self, cfg):
         super(PIFuDataModule, self).__init__()
@@ -38,6 +54,7 @@ class PIFuDataModule(pl.LightningDataModule):
                               'val': len(self.val_dataset)}
 
         if stage == 'test':
+            self.cfg.merge_from_list(cfg_test_mode)
             self.test_dataset = PIFuDataset(cfg=self.cfg, split="test")
 
     def train_dataloader(self):

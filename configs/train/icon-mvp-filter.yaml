@@ -1,4 +1,4 @@
-name: icon-filter
+name: icon-mvp-filter
 ckpt_dir: "./data/ckpt/"
 resume_path: "./data/ckpt/icon-filter.ckpt"
 normal_path: "./data/ckpt/normal.ckpt"
@@ -36,7 +36,7 @@ net:
   use_filter: True
   in_geo: (('normal_F',3), ('normal_B',3))
   in_nml: (('image',3), ('T_normal_F',3), ('T_normal_B',3))
-  smpl_feats: ['sdf', 'norm', 'vis', 'cmap']
+  smpl_feats: ['sdf', 'vis']
   gtype: 'HGPIFuNet'
   ctype: 'resnet34'
   norm_mlp: 'batch'
@@ -46,13 +46,13 @@ net:
   dc_w: 1.0
   hourglass_dim: 6
   voxel_dim: 32
-  smpl_dim: 7
+  smpl_dim: 1
 
 lr_G: 1e-4
 weight_decay: 0.0 
 momentum: 0.0
-batch_size: 4
-num_threads: 8
+batch_size: 6
+num_threads: 12
 gpus: [0]
 test_gpus: [0]
 

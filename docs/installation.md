@@ -10,17 +10,17 @@ cd ICON
 ## Environment
 
 - Ubuntu 20 / 18
-- **CUDA=11.0, GPU Memory > 12GB**
+- **CUDA=11.4, GPU Memory > 12GB**
 - Python = 3.8
-- PyTorch = 1.8.2 LTS (official [Get Started](https://pytorch.org/get-started/locally/))
+- PyTorch = 1.12.1 (official [Get Started](https://pytorch.org/get-started/locally/))
 - PyTorch3D (official [INSTALL.md](https://github.com/facebookresearch/pytorch3d/blob/main/INSTALL.md), recommend [install-from-local-clone](https://github.com/facebookresearch/pytorch3d/blob/main/INSTALL.md#2-install-from-a-local-clone))
 
 ```bash
 # install conda, skip if already have
-wget https://repo.anaconda.com/miniconda/Miniconda3-py38_4.10.3-Linux-x86_64.sh
-chmod +x Miniconda3-py38_4.10.3-Linux-x86_64.sh
-bash Miniconda3-py38_4.10.3-Linux-x86_64.sh -b -f -p /usr/local
-rm Miniconda3-py38_4.10.3-Linux-x86_64.sh
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+chmod +x Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh -b -f -p /usr/local
+rm Miniconda3-latest-Linux-x86_64.sh
 
 conda config --env --set always_yes true
 conda update -n base -c defaults conda -y

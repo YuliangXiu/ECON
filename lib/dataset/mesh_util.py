@@ -284,6 +284,8 @@ def load_checkpoint(model, cfg):
     del main_dict
     del normal_dict
     del model_dict
+    
+    torch.cuda.empty_cache()
 
     return model
 

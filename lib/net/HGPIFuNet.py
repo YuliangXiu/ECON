@@ -95,8 +95,7 @@ class HGPIFuNet(BasePIFuNet):
             else:
                 self.channels_filter = [normal_F_lst + normal_B_lst]
 
-        channels_IF[0] = self.hourglass_dim if self.use_filter else len(
-            self.channels_filter[0])
+        channels_IF[0] = self.hourglass_dim if self.use_filter else len(self.channels_filter[0])
 
         if (self.prior_type == 'icon') and ('vis' not in self.smpl_feats):
             if self.use_filter:
