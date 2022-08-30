@@ -261,7 +261,6 @@ class Render:
         mesh.textures = TexturesVertex(
             verts_features=(mesh.verts_normals_padded() + 1.0) * 0.5
         )
-
         return mesh
 
     def load_meshes(self, verts, faces):
@@ -279,6 +278,18 @@ class Render:
                 self.meshes.append(self.VF2Mesh(V, F))
         else:
             self.meshes = [self.VF2Mesh(verts, faces)]
+            
+    def colored_meshes(self, vc):
+        
+        if not torch.is_tensor(vc):
+            vc = torch.tensor(vc)
+        if vc.ndimension() == 2:
+            vc = vc.unsqueeze(0).float()
+        vc = vc.to(self.device)
+        
+        for mid, mesh in enumerate(self.meshes):
+            mesh.textures = TexturesVertex(verts_features=vc)
+            self.meshes[mid] = mesh
 
     def get_depth_map(self, cam_ids=[0, 2]):
 

@@ -17,3 +17,4 @@ pytorch3d/
 run.sh
 cluster/
 cluster
+*.zip

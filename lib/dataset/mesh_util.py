@@ -810,28 +810,29 @@ def get_optim_grid_image(per_loop_lst, loss=None, nrow=4, type='smpl'):
         ((grid_img.permute(1, 2, 0).detach().cpu().numpy() + 1.0) * 0.5 *
          255.0).astype(np.uint8))
 
-    # add text
-    draw = ImageDraw.Draw(grid_img)
-    grid_size = 512
-    if loss is not None:
-        draw.text((10, 5), f"error: {loss:.3f}", (255, 0, 0), font=font)
+    if False:
+        # add text
+        draw = ImageDraw.Draw(grid_img)
+        grid_size = 512
+        if loss is not None:
+            draw.text((10, 5), f"error: {loss:.3f}", (255, 0, 0), font=font)
 
-    if type == 'smpl':
-        for col_id, col_txt in enumerate(
-                ['image', 'smpl-norm(render)', 'cloth-norm(pred)', 'diff-norm', 'diff-mask']):
-            draw.text((10+(col_id*grid_size), 5),
-                      col_txt, (255, 0, 0), font=font)
-    elif type == 'cloth':
-        for col_id, col_txt in enumerate(
-                ['image', 'cloth-norm(recon)', 'cloth-norm(pred)', 'diff-norm']):
-            draw.text((10+(col_id*grid_size), 5),
-                      col_txt, (255, 0, 0), font=font)
-        for col_id, col_txt in enumerate(
-                ['0', '90', '180', '270']):
-            draw.text((10+(col_id*grid_size), grid_size*2+5),
-                      col_txt, (255, 0, 0), font=font)
-    else:
-        print(f"{type} should be 'smpl' or 'cloth'")
+        if type == 'smpl':
+            for col_id, col_txt in enumerate(
+                    ['image', 'smpl-norm(render)', 'cloth-norm(pred)', 'diff-norm', 'diff-mask']):
+                draw.text((10+(col_id*grid_size), 5),
+                        col_txt, (255, 0, 0), font=font)
+        elif type == 'cloth':
+            for col_id, col_txt in enumerate(
+                    ['image', 'cloth-norm(recon)', 'cloth-norm(pred)', 'diff-norm']):
+                draw.text((10+(col_id*grid_size), 5),
+                        col_txt, (255, 0, 0), font=font)
+            for col_id, col_txt in enumerate(
+                    ['0', '90', '180', '270']):
+                draw.text((10+(col_id*grid_size), grid_size*2+5),
+                        col_txt, (255, 0, 0), font=font)
+        else:
+            print(f"{type} should be 'smpl' or 'cloth'")
 
     grid_img = grid_img.resize((grid_img.size[0], grid_img.size[1]),
                                Image.ANTIALIAS)
