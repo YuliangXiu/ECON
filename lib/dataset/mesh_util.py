@@ -76,15 +76,15 @@ class HoppeMesh:
         :param normals: normals
         '''
         self.trimesh = trimesh.Trimesh(verts, faces, process=True)
-        self.verts = np.array(self.trimesh.vertices)
-        self.faces = np.array(self.trimesh.faces)
+        self.verts = np.array(self.trimesh.vertices).astype(np.float32)
+        self.faces = np.array(self.trimesh.faces).astype(np.int)
         self.vert_normals, self.faces_normals = compute_normal(
             self.verts, self.faces)
 
     def contains(self, points):
 
         labels = check_sign(torch.as_tensor(self.verts).unsqueeze(0),
-                            torch.as_tensor(self.faces),
+                            torch.as_tensor(self.faces).long(),
                             torch.as_tensor(points).unsqueeze(0))
         return labels.squeeze(0).numpy()
 
@@ -405,59 +405,6 @@ def barycentric_coordinates_of_projection(points, vertices):
     # check barycenric weights
     # p_n = v0*weights[:,0:1] + v1*weights[:,1:2] + v2*weights[:,2:3]
     return weights
-
-
-def cal_sdf_batch(verts, faces, cmaps, vis, points):
-
-    # verts [B, N_vert, 3]
-    # faces [B, N_face, 3]
-    # triangles [B, N_face, 3, 3]
-    # points [B, N_point, 3]
-    # cmaps [B, N_vert, 3]
-
-    Bsize = points.shape[0]
-    normals = Meshes(verts, faces).verts_normals_padded()
-
-    # SMPL has watertight mesh, but SMPL-X has two eyeballs and open mouth
-    # 1. remove eye_ball faces from SMPL-X: 9928-9383, 10474-9929
-    # 2. fill mouth holes with 30 more faces
-
-    if verts.shape[1] == 10475:
-        faces = faces[:, ~SMPLX().smplx_eyeball_fid]
-        mouth_faces = torch.as_tensor(SMPLX().smplx_mouth_fid).unsqueeze(
-            0).repeat(Bsize, 1, 1).to(faces.device)
-        faces = torch.cat([faces, mouth_faces], dim=1)
-
-    triangles = face_vertices(verts, faces)
-    normals = face_vertices(normals, faces)
-    cmaps = face_vertices(cmaps, faces)
-    vis = face_vertices(vis, faces)
-
-    residues, pts_ind, _ = point_to_mesh_distance(points, triangles)
-    closest_triangles = torch.gather(
-        triangles, 1, pts_ind[:, :, None, None].expand(-1, -1, 3, 3)).view(-1, 3, 3)
-    closest_normals = torch.gather(
-        normals, 1, pts_ind[:, :, None, None].expand(-1, -1, 3, 3)).view(-1, 3, 3)
-    closest_cmaps = torch.gather(
-        cmaps, 1, pts_ind[:, :, None, None].expand(-1, -1, 3, 3)).view(-1, 3, 3)
-    closest_vis = torch.gather(
-        vis, 1, pts_ind[:, :, None, None].expand(-1, -1, 3, 1)).view(-1, 3, 1)
-    bary_weights = barycentric_coordinates_of_projection(
-        points.view(-1, 3), closest_triangles)
-
-    pts_cmap = (closest_cmaps*bary_weights[:, :, None]).sum(1).unsqueeze(0)
-    pts_vis = (closest_vis*bary_weights[:,
-               :, None]).sum(1).unsqueeze(0).ge(1e-1)
-    pts_norm = (closest_normals*bary_weights[:, :, None]).sum(
-        1).unsqueeze(0) * torch.tensor(np.array([-1.0, 1.0, -1.0])).type_as(normals)
-    pts_norm = F.normalize(pts_norm, dim=2)
-    pts_dist = torch.sqrt(residues) / torch.sqrt(torch.tensor(3))
-
-    pts_signs = 2.0 * (check_sign(verts, faces[0], points).float() - 0.5)
-    pts_sdf = (pts_dist * pts_signs).unsqueeze(-1)
-
-    return pts_sdf.view(Bsize, -1, 1), pts_norm.view(Bsize, -1, 3), pts_cmap.view(Bsize, -1, 3), pts_vis.view(Bsize, -1, 1)
-
 
 def orthogonal(points, calibrations, transforms=None):
     '''
@@ -805,7 +752,7 @@ def get_optim_grid_image(per_loop_lst, loss=None, nrow=4, type='smpl'):
     font_path = os.path.join(os.path.dirname(__file__), "tbfo.ttf")
     font = ImageFont.truetype(font_path, 30)
     grid_img = torchvision.utils.make_grid(torch.cat(per_loop_lst, dim=0),
-                                           nrow=nrow)
+                                           nrow=nrow, padding=0)
     grid_img = Image.fromarray(
         ((grid_img.permute(1, 2, 0).detach().cpu().numpy() + 1.0) * 0.5 *
          255.0).astype(np.uint8))
@@ -851,7 +798,7 @@ def clean_mesh(verts, faces):
     mesh_clean = mesh_lst[comp_num.index(max(comp_num))]
 
     final_verts = torch.as_tensor(mesh_clean.vertices).float().to(device)
-    final_faces = torch.as_tensor(mesh_clean.faces).int().to(device)
+    final_faces = torch.as_tensor(mesh_clean.faces).long().to(device)
 
     return final_verts, final_faces
 

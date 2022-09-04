@@ -54,6 +54,7 @@ normal = True
 mesh_file = os.path.join(
     f'./data/{dataset}/scans/{subject}', f'{subject}.{format}')
 smplx_file = f'./data/{dataset}/smplx/{subject}.obj'
+joint_file = f'./data/{dataset}/smplx/{subject}.npy'
 tex_file = f'./data/{dataset}/scans/{subject}/material0.jpeg'
 fit_file = f'./data/{dataset}/fits/{subject}/smplx_param.pkl'
 
@@ -85,6 +86,7 @@ rescale_smplx, joints = load_fit_body(fit_file,
 os.makedirs(os.path.dirname(smplx_file), exist_ok=True)
 trimesh.Trimesh(rescale_smplx.vertices * 0.01, rescale_smplx.faces,
                 process=False, maintain_order=True).export(smplx_file)
+np.save(joint_file, joints * 0.01)
 
 vertices *= scale
 vmin = vertices.min(0)
@@ -134,8 +136,8 @@ else:
 
     rndr.set_norm_mat(scan_scale, vmed)
     rndr.set_mesh(vertices, faces, normals, faces_normals,
-                  textures, face_textures,
-                  prt, face_prt, tan, bitan, verts_label)
+                textures, face_textures,
+                prt, face_prt, tan, bitan, verts_label)
     rndr.set_albedo(texture_image)
 
 
@@ -159,9 +161,9 @@ for y in range(0, 360, 360//rotation):
         rndr_depth.set_camera(cam)
 
     dic = {'ortho_ratio': cam.ortho_ratio,
-           'scale': scan_scale,
-           'center': vmed,
-           'R': R}
+        'scale': scan_scale,
+        'center': vmed,
+        'R': R}
 
     if with_light:
 

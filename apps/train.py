@@ -6,19 +6,21 @@ logging.getLogger("wandb").setLevel(logging.ERROR)
 logging.getLogger("lightning").setLevel(logging.ERROR)
 logging.getLogger("trimesh").setLevel(logging.ERROR)
 
-from pytorch_lightning.callbacks import LearningRateMonitor
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.callbacks import RichProgressBar
-from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTheme
-from pytorch_lightning import loggers as pl_loggers
-from pytorch_lightning.profilers import AdvancedProfiler
-from apps.ICON import ICON
-from lib.dataset.PIFuDataModule import PIFuDataModule, cfg_test_mode
-from lib.common.config import get_cfg_defaults
-from lib.common.train_util import SubTrainer, load_networks
-import os
-import os.path as osp
+
 import argparse
+import os.path as osp
+import os
+from lib.common.train_util import SubTrainer, load_networks
+from lib.common.config import get_cfg_defaults
+from lib.dataset.PIFuDataModule import PIFuDataModule, cfg_test_mode
+from apps.ICON import ICON
+from pytorch_lightning.profilers import AdvancedProfiler
+from pytorch_lightning import loggers as pl_loggers
+from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTheme
+from pytorch_lightning.callbacks import RichProgressBar
+from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import LearningRateMonitor
+
 
 
 if __name__ == "__main__":
@@ -39,13 +41,15 @@ if __name__ == "__main__":
 
     os.environ["WANDB_NOTEBOOK_NAME"] = osp.join(cfg.results_path, f"wandb")
     wandb_logger = pl_loggers.WandbLogger(
-        offline=False, project="ICON", save_dir=cfg.results_path, name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}"
+        offline=True if (cfg.test_mode or args.test_mode) else False, 
+        project="ICON", 
+        save_dir=cfg.results_path, 
+        name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}"
     )
 
     if cfg.overfit:
-        cfg_overfit_list = ["batch_size", 1]
+        cfg_overfit_list = ["batch_size", 1, "num_threads", 1, "mcube_res", 128, "freq_plot", 0.0001]
         cfg.merge_from_list(cfg_overfit_list)
-        save_k = 0
 
     checkpoint = ModelCheckpoint(
         dirpath=osp.join(cfg.ckpt_dir, cfg.name),

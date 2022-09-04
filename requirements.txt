@@ -27,6 +27,7 @@ protobuf
 pymeshlab
 dataclasses
 wandb
+hydra-core
 tinyobjloader==2.0.0rc7
 git+https://github.com/Project-Splinter/human_det
 git+https://github.com/facebookresearch/pytorch3d.git@stable

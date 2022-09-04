@@ -31,6 +31,7 @@ import os
 from apps.ICON import ICON
 from pytorch3d.structures import Meshes
 from lib.net.local_affine import LocalAffine
+from lib.renderer.mesh import compute_normal_batch
 from lib.dataset.TestDataset import TestDataset
 from lib.dataset.mesh_util import (
     load_checkpoint,
@@ -378,7 +379,7 @@ if __name__ == "__main__":
             f"{args.out_dir}/{cfg.name}/obj/{data['name']}_smpl.npy", smpl_info, allow_pickle=True)
 
         # ------------------------------------------------------------------------------------------------------------------
-        if False:
+        if True:
             # cloth optimization
             per_data_lst = []
 
@@ -388,6 +389,8 @@ if __name__ == "__main__":
                     in_tensor["smpl_verts"][0], in_tensor["smpl_faces"][0]
                 )
             )
+            
+            in_tensor.update({"smpl_norm": compute_normal_batch(in_tensor["smpl_verts"], in_tensor["smpl_faces"])})
 
             if cfg.net.prior_type == "pamir":
                 in_tensor.update(
@@ -399,7 +402,7 @@ if __name__ == "__main__":
                         data["scale"],
                     )
                 )
-
+            
             with torch.no_grad():
                 verts_pr, faces_pr, _ = model.test_single(in_tensor)
 

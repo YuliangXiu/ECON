@@ -25,6 +25,9 @@ if __name__ == '__main__':
     parser.add_argument('-d',
                         '--dataset',
                         default='thuman2')
+    parser.add_argument('-m',
+                        '--mode',
+                        default='cmap', help='cmap, occ, norm, sdf, vis, kpt')
     args_c = parser.parse_args()
 
     args = get_cfg_defaults()
@@ -60,11 +63,8 @@ if __name__ == '__main__':
     if args_c.show:
         # for item in dataset:
         item = dataset[0]
-        # dataset.visualize_sampling3D(item, mode='cmap')
-        dataset.visualize_sampling3D(item, mode='occ')
-        # dataset.visualize_sampling3D(item, mode='normal')
-        # dataset.visualize_sampling3D(item, mode='sdf')
-        # dataset.visualize_sampling3D(item, mode='vis')
+        dataset.visualize_sampling3D(item, mode=args_c.mode)
+        
 
     if args_c.speed:
         # original: 2 it/s

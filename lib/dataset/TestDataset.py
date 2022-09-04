@@ -221,7 +221,7 @@ class TestDataset():
             # import ipdb; ipdb.set_trace()
             preds_dict = self.hps.forward(img_hps)
 
-        data_dict['smpl_faces'] = torch.Tensor(
+        data_dict['smpl_faces'] = torch.as_tensor(
             self.faces.astype(np.int16)).long().unsqueeze(0).to(
                 self.device)
 

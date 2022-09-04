@@ -16,10 +16,11 @@
 # Contact: ps-license@tuebingen.mpg.de
 
 
-from lib.renderer.mesh import load_fit_body
+from lib.renderer.mesh import load_fit_body, compute_normal_batch
 from lib.dataset.body_model import TetraSMPLModel
 from lib.common.render import Render
-from lib.dataset.mesh_util import SMPLX, projection, cal_sdf_batch, get_visibility, rescale_smpl, HoppeMesh, obj_loader
+from lib.dataset.PointFeat import PointFeat
+from lib.dataset.mesh_util import SMPLX, projection, get_visibility, rescale_smpl, HoppeMesh, obj_loader
 from lib.pare.pare.utils.geometry import rotation_matrix_to_angle_axis
 from termcolor import colored
 import os.path as osp
@@ -54,10 +55,21 @@ class PIFuDataset():
         self.workers = cfg.num_threads
         self.prior_type = cfg.net.prior_type
 
+        self.base_keys = ["smpl_verts", "smpl_faces"]
+        self.icon_keys = self.base_keys + \
+            [f"smpl_{feat_name}" for feat_name in cfg.net.smpl_feats]
+        self.keypoint_keys = self.base_keys + \
+            [f"smpl_{feat_name}" for feat_name in cfg.net.smpl_feats]
+        self.pamir_keys = [
+            "voxel_verts", "voxel_faces", "pad_v_num", "pad_f_num"
+        ]
+        self.pifu_keys = []
+
         self.noise_type = self.opt.noise_type
         self.noise_scale = self.opt.noise_scale
 
         noise_joints = [4, 5, 7, 8, 13, 14, 16, 17, 18, 19, 20, 21]
+        self.smpl_joint_ids = np.arange(22).tolist()+[68, 73]
 
         self.noise_smpl_idx = []
         self.noise_smplx_idx = []
@@ -216,12 +228,14 @@ class PIFuDataset():
             data_dict.update({
                 'mesh_path': osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}/{subject}.obj"),
                 'smplx_path': osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}.obj"),
+                'joint_path': osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}.npy"),
                 'smpl_param': osp.join(self.datasets_dict[dataset]["param_dir"], f"{subject}/smpl_param.pkl"),
                 'smplx_param': osp.join(self.datasets_dict[dataset]["param_dir"], f"{subject}/smplx_param.pkl"),
             })
         elif dataset == 'cape':
             data_dict.update({
                 'mesh_path': osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}.obj"),
+                'joint_path': osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.npy"),
             })
 
         # load training data
@@ -359,16 +373,17 @@ class PIFuDataset():
             type='smplx',
             hashcode=(hash(f"{data_dict['subject']}_{data_dict['rotation']}")) % (10**8))
 
-        smplx_out, _ = load_fit_body(fitted_path=data_dict['smplx_param'],
-                                     scale=self.datasets_dict[dataset]['scale'],
-                                     smpl_type='smplx',
-                                     smpl_gender='male',
-                                     noise_dict=dict(betas=smplx_betas, body_pose=smplx_pose))
+        smplx_out, smplx_joints = load_fit_body(fitted_path=data_dict['smplx_param'],
+                                                scale=self.datasets_dict[dataset]['scale'],
+                                                smpl_type='smplx',
+                                                smpl_gender='male',
+                                                noise_dict=dict(betas=smplx_betas, body_pose=smplx_pose))
 
         smplx_dict.update({"type": "smplx",
                           "gender": 'male',
                            "body_pose": torch.as_tensor(smplx_pose),
-                           "betas": torch.as_tensor(smplx_betas)})
+                           "betas": torch.as_tensor(smplx_betas),
+                           "smpl_joint": torch.as_tensor(smplx_joints).float()})
 
         return smplx_out.vertices, smplx_dict
 
@@ -436,46 +451,57 @@ class PIFuDataset():
                 data_dict, self.noise_type,
                 self.noise_scale)
             smplx_faces = torch.as_tensor(self.smplx.smplx_faces).long()
-            smplx_cmap = torch.as_tensor(
-                np.load(self.smplx.cmap_vert_path)).float()
+
+            if "smpl_vis" in getattr(self, f"{self.prior_type}_keys"):
+
+                (xy, z) = torch.as_tensor(smplx_verts).to(
+                    self.device).split([2, 1], dim=1)
+                smplx_vis = get_visibility(xy, z, torch.as_tensor(
+                    smplx_faces).to(self.device).long())
+
+                return_dict.update({'smpl_vis': smplx_vis})
 
             return_dict.update(smplx_dict)
 
         # instead, directly load SMPL-(X) objs
         else:
             smplx_vis = torch.load(data_dict['vis_path']).float()
-            return_dict.update({'smpl_vis': smplx_vis})
+            smplx_joints = torch.as_tensor(
+                np.load(data_dict['joint_path'])).float() * 100.0
+            return_dict.update({'smpl_vis': smplx_vis,
+                                'smpl_joint': smplx_joints})
 
             smplx_verts = rescale_smpl(
                 data_dict[f"{smpl_type}_path"], scale=100.0)
             smplx_faces = torch.as_tensor(
                 getattr(self.smplx, f"{smpl_type}_faces")).long()
-            smplx_cmap = self.smplx.cmap_smpl_vids(smpl_type)
 
-        # laplacian smoothing for body meshes
+        # skeleton loading
+        smplx_joints = projection(
+            return_dict["smpl_joint"], data_dict['calib']).float()
 
-        if self.laplacian_iters > 0:
-            smplx_verts = trimesh.smoothing.filter_laplacian(
-                trimesh.Trimesh(smplx_verts, smplx_faces), lamb=1.0, iterations=self.laplacian_iters).vertices
+        if smpl_type == 'smplx':
+            return_dict.update(
+                {'smpl_joint': smplx_joints[self.smpl_joint_ids, :]})
+        else:
+            return_dict.update({'smpl_joint': smplx_joints[:24, :]})
 
+        smplx_cmap = self.smplx.cmap_smpl_vids(smpl_type)
         smplx_verts = projection(smplx_verts, data_dict['calib']).float()
+        smplx_norm = torch.as_tensor(compute_normal_batch(
+            smplx_verts[None, ...], smplx_faces[None, ...])).float()[0]
 
-        # get smpl_signs
-        query_points = projection(data_dict['samples_geo'],
-                                  data_dict['calib']).float()
+        if "smpl_cmap" in getattr(self, f"{self.prior_type}_keys"):
+            return_dict.update({'smpl_cmap': smplx_cmap})
+        if "smpl_norm" in getattr(self, f"{self.prior_type}_keys"):
+            return_dict.update({'smpl_norm': smplx_norm})
 
         return_dict.update({
             'smpl_verts': smplx_verts,
             'smpl_faces': smplx_faces,
-            'smpl_cmap': smplx_cmap,
         })
 
         if vis:
-
-            (xy, z) = torch.as_tensor(smplx_verts).to(
-                self.device).split([2, 1], dim=1)
-            smplx_vis = get_visibility(xy, z, torch.as_tensor(
-                smplx_faces).to(self.device).long())
 
             T_normal_F, T_normal_B = self.render_normal(
                 (smplx_verts *
@@ -484,24 +510,24 @@ class PIFuDataset():
 
             return_dict.update({"T_normal_F": T_normal_F.squeeze(0),
                                 "T_normal_B": T_normal_B.squeeze(0)})
+
             query_points = projection(data_dict['samples_geo'],
                                       data_dict['calib']).float()
 
-            smplx_sdf, smplx_norm, smplx_cmap, smplx_vis = cal_sdf_batch(
-                smplx_verts.unsqueeze(0).to(self.device),
-                smplx_faces.unsqueeze(0).to(self.device),
-                smplx_cmap.unsqueeze(0).to(self.device),
-                smplx_vis.unsqueeze(0).to(self.device),
-                query_points.unsqueeze(0).contiguous().to(self.device))
+            point_feat_extractor = PointFeat(smplx_verts.unsqueeze(0).to(self.device),
+                                             smplx_faces.unsqueeze(0).to(self.device))
+
+            point_feat_out = point_feat_extractor.query(query_points.unsqueeze(0).contiguous().to(self.device),
+                                                        {"smpl_sdf": None,
+                                                         "smpl_cmap": smplx_cmap.unsqueeze(0).to(self.device),
+                                                         "smpl_norm": smplx_norm.unsqueeze(0).to(self.device),
+                                                         "smpl_vis": smplx_vis.unsqueeze(0).to(self.device)})
+
+            feat_lst = [point_feat_out[key][0].detach().cpu()
+                        for key in ['sdf', 'cmap', 'norm', 'vis']]
 
             return_dict.update({
-                'smpl_feat':
-                torch.cat(
-                    (smplx_sdf[0].detach().cpu(),
-                     smplx_cmap[0].detach().cpu(),
-                     smplx_norm[0].detach().cpu(),
-                     smplx_vis[0].detach().cpu()),
-                    dim=1)
+                'smpl_feat': torch.cat(feat_lst, dim=1)
             })
 
         return return_dict
@@ -581,7 +607,7 @@ class PIFuDataset():
         vp = vedo.Plotter(title="", size=(1500, 1500), axes=0, bg='white')
         vis_list = []
 
-        assert mode in ['vis', 'sdf', 'normal', 'cmap', 'occ']
+        assert mode in ['vis', 'sdf', 'norm', 'cmap', 'occ', 'kpt']
 
         # sdf-1 cmap-3 norm-3 vis-1
         if mode == 'vis':
@@ -595,42 +621,52 @@ class PIFuDataset():
             labels -= labels.min()
             labels /= labels.max()
             colors = np.concatenate([labels, labels, labels], axis=1)
-        elif mode == 'normal':
+        elif mode == 'norm':
             labels = data_dict[f'smpl_feat'][:, -4:-1]  # normal
             colors = (labels + 1.0) * 0.5
         elif mode == 'cmap':
             labels = data_dict[f'smpl_feat'][:, -7:-4]  # colormap
             colors = np.array(labels)
+        elif mode == 'kpt':
+            colors = np.ones_like(data_dict['smpl_joint'])
 
         points = projection(data_dict['samples_geo'], data_dict['calib'])
         verts = projection(data_dict['verts'], data_dict['calib'])
         points[:, 1] *= -1
         verts[:, 1] *= -1
 
-        # create a mesh
-        mesh = trimesh.Trimesh(verts, data_dict['faces'], process=True)
-        mesh.visual.vertex_colors = [128.0, 128.0, 128.0, 255.0]
-        vis_list.append(mesh)
+        keypoints = data_dict["smpl_joint"]
+        keypoints[:, 1] *= -1  # [-1,1] 24x3
 
-        if 'voxel_verts' in data_dict.keys():
-            print(colored("voxel verts", "green"))
-            voxel_verts = data_dict['voxel_verts'] * 2.0
-            voxel_faces = data_dict['voxel_faces']
-            voxel_verts[:, 1] *= -1
-            voxel = trimesh.Trimesh(
-                voxel_verts, voxel_faces[:, [0, 2, 1]], process=False, maintain_order=True)
-            voxel.visual.vertex_colors = [0.0, 128.0, 0.0, 255.0]
-            vis_list.append(voxel)
+        if mode != 'kpt':
+            # create a mesh
+            mesh = trimesh.Trimesh(verts, data_dict['faces'], process=True)
+            mesh.visual.vertex_colors = [128.0, 128.0, 128.0, 255.0]
+            vis_list.append(mesh)
 
-        if 'smpl_verts' in data_dict.keys():
-            print(colored("smpl verts", "green"))
-            smplx_verts = data_dict['smpl_verts']
-            smplx_faces = data_dict['smpl_faces']
-            smplx_verts[:, 1] *= -1
-            smplx = trimesh.Trimesh(
-                smplx_verts, smplx_faces[:, [0, 2, 1]], process=False, maintain_order=True)
-            smplx.visual.vertex_colors = [128.0, 128.0, 0.0, 255.0]
-            vis_list.append(smplx)
+            if 'voxel_verts' in data_dict.keys():
+                print(colored("voxel verts", "green"))
+                voxel_verts = data_dict['voxel_verts'] * 2.0
+                voxel_faces = data_dict['voxel_faces']
+                voxel_verts[:, 1] *= -1
+                voxel = trimesh.Trimesh(
+                    voxel_verts, voxel_faces[:, [0, 2, 1]], process=False, maintain_order=True)
+                voxel.visual.vertex_colors = [0.0, 128.0, 0.0, 255.0]
+                vis_list.append(voxel)
+
+            if 'smpl_verts' in data_dict.keys():
+                print(colored("smpl verts", "green"))
+                smplx_verts = data_dict['smpl_verts']
+                smplx_faces = data_dict['smpl_faces']
+                smplx_verts[:, 1] *= -1
+                smplx = trimesh.Trimesh(
+                    smplx_verts, smplx_faces[:, [0, 2, 1]], process=False, maintain_order=True)
+                smplx.visual.vertex_colors = [128.0, 128.0, 0.0, 255.0]
+                vis_list.append(smplx)
+
+                # create a pointcloud
+                pc = vedo.Points(points, r=15, c=np.float32(colors))
+                vis_list.append(pc)
 
         # create a picure
         img_pos = [1.0, 0.0, -1.0]
@@ -642,8 +678,9 @@ class PIFuDataset():
                 2.0 / image_dim).pos(-1.0, -1.0, img_pos[img_id])
             vis_list.append(image)
 
-        # create a pointcloud
-        pc = vedo.Points(points, r=15, c=np.float32(colors))
-        vis_list.append(pc)
+        # create skeleton
+        kpt = vedo.Points(keypoints, r=15, c=np.float32(
+            np.ones_like(keypoints)))
+        vis_list.append(kpt)
 
         vp.show(*vis_list, bg="white", axes=1.0, interactive=True)

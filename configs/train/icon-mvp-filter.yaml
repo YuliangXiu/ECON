@@ -62,7 +62,7 @@ sdf_clip: 15.0
 fast_dev: 0
 resume: False
 test_mode: False
-mcube_res: 512
+mcube_res: 256
 clean_mesh: True
 num_sanity_val_steps: 1
 

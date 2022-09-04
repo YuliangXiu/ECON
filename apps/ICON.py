@@ -19,7 +19,7 @@ from lib.dataset.Evaluator import Evaluator
 from lib.net import HGPIFuNet
 from lib.common.train_util import *
 from lib.common.render import Render
-from lib.dataset.mesh_util import SMPLX, get_visibility
+from lib.dataset.mesh_util import SMPLX
 import torch
 import wandb
 import numpy as np
@@ -64,9 +64,17 @@ class ICON(pl.LightningModule):
         )
         self.resolutions = self.resolutions.astype(np.int16).tolist()
 
-        self.icon_keys = ["smpl_verts", "smpl_faces", "smpl_vis", "smpl_cmap"]
-        self.pamir_keys = ["voxel_verts",
-                           "voxel_faces", "pad_v_num", "pad_f_num"]
+        self.base_keys = ["smpl_verts", "smpl_faces"]
+        self.feat_names = self.cfg.net.smpl_feats
+        
+        self.icon_keys = self.base_keys + \
+            [f"smpl_{feat_name}" for feat_name in self.feat_names]
+        self.keypoint_keys = self.base_keys + \
+            [f"smpl_{feat_name}" for feat_name in self.feat_names]
+        self.pamir_keys = [
+            "voxel_verts", "voxel_faces", "pad_v_num", "pad_f_num"
+        ]
+        self.pifu_keys = []
 
         self.reconEngine = Seg3dLossless(
             query_func=query_func,
@@ -116,7 +124,7 @@ class ICON(pl.LightningModule):
             optim_params_G.append(
                 {"params": self.netG.ve.parameters(), "lr": self.lr_G}
             )
-
+            
         if self.cfg.optim == "Adadelta":
 
             optimizer_G = torch.optim.Adadelta(
@@ -167,14 +175,10 @@ class ICON(pl.LightningModule):
         for name in self.in_total:
             in_tensor_dict.update({name: batch[name]})
 
-        if self.prior_type == "icon":
-            for key in self.icon_keys:
-                in_tensor_dict.update({key: batch[key]})
-        elif self.prior_type == "pamir":
-            for key in self.pamir_keys:
-                in_tensor_dict.update({key: batch[key]})
-        else:
-            pass
+        in_tensor_dict.update({
+            k: batch[k] if k in batch.keys() else None
+            for k in getattr(self, f"{self.prior_type}_keys")
+        })
 
         preds_G, error_G = self.netG(in_tensor_dict)
 
@@ -233,14 +237,10 @@ class ICON(pl.LightningModule):
         for name in self.in_total:
             in_tensor_dict.update({name: batch[name]})
 
-        if self.prior_type == "icon":
-            for key in self.icon_keys:
-                in_tensor_dict.update({key: batch[key]})
-        elif self.prior_type == "pamir":
-            for key in self.pamir_keys:
-                in_tensor_dict.update({key: batch[key]})
-        else:
-            pass
+        in_tensor_dict.update({
+            k: batch[k] if k in batch.keys() else None
+            for k in getattr(self, f"{self.prior_type}_keys")
+        })
 
         preds_G, error_G = self.netG(in_tensor_dict)
 
@@ -282,18 +282,6 @@ class ICON(pl.LightningModule):
         self.log_dict(metrics_log, prog_bar=False, logger=True,
                       on_step=False, on_epoch=True)
 
-    def compute_vis_cmap(self, smpl_type, smpl_verts, smpl_faces):
-
-        (xy, z) = torch.as_tensor(smpl_verts).split([2, 1], dim=1)
-        smpl_vis = get_visibility(xy, -z, torch.as_tensor(smpl_faces).long())
-        smpl_cmap = self.smpl_data.cmap_smpl_vids(smpl_type)
-
-        return {
-            "smpl_vis": smpl_vis.unsqueeze(0).to(self.device),
-            "smpl_cmap": smpl_cmap.unsqueeze(0).to(self.device),
-            "smpl_verts": smpl_verts.unsqueeze(0),
-        }
-
     def test_step(self, batch, batch_idx):
 
         # dict_keys(['dataset', 'subject', 'rotation', 'scale', 'calib',
@@ -318,15 +306,10 @@ class ICON(pl.LightningModule):
             if name in batch.keys():
                 in_tensor_dict.update({name: batch[name]})
 
-        if self.prior_type == "icon":
-            for key in self.icon_keys:
-                if key not in in_tensor_dict.keys():
-                    in_tensor_dict.update({key: batch[key]})
-        elif self.prior_type == "pamir":
-            for key in self.pamir_keys:
-                in_tensor_dict.update({key: batch[key]})
-        else:
-            pass
+        in_tensor_dict.update({
+            k: batch[k] if k in batch.keys() else None
+            for k in getattr(self, f"{self.prior_type}_keys")
+        })
 
         if "T_normal_F" not in in_tensor_dict.keys() or "T_normal_B" not in in_tensor_dict.keys():
 
@@ -336,18 +319,6 @@ class ICON(pl.LightningModule):
             T_normal_F, T_noraml_B = self.render.get_rgb_image()
             in_tensor_dict.update(
                 {'T_normal_F': T_normal_F, 'T_normal_B': T_noraml_B})
-
-        if "smpl_vis" not in in_tensor_dict.keys():
-
-            (xy, z) = batch["smpl_verts"][0].split([2, 1], dim=1)
-            smpl_vis = get_visibility(
-                xy,
-                z,
-                torch.as_tensor(batch["smpl_faces"][0]).type_as(
-                    batch["smpl_verts"]).long(),
-            )
-            in_tensor_dict.update(
-                {"smpl_vis": smpl_vis.unsqueeze(0).to(self.device)})
 
         with torch.no_grad():
             features, inter = self.netG.filter(
@@ -391,6 +362,7 @@ class ICON(pl.LightningModule):
         )
 
         self.evaluator.set_mesh(self.result_eval)
+        # lap_op = self.evaluator.get_laplacian(self.evaluator.verts_gt, self.evaluator.faces_gt)
         chamfer, p2s = self.evaluator.calculate_chamfer_p2s(num_samples=1000)
         normal_consist = self.evaluator.calculate_normal_consist(
             osp.join(self.export_dir, f"{mesh_rot}_nc.png"))
@@ -447,7 +419,8 @@ class ICON(pl.LightningModule):
     def render_func(self, in_tensor_dict, dataset="title", idx=0):
 
         for name in in_tensor_dict.keys():
-            in_tensor_dict[name] = in_tensor_dict[name][0:1]
+            if in_tensor_dict[name] is not None:
+                in_tensor_dict[name] = in_tensor_dict[name][0:1]
 
         self.netG.eval()
         features, inter = self.netG.filter(in_tensor_dict, return_inter=True)
@@ -470,10 +443,10 @@ class ICON(pl.LightningModule):
             )
             image_inter = self.tensor2image(height, inter[0])
             image = PIL.Image.fromarray(np.concatenate(
-                [image_pred, 
-                 np.concatenate([image_gt]+image_inter+[image_gt], axis=1)], 
+                [image_pred,
+                 np.concatenate([image_gt]+image_inter+[image_gt], axis=1)],
                 axis=0).astype(np.uint8))
-            
+
             self.logger.experiment.log(
                 {f"SDF/{dataset}/{idx}": wandb.Image(image, caption="multi-views")})
 
@@ -487,19 +460,17 @@ class ICON(pl.LightningModule):
             if name in batch.keys():
                 in_tensor_dict.update({name: batch[name]})
 
-        if self.prior_type == "icon":
-            for key in self.icon_keys:
-                in_tensor_dict.update({key: batch[key]})
-        elif self.prior_type == "pamir":
-            for key in self.pamir_keys:
-                in_tensor_dict.update({key: batch[key]})
-        else:
-            pass
-
-        features, inter = self.netG.filter(in_tensor_dict, return_inter=True)
-        sdf = self.reconEngine(
-            opt=self.cfg, netG=self.netG, features=features, proj_matrix=None
-        )
+        in_tensor_dict.update({
+            k: batch[k] if k in batch.keys() else None
+            for k in getattr(self, f"{self.prior_type}_keys")
+        })
+        
+        with torch.no_grad():
+            features, inter = self.netG.filter(
+                in_tensor_dict, return_inter=True)
+            sdf = self.reconEngine(
+                opt=self.cfg, netG=self.netG, features=features, proj_matrix=None
+            )
 
         verts_pr, faces_pr = self.reconEngine.export_mesh(sdf)
 

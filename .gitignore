@@ -1,6 +1,3 @@
-data/*/*
-data/thuman*
-!data/tbfo.ttf
 __pycache__
 debug/
 log/
@@ -16,5 +13,5 @@ neural_voxelization_layer/
 pytorch3d/
 run.sh
 cluster/
-cluster
 *.zip
+data/

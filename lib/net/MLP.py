@@ -43,8 +43,8 @@ class MLP(pl.LightningModule):
                 elif norm == 'weight':
                     self.filters[l] = nn.utils.weight_norm(self.filters[l],
                                                            name='weight')
-                    # print(self.filters[l].weight_g.size(),
-                    #       self.filters[l].weight_v.size())
+                else:
+                    pass
 
     def forward(self, feature):
         '''

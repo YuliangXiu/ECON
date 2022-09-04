@@ -5,12 +5,13 @@ Make sure you have already generated all the required synthetic data (refer to [
 :eyes: Test your dataloader with [vedo](https://vedo.embl.es/)
 
 ```bash
+# mode: kpt, norm, cmap, vis, sdf, occ 
 
 # visualization for SMPL-X mesh
-python -m lib.dataloader_demo -v -c ./configs/train/icon-filter.yaml
+python -m lib.dataloader_demo -v -c ./configs/train/icon-filter.yaml -m {mode}
 
 # visualization for voxelized SMPL
-python -m lib.dataloader_demo -v -c ./configs/train/pamir.yaml
+python -m lib.dataloader_demo -v -c ./configs/train/pamir.yaml -m {mode}
 ```
 
 <p align="center">

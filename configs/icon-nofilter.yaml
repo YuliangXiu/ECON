@@ -14,7 +14,7 @@ net:
   use_filter: False
   in_geo: (('normal_F',3), ('normal_B',3))
   in_nml: (('image',3), ('T_normal_F',3), ('T_normal_B',3))
-  smpl_feats: ['sdf', 'norm', 'vis', 'cmap']
+  smpl_feats: ['sdf', 'cmap', 'norm', 'vis']
   gtype: 'HGPIFuNet'
   norm_mlp: 'batch'
   hourglass_dim: 6

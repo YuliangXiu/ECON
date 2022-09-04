@@ -22,7 +22,7 @@ import torch
 import os.path as osp
 from torchvision.utils import make_grid
 from pytorch3d.io import IO
-from pytorch3d.ops import sample_points_from_meshes
+from pytorch3d.ops import sample_points_from_meshes, cot_laplacian
 from pytorch3d.loss.point_mesh_distance import _PointFaceDistance
 from pytorch3d.structures import Pointclouds
 from PIL import Image
@@ -84,15 +84,17 @@ class Evaluator:
     def calculate_normal_consist(self, normal_path):
 
         self.render.meshes = self.src_mesh
-        src_normal_imgs = self.render.get_rgb_image(cam_ids=[0, 1, 2, 3], bg='black')
+        src_normal_imgs = self.render.get_rgb_image(
+            cam_ids=[0, 1, 2, 3], bg='black')
         self.render.meshes = self.tgt_mesh
-        tgt_normal_imgs = self.render.get_rgb_image(cam_ids=[0, 1, 2, 3], bg='black')
+        tgt_normal_imgs = self.render.get_rgb_image(
+            cam_ids=[0, 1, 2, 3], bg='black')
 
         src_normal_arr = (
-            make_grid(torch.cat(src_normal_imgs, dim=0), nrow=4)+1.0)*0.5  # [0,1]
+            make_grid(torch.cat(src_normal_imgs, dim=0), nrow=4, padding=0)+1.0)*0.5  # [0,1]
         tgt_normal_arr = (
-            make_grid(torch.cat(tgt_normal_imgs, dim=0), nrow=4)+1.0)*0.5  # [0,1]
-        
+            make_grid(torch.cat(tgt_normal_imgs, dim=0), nrow=4, padding=0)+1.0)*0.5  # [0,1]
+
         error = (((src_normal_arr - tgt_normal_arr)
                  ** 2).sum(dim=0).mean()) * 4.0
 
@@ -106,9 +108,9 @@ class Evaluator:
 
         IO().save_mesh(self.src_mesh, osp.join(dir, f"{name}_src.obj"))
         IO().save_mesh(self.tgt_mesh, osp.join(dir, f"{name}_tgt.obj"))
-        
+
     def calculate_chamfer_p2s(self, num_samples=1000):
-    
+
         tgt_points = Pointclouds(
             sample_points_from_meshes(self.tgt_mesh, num_samples))
         src_points = Pointclouds(
@@ -116,9 +118,20 @@ class Evaluator:
         p2s_dist = point_mesh_distance(self.src_mesh, tgt_points) * 100.0
         chamfer_dist = (point_mesh_distance(
             self.tgt_mesh, src_points) * 100.0 + p2s_dist) * 0.5
-        
+
         return chamfer_dist, p2s_dist
 
+    @staticmethod
+    def get_laplacian(verts, faces):
+        
+        L, inv_areas = cot_laplacian(verts, faces)
+        L_sum = torch.sparse.sum(L, dim=1).to_dense().view(-1, 1)
+        norm_w = 0.25 * inv_areas
+        lap_cot_mat = L_sum * norm_w
+        lap_cot_w = 2.0/(torch.exp(-lap_cot_mat/(10**5))+1.0)-1.0   #range (0~1)
+        
+        return lap_cot_w
+        
     def calc_acc(self, output, target, thres=0.5, use_sdf=False):
 
         # # remove the surface points with thres
