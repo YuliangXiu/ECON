@@ -118,6 +118,10 @@ if __name__ == "__main__":
     for data in pbar:
 
         pbar.set_description(f"{data['name']}")
+        
+        Image.fromarray(data['image_crop'].astype(np.uint8)).save(os.path.join(args.out_dir, cfg.name, f"png/{data['name']}_crop.png"))
+        
+        continue
 
         in_tensor = {"smpl_faces": data["smpl_faces"], "image": data["image"]}
 

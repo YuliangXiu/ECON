@@ -193,19 +193,20 @@ class TestDataset():
         img_name = img_path.split("/")[-1].rsplit(".", 1)[0]
 
         if self.seg_dir is None:
-            img_icon, img_hps, img_ori, img_mask, uncrop_param = process_image(
+            img_icon, img_crop, img_hps, img_ori, img_mask, uncrop_param = process_image(
                 img_path, self.det, self.hps_type, 512, self.device)
 
             data_dict = {
                 'name': img_name,
                 'image': img_icon.to(self.device).unsqueeze(0),
+                'image_crop': img_crop,
                 'ori_image': img_ori,
                 'mask': img_mask,
                 'uncrop_param': uncrop_param
             }
 
         else:
-            img_icon, img_hps, img_ori, img_mask, uncrop_param, segmentations = process_image(
+            img_icon, img_crop, img_hps, img_ori, img_mask, uncrop_param, segmentations = process_image(
                 img_path, self.det, self.hps_type, 512, self.device,
                 seg_path=os.path.join(self.seg_dir, f'{img_name}.json'))
             data_dict = {

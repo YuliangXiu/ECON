@@ -142,9 +142,10 @@ def process_image(img_file, det, hps_type, input_res=512, device=None, seg_path=
     img_tensor = img_rgb * img_mask
 
     # for hps
+    img_crop = img_np.copy()
     img_hps = img_np.astype(np.float32) / 255.
     img_hps = torch.from_numpy(img_hps).permute(2, 0, 1)
-
+    
     if hps_type == 'bev':
         img_hps = img_np[:, :, [2, 1, 0]]
     elif hps_type == 'hybrik':
@@ -195,7 +196,7 @@ def process_image(img_file, det, hps_type, input_res=512, device=None, seg_path=
 
         return img_tensor, img_hps, img_ori, img_mask, uncrop_param, seg_coord_normalized
 
-    return img_tensor, img_hps, img_ori, img_mask, uncrop_param
+    return img_tensor, img_crop, img_hps, img_ori, img_mask, uncrop_param
 
 
 def get_transform(center, scale, res):
