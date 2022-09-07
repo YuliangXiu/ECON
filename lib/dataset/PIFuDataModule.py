@@ -1,10 +1,6 @@
-import numpy as np
-import random
-import torch
 from torch.utils.data import DataLoader
 from .PIFuDataset import PIFuDataset
 import pytorch_lightning as pl
-
 
 cfg_test_mode = [
     "test_mode",
@@ -39,12 +35,6 @@ class PIFuDataModule(pl.LightningDataModule):
 
         pass
 
-    @staticmethod
-    def seed_worker(worker_id):
-        worker_seed = torch.initial_seed() % 2**32
-        np.random.seed(worker_seed)
-        random.seed(worker_seed)
-
     def setup(self, stage):
 
         if stage == 'fit':
@@ -76,8 +66,7 @@ class PIFuDataModule(pl.LightningDataModule):
         val_data_loader = DataLoader(
             current_dataset,
             batch_size=1, shuffle=False,
-            num_workers=self.cfg.num_threads, pin_memory=True,
-            worker_init_fn=self.seed_worker)
+            num_workers=self.cfg.num_threads, pin_memory=True)
 
         return val_data_loader
 
@@ -86,7 +75,6 @@ class PIFuDataModule(pl.LightningDataModule):
         test_data_loader = DataLoader(
             self.test_dataset,
             batch_size=1, shuffle=False,
-            num_workers=self.cfg.num_threads, pin_memory=True,
-            worker_init_fn=self.seed_worker)
+            num_workers=self.cfg.num_threads, pin_memory=True)
 
         return test_data_loader

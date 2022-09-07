@@ -189,7 +189,6 @@ class PIFuDataset():
             subject_list += subject_list[:self.bsize -
                                          len(subject_list) % self.bsize]
             print(colored(f"total: {len(subject_list)}", "yellow"))
-            random.shuffle(subject_list)
 
         # subject_list = ["thuman2/0008"]
         return subject_list
@@ -334,7 +333,7 @@ class PIFuDataset():
                   type,
                   hashcode):
 
-        np.random.seed(hashcode)
+        # np.random.seed(hashcode)
 
         if type == 'smplx':
             noise_idx = self.noise_smplx_idx

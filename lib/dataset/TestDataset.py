@@ -44,8 +44,6 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 class TestDataset():
     def __init__(self, cfg, device):
 
-        random.seed(1993)
-
         self.image_dir = cfg['image_dir']
         self.seg_dir = cfg['seg_dir']
         self.has_det = cfg['has_det']

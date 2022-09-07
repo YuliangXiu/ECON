@@ -42,6 +42,7 @@ class ICON(pl.LightningModule):
         self.prior_type = cfg.net.prior_type
         self.mcube_res = cfg.mcube_res
         self.clean_mesh_flag = cfg.clean_mesh
+        self.overfit = cfg.overfit
 
         self.netG = HGPIFuNet(
             self.cfg,
@@ -448,7 +449,7 @@ class ICON(pl.LightningModule):
                 axis=0).astype(np.uint8))
 
             self.logger.experiment.log(
-                {f"SDF/{dataset}/{idx}": wandb.Image(image, caption="multi-views")})
+                {f"SDF/{dataset}/{idx if not self.overfit else 1}": wandb.Image(image, caption="multi-views")})
 
     def test_single(self, batch):
 

@@ -66,8 +66,11 @@ class SpatialEncoder(pl.LightningModule):
         
         weight = torch.exp(-(dxyz**2).sum(-1, keepdim=True) / (2.0 * (self.sigma ** 2)))
         weight = weight.view(*weight.shape[:2], -1)  # (B, N, K)
+        
+        # position embedding
         out = self.position_embedding(
-            dz.view(*dz.shape[:2], -1), self.sp_level)
+            (dz**2).view(*dz.shape[:2], -1), self.sp_level)
+        
         out = out.view(*out.shape[:2], -1, weight.shape[-1]) * \
             weight[:, :, None]  # BV,N,7,13 * BV,N,1,13
         out = out.view(out.shape[0], -1, out.shape[1])
@@ -79,6 +82,6 @@ if __name__ == "__main__":
     pts = torch.randn(2, 10000, 3).to('cuda')
     kpts = torch.randn(2, 24, 3).to('cuda')
     
-    sp_encoder = SpatialEncoder(sp_level=1, sp_type='rel_z_decay', scale=1.0, n_kpt=24, sigma=0.1).to('cuda')
+    sp_encoder = SpatialEncoder(sp_level=3, sp_type='rel_z_decay', scale=1.0, n_kpt=24, sigma=0.1).to('cuda')
     out = sp_encoder(pts, kpts)
     print(out.shape)
