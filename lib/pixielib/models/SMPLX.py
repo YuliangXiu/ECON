@@ -7,9 +7,6 @@ import torch
 import torch.nn as nn
 import numpy as np
 import pickle
-import torch.nn.functional as F
-import os
-import yaml
 
 from .lbs import Struct, to_tensor, to_np, lbs, vertices2landmarks, JointsFromVerticesSelector, find_dynamic_lmk_idx_and_bcoords
 

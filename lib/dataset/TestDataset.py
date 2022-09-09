@@ -33,7 +33,6 @@ import os
 import torch
 import glob
 import numpy as np
-import random
 import human_det
 from termcolor import colored
 from PIL import ImageFile
@@ -67,12 +66,22 @@ class TestDataset():
 
         self.subject_list = sorted(
             [item for item in keep_lst if item.split(".")[-1] in img_fmts])
-        
+
         if self.colab:
             self.subject_list = [self.subject_list[0]]
 
         # smpl related
         self.smpl_data = SMPLX()
+
+        # smpl-smplx correspondence
+        self.smpl_joint_ids_24 = np.arange(22).tolist()+[68, 73]
+        self.smpl_joint_ids_45 = np.arange(
+            22).tolist()+[68, 73]+np.arange(55, 76).tolist()
+
+        self.extre_joint_ids = [61, 72, 66, 69, 58, 68, 57, 56, 64,
+                                59, 67, 75, 70, 65, 60, 61, 63, 62, 76, 71, 72, 74, 73]
+        self.smpl_joint_ids_45_pixie = np.arange(
+            22).tolist() + [x+68 for x in self.extre_joint_ids]
 
         self.get_smpl_model = lambda smpl_type, smpl_gender: smplx.create(
             model_path=self.smpl_data.model_dir,
@@ -189,88 +198,74 @@ class TestDataset():
 
         img_path = self.subject_list[index]
         img_name = img_path.split("/")[-1].rsplit(".", 1)[0]
+        seg_path = os.path.join(
+            self.seg_dir, f'{img_name}.json') if self.seg_dir is not None else None
 
-        if self.seg_dir is None:
-            img_icon, img_crop, img_hps, img_ori, img_mask, uncrop_param = process_image(
-                img_path, self.det, self.hps_type, 512, self.device)
+        arr_dict = process_image(
+            img_path, self.det, self.hps_type, 512, self.device, seg_path=seg_path)
 
-            data_dict = {
-                'name': img_name,
-                'image': img_icon.to(self.device).unsqueeze(0),
-                'image_crop': img_crop,
-                'ori_image': img_ori,
-                'mask': img_mask,
-                'uncrop_param': uncrop_param
-            }
-
-        else:
-            img_icon, img_crop, img_hps, img_ori, img_mask, uncrop_param, segmentations = process_image(
-                img_path, self.det, self.hps_type, 512, self.device,
-                seg_path=os.path.join(self.seg_dir, f'{img_name}.json'))
-            data_dict = {
-                'name': img_name,
-                'image': img_icon.to(self.device).unsqueeze(0),
-                'ori_image': img_ori,
-                'mask': img_mask,
-                'uncrop_param': uncrop_param,
-                'segmentations': segmentations
-            }
+        arr_dict.update({"name": img_name,
+                         "image": arr_dict['img_icon'].to(self.device).unsqueeze(0)})
 
         with torch.no_grad():
-            # import ipdb; ipdb.set_trace()
-            preds_dict = self.hps.forward(img_hps)
+            preds_dict = self.hps.forward(arr_dict['img_hps'])
 
-        data_dict['smpl_faces'] = torch.as_tensor(
+        arr_dict['smpl_faces'] = torch.as_tensor(
             self.faces.astype(np.int16)).long().unsqueeze(0).to(
                 self.device)
 
         if self.hps_type == 'pymaf':
             output = preds_dict['smpl_out'][-1]
             scale, tranX, tranY = output['theta'][0, :3]
-            data_dict['betas'] = output['pred_shape']
-            data_dict['body_pose'] = output['rotmat'][:, 1:]
-            data_dict['global_orient'] = output['rotmat'][:, 0:1]
-            data_dict['smpl_verts'] = output['verts']
+            arr_dict['betas'] = output['pred_shape']
+            arr_dict['body_pose'] = output['rotmat'][:, 1:]
+            arr_dict['global_orient'] = output['rotmat'][:, 0:1]
+            arr_dict['smpl_verts'] = output['verts']
+            arr_dict['type'] = 'smpl'
 
         elif self.hps_type == 'pare':
-            data_dict['body_pose'] = preds_dict['pred_pose'][:, 1:]
-            data_dict['global_orient'] = preds_dict['pred_pose'][:, 0:1]
-            data_dict['betas'] = preds_dict['pred_shape']
-            data_dict['smpl_verts'] = preds_dict['smpl_vertices']
+            arr_dict['body_pose'] = preds_dict['pred_pose'][:, 1:]
+            arr_dict['global_orient'] = preds_dict['pred_pose'][:, 0:1]
+            arr_dict['betas'] = preds_dict['pred_shape']
+            arr_dict['smpl_verts'] = preds_dict['smpl_vertices']
             scale, tranX, tranY = preds_dict['pred_cam'][0, :3]
+            arr_dict['type'] = 'smpl'
 
         elif self.hps_type == 'pixie':
-            data_dict.update(preds_dict)
-            data_dict['body_pose'] = preds_dict['body_pose']
-            data_dict['global_orient'] = preds_dict['global_pose']
-            data_dict['betas'] = preds_dict['shape']
-            data_dict['smpl_verts'] = preds_dict['vertices']
+            arr_dict.update(preds_dict)
+            arr_dict['body_pose'] = preds_dict['body_pose']
+            arr_dict['global_orient'] = preds_dict['global_pose']
+            arr_dict['betas'] = preds_dict['shape']
+            arr_dict['smpl_verts'] = preds_dict['vertices']
             scale, tranX, tranY = preds_dict['cam'][0, :3]
+            arr_dict['type'] = 'smplx'
 
         elif self.hps_type == 'hybrik':
-            data_dict['body_pose'] = preds_dict['pred_theta_mats'][:, 1:]
-            data_dict['global_orient'] = preds_dict['pred_theta_mats'][:, [0]]
-            data_dict['betas'] = preds_dict['pred_shape']
-            data_dict['smpl_verts'] = preds_dict['pred_vertices']
+            arr_dict['body_pose'] = preds_dict['pred_theta_mats'][:, 1:]
+            arr_dict['global_orient'] = preds_dict['pred_theta_mats'][:, [0]]
+            arr_dict['betas'] = preds_dict['pred_shape']
+            arr_dict['smpl_verts'] = preds_dict['pred_vertices']
             scale, tranX, tranY = preds_dict['pred_camera'][0, :3]
             scale = scale * 2
+            arr_dict['type'] = 'smpl'
 
         elif self.hps_type == 'bev':
-            data_dict['betas'] = torch.from_numpy(preds_dict['smpl_betas'])[
+            arr_dict['betas'] = torch.from_numpy(preds_dict['smpl_betas'])[
                 [0], :10].to(self.device).float()
             pred_thetas = batch_rodrigues(torch.from_numpy(
                 preds_dict['smpl_thetas'][0]).reshape(-1, 3)).float()
-            data_dict['body_pose'] = pred_thetas[1:][None].to(self.device)
-            data_dict['global_orient'] = pred_thetas[[0]][None].to(self.device)
-            data_dict['smpl_verts'] = torch.from_numpy(
+            arr_dict['body_pose'] = pred_thetas[1:][None].to(self.device)
+            arr_dict['global_orient'] = pred_thetas[[0]][None].to(self.device)
+            arr_dict['smpl_verts'] = torch.from_numpy(
                 preds_dict['verts'][[0]]).to(self.device).float()
             tranX = preds_dict['cam_trans'][0, 0]
             tranY = preds_dict['cam'][0, 1] + 0.28
             scale = preds_dict['cam'][0, 0] * 1.1
+            arr_dict['type'] = 'smpl'
 
-        data_dict['scale'] = scale
-        data_dict['trans'] = torch.tensor(
-            [tranX, tranY, 0.0]).to(self.device).float()
+        arr_dict['scale'] = scale
+        arr_dict['trans'] = torch.tensor(
+            [tranX, tranY, 0.0]).to(self.device).unsqueeze(0).float()
 
         # data_dict info (key-shape):
         # scale, tranX, tranY - tensor.float
@@ -279,19 +274,19 @@ class TestDataset():
         # global_orient - [1, 1, 3, 3]
         # smpl_verts - [1, 6890, 3] / [1, 10475, 3]
 
-        return data_dict
+        return arr_dict
 
     def render_normal(self, verts, faces):
 
         # render optimized mesh (normal, T_normal, image [-1,1])
         self.render.load_meshes(verts, faces)
-        return self.render.get_rgb_image()
-    
+        return self.render.get_image(type='rgb')
+
     def render_depth(self, verts, faces):
-    
+
         # render optimized mesh (normal, T_normal, image [-1,1])
         self.render.load_meshes(verts, faces)
-        return self.render.get_depth_map(cam_ids=[0, 2])
+        return self.render.get_image(type='depth')
 
     def visualize_alignment(self, data):
 

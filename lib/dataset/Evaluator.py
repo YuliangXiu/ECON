@@ -84,10 +84,10 @@ class Evaluator:
     def calculate_normal_consist(self, normal_path):
 
         self.render.meshes = self.src_mesh
-        src_normal_imgs = self.render.get_rgb_image(
+        src_normal_imgs = self.render.get_image(
             cam_ids=[0, 1, 2, 3], bg='black')
         self.render.meshes = self.tgt_mesh
-        tgt_normal_imgs = self.render.get_rgb_image(
+        tgt_normal_imgs = self.render.get_image(
             cam_ids=[0, 1, 2, 3], bg='black')
 
         src_normal_arr = (

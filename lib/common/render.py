@@ -39,6 +39,7 @@ import lib.common.render_utils as util
 import torch
 import numpy as np
 from PIL import Image
+from PIL import ImageColor
 from tqdm import tqdm
 import os
 import cv2
@@ -163,52 +164,37 @@ class Render:
 
         return camera
 
-    def init_renderer(self, camera, type="clean_mesh", bg="gray"):
+    def init_renderer(self, camera, type="mesh", bg="gray"):
+        
+        blendparam = BlendParams(1e-4, 1e-8, np.array(ImageColor.getrgb(bg))/255.0)
 
-        if "mesh" in type:
+        if ("mesh" in type) or ('depth' in type) or ('rgb' in type):
 
             # rasterizer
             self.raster_settings_mesh = RasterizationSettings(
                 image_size=self.size,
                 blur_radius=np.log(1.0 / 1e-4) * 1e-7,
+                bin_size=0,
                 faces_per_pixel=30,
             )
             self.meshRas = MeshRasterizer(
                 cameras=camera, raster_settings=self.raster_settings_mesh
             )
-
-        if bg == "black":
-            blendparam = BlendParams(1e-4, 1e-4, (0.0, 0.0, 0.0))
-        elif bg == "white":
-            blendparam = BlendParams(1e-4, 1e-8, (1.0, 1.0, 1.0))
-        elif bg == "gray":
-            blendparam = BlendParams(1e-4, 1e-8, (0.5, 0.5, 0.5))
-
-        if type == "ori_mesh":
-
-            lights = PointLights(
-                device=self.device,
-                ambient_color=((0.8, 0.8, 0.8),),
-                diffuse_color=((0.2, 0.2, 0.2),),
-                specular_color=((0.0, 0.0, 0.0),),
-                location=[[0.0, 200.0, 0.0]],
-            )
-
+            
             self.renderer = MeshRenderer(
                 rasterizer=self.meshRas,
-                shader=SoftPhongShader(
-                    device=self.device,
-                    cameras=camera,
-                    lights=lights,
-                    blend_params=blendparam,
+                shader=cleanShader(
+                    device=self.device, cameras=camera, blend_params=blendparam
                 ),
             )
 
-        if type == "silhouette":
+        elif type == "mask":
+            
             self.raster_settings_silhouette = RasterizationSettings(
                 image_size=self.size,
-                blur_radius=np.log(1.0 / 1e-4 - 1.0) * 5e-5,
+                blur_radius=np.log(1.0 / 1e-4 -1.0) * 5e-5,
                 faces_per_pixel=50,
+                bin_size=0,
                 cull_backfaces=True,
             )
 
@@ -219,7 +205,7 @@ class Render:
                 rasterizer=self.silhouetteRas, shader=SoftSilhouetteShader()
             )
 
-        if type == "pointcloud":
+        elif type == "pointcloud":
             self.raster_settings_pcd = PointsRasterizationSettings(
                 image_size=self.size, radius=0.006, points_per_pixel=10
             )
@@ -230,15 +216,6 @@ class Render:
             self.renderer = PointsRenderer(
                 rasterizer=self.pcdRas,
                 compositor=AlphaCompositor(background_color=(0, 0, 0)),
-            )
-
-        if type == "clean_mesh":
-
-            self.renderer = MeshRenderer(
-                rasterizer=self.meshRas,
-                shader=cleanShader(
-                    device=self.device, cameras=camera, blend_params=blendparam
-                ),
             )
 
     def VF2Mesh(self, verts, faces):
@@ -290,43 +267,31 @@ class Render:
         for mid, mesh in enumerate(self.meshes):
             mesh.textures = TexturesVertex(verts_features=vc)
             self.meshes[mid] = mesh
-
-    def get_depth_map(self, cam_ids=[0, 2]):
-
-        depth_maps = []
-        for cam_id in cam_ids:
-            self.init_renderer(self.get_camera(cam_id), "clean_mesh", "gray")
-            fragments = self.meshRas(self.meshes[0])
-            depth_map = fragments.zbuf[..., 0].squeeze(0)
-            if cam_id == 2:
-                depth_map = torch.fliplr(depth_map)
-            depth_maps.append(depth_map)
-
-        return depth_maps
-
-    def get_rgb_image(self, cam_ids=[0, 2], bg='gray'):
-
+            
+    def get_image(self, cam_ids=[0,2], type='rgb', bg='gray'):
+        
         images = []
+        
         for cam_id in range(len(self.cam_pos)):
             if cam_id in cam_ids:
-                self.init_renderer(self.get_camera(
-                    cam_id), "clean_mesh", bg)
-                if len(cam_ids) == 4:
-                    rendered_img = (
-                        self.renderer(self.meshes[0])[
-                            0:1, :, :, :3].permute(0, 3, 1, 2)
-                        - 0.5
-                    ) * 2.0
-                else:
-                    rendered_img = (
-                        self.renderer(self.meshes[0])[
-                            0:1, :, :, :3].permute(0, 3, 1, 2)
-                        - 0.5
-                    ) * 2.0
+                self.init_renderer(self.get_camera(cam_id), type, bg)
+                
+                if type == 'depth':
+                    fragments = self.meshRas(self.meshes[0])
+                    image = fragments.zbuf[..., 0].squeeze(0)
+                        
+                elif type == 'rgb':
+                    image = self.renderer(self.meshes[0])
+                    image = (image[0:1, :, :, :3].permute(0, 3, 1, 2)- 0.5) * 2.0
+                        
+                elif type == 'mask':
+                    image = self.renderer(self.meshes[0])[0:1, :, :, 3]
+                
                 if cam_id == 2 and len(cam_ids) == 2:
-                    rendered_img = torch.flip(rendered_img, dims=[3])
-                images.append(rendered_img)
-
+                    image = torch.flip(image, dims=[len(image.shape)-1])
+                
+                images.append(image)
+                
         return images
 
     def get_rendered_video(self, images, save_path):
@@ -353,8 +318,9 @@ class Render:
 
         pbar = tqdm(range(len(self.cam_pos)))
         pbar.set_description(colored(f"exporting video {os.path.basename(save_path)}...", "blue"))
+        
         for cam_id in pbar:
-            self.init_renderer(self.get_camera(cam_id), "clean_mesh", "gray")
+            self.init_renderer(self.get_camera(cam_id), "mesh", "gray")
 
             img_lst = [
                 np.array(Image.fromarray(img).resize(new_shape[::-1])).astype(np.uint8)[
@@ -366,7 +332,6 @@ class Render:
             for mesh in self.meshes:
                 rendered_img = (
                     (self.renderer(mesh)[0, :, :, :3] * 255.0)
-                    .detach()
                     .cpu()
                     .numpy()
                     .astype(np.uint8)
@@ -378,16 +343,3 @@ class Render:
 
         video.release()
         self.reload_cam()
-
-    def get_silhouette_image(self, cam_ids=[0, 2]):
-
-        images = []
-        for cam_id in range(len(self.cam_pos)):
-            if cam_id in cam_ids:
-                self.init_renderer(self.get_camera(cam_id), "silhouette")
-                rendered_img = self.renderer(self.meshes[0])[0:1, :, :, 3]
-                if cam_id == 2 and len(cam_ids) == 2:
-                    rendered_img = torch.flip(rendered_img, dims=[2])
-                images.append(rendered_img)
-
-        return images

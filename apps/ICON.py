@@ -317,7 +317,7 @@ class ICON(pl.LightningModule):
             # update the new T_normal_F/B
             self.render.load_meshes(batch["smpl_verts"] * torch.tensor([1.0, -1.0, 1.0]).to(self.device),
                                     batch["smpl_faces"])
-            T_normal_F, T_noraml_B = self.render.get_rgb_image()
+            T_normal_F, T_noraml_B = self.render.get_image()
             in_tensor_dict.update(
                 {'T_normal_F': T_normal_F, 'T_normal_B': T_noraml_B})
 

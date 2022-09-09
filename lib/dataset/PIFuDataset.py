@@ -155,7 +155,7 @@ class PIFuDataset():
 
         # render optimized mesh (normal, T_normal, image [-1,1])
         self.render.load_meshes(verts, faces)
-        return self.render.get_rgb_image()
+        return self.render.get_image()
 
     def get_subject_list(self, split):
 

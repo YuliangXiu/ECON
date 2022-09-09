@@ -6,10 +6,9 @@ import cv2
 import io
 import torch
 import numpy as np
-import scipy.misc
 from PIL import Image
 from rembg.bg import remove
-import human_det
+import mediapipe as mp
 
 from lib.pymaf.core import constants
 from lib.pymaf.utils.streamer import aug_matrix
@@ -86,7 +85,29 @@ def get_transformer(input_res):
     return [image_to_tensor, mask_to_tensor, image_to_pymaf_tensor, image_to_pixie_tensor, image_to_hybrik_tensor]
 
 
+def get_keypoints(image):
+    
+    def collect_xyv(x):
+        lmk = x.landmark
+        all_lmks = []
+        for i in range(len(lmk)):
+            all_lmks.append([lmk[i].x, lmk[i].y, lmk[i].visibility])
+        return np.array(all_lmks).reshape(-1,3)
+
+    mp_holistic = mp.solutions.holistic
+
+    with mp_holistic.Holistic(
+            static_image_mode=True,
+            model_complexity=2,
+            enable_segmentation=False,
+            refine_face_landmarks=True) as holistic:
+        results = holistic.process(image)
+        
+    return {"pose_landmarks": collect_xyv(results.pose_landmarks)}
+
+
 def process_image(img_file, det, hps_type, input_res=512, device=None, seg_path=None):
+    
     """Read image, do preprocessing and possibly crop it according to the bounding box.
     If there are bounding box annotations, use them to crop the image.
     If no bounding box is specified but openpose detections are available, use them to get the bounding box.
@@ -145,7 +166,7 @@ def process_image(img_file, det, hps_type, input_res=512, device=None, seg_path=
     img_crop = img_np.copy()
     img_hps = img_np.astype(np.float32) / 255.
     img_hps = torch.from_numpy(img_hps).permute(2, 0, 1)
-    
+
     if hps_type == 'bev':
         img_hps = img_np[:, :, [2, 1, 0]]
     elif hps_type == 'hybrik':
@@ -154,7 +175,10 @@ def process_image(img_file, det, hps_type, input_res=512, device=None, seg_path=
         img_hps = image_to_pymaf_tensor(img_hps).unsqueeze(0).to(device)
     else:
         img_hps = image_to_pixie_tensor(img_hps).unsqueeze(0).to(device)
-
+        
+    # keypoints estimation
+    landmark_dict = get_keypoints(img_np)
+    
     # uncrop params
     uncrop_param = {'center': center,
                     'scale': scale,
@@ -162,6 +186,10 @@ def process_image(img_file, det, hps_type, input_res=512, device=None, seg_path=
                     'box_shape': img_np.shape,
                     'crop_shape': img_for_crop.shape,
                     'M': M}
+
+    return_dict = {"img_icon": img_tensor, "img_crop": img_crop, "img_hps": img_hps,
+                   "img_ori": img_ori, "img_mask": img_mask, "uncrop_param": uncrop_param,
+                   "landmark_dict": landmark_dict}
 
     if not (seg_path is None):
         segmentations = load_segmentation(seg_path, (in_height, in_width))
@@ -194,9 +222,9 @@ def process_image(img_file, det, hps_type, input_res=512, device=None, seg_path=
             seg['coord_normalized'] = coord_normalized
             seg_coord_normalized.append(seg)
 
-        return img_tensor, img_hps, img_ori, img_mask, uncrop_param, seg_coord_normalized
+        return_dict.update({"segmentations": seg_coord_normalized})
 
-    return img_tensor, img_crop, img_hps, img_ori, img_mask, uncrop_param
+    return return_dict
 
 
 def get_transform(center, scale, res):
