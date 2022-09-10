@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
     if args_c.show:
         # for item in dataset:
-        item = dataset[0]
+        item = dataset[2]
         dataset.visualize_sampling3D(item, mode=args_c.mode)
 
     if args_c.speed:

@@ -180,7 +180,7 @@ class Pytorch3dRasterizer(nn.Module):
             "faces_per_pixel": 1,
             "bin_size": 0,
             "max_faces_per_bin": None,
-            "perspective_correct": True,
+            "perspective_correct": False,
             "cull_backfaces": True,
         }
         raster_settings = dict2obj(raster_settings)

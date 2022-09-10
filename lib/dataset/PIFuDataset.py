@@ -713,43 +713,48 @@ class PIFuDataset:
         keypoints = data_dict["smpl_joint"]
         keypoints[:, 1] *= -1  # [-1,1] 24x3
 
-        if mode != "kpt":
-            # create a mesh
-            mesh = trimesh.Trimesh(verts, data_dict["faces"], process=True)
-            mesh.visual.vertex_colors = [128.0, 128.0, 128.0, 255.0]
-            vis_list.append(mesh)
+        # create a mesh
+        if mode == 'kpt':
+            alpha = 0.2
+        else:
+            alpha = 1.0 
+            
+        mesh = trimesh.Trimesh(verts, data_dict["faces"], process=True)
+        mesh.visual.vertex_colors = [128.0, 128.0, 128.0, alpha * 255.0]
+        vis_list.append(mesh)
 
-            if "voxel_verts" in data_dict.keys():
-                print(colored("voxel verts", "green"))
-                voxel_verts = data_dict["voxel_verts"] * 2.0
-                voxel_faces = data_dict["voxel_faces"]
-                voxel_verts[:, 1] *= -1
-                voxel = trimesh.Trimesh(
-                    voxel_verts,
-                    voxel_faces[:, [0, 2, 1]],
-                    process=False,
-                    maintain_order=True,
-                )
-                voxel.visual.vertex_colors = [0.0, 128.0, 0.0, 255.0]
-                vis_list.append(voxel)
+        if "voxel_verts" in data_dict.keys():
+            print(colored("voxel verts", "green"))
+            voxel_verts = data_dict["voxel_verts"] * 2.0
+            voxel_faces = data_dict["voxel_faces"]
+            voxel_verts[:, 1] *= -1
+            voxel = trimesh.Trimesh(
+                voxel_verts,
+                voxel_faces[:, [0, 2, 1]],
+                process=False,
+                maintain_order=True,
+            )
+            voxel.visual.vertex_colors = [0.0, 128.0, 0.0, alpha * 255.0]
+            vis_list.append(voxel)
 
-            if "smpl_verts" in data_dict.keys():
-                print(colored("smpl verts", "green"))
-                smplx_verts = data_dict["smpl_verts"]
-                smplx_faces = data_dict["smpl_faces"]
-                smplx_verts[:, 1] *= -1
-                smplx = trimesh.Trimesh(
-                    smplx_verts,
-                    smplx_faces[:, [0, 2, 1]],
-                    process=False,
-                    maintain_order=True,
-                )
-                smplx.visual.vertex_colors = [128.0, 128.0, 0.0, 255.0]
-                vis_list.append(smplx)
-
-                # create a pointcloud
-                pc = vedo.Points(points, r=15, c=np.float32(colors))
-                vis_list.append(pc)
+        if "smpl_verts" in data_dict.keys():
+            print(colored("smpl verts", "green"))
+            smplx_verts = data_dict["smpl_verts"]
+            smplx_faces = data_dict["smpl_faces"]
+            smplx_verts[:, 1] *= -1
+            smplx = trimesh.Trimesh(
+                smplx_verts,
+                smplx_faces[:, [0, 2, 1]],
+                process=False,
+                maintain_order=True,
+            )
+            smplx.visual.vertex_colors = [128.0, 128.0, 0.0, alpha * 255.0]
+            vis_list.append(smplx)
+            
+        if mode != 'kpt':
+            # create a pointcloud
+            pc = vedo.Points(points, r=15, c=np.float32(colors))
+            vis_list.append(pc)
 
         # create a picure
         img_pos = [1.0, 0.0, -1.0]

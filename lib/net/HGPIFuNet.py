@@ -64,7 +64,6 @@ class HGPIFuNet(BasePIFuNet):
         self.smpl_dim = self.opt.smpl_dim
         self.voxel_dim = self.opt.voxel_dim
         self.hourglass_dim = self.opt.hourglass_dim
-        self.sdf_clip = cfg.sdf_clip / 100.0
 
         self.in_geo = [item[0] for item in self.opt.in_geo]
         self.in_nml = [item[0] for item in self.opt.in_nml]

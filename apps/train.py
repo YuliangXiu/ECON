@@ -29,9 +29,13 @@ if __name__ == "__main__":
                         type=str,
                         help="path of the yaml config file")
     parser.add_argument("-test", "--test_mode", action="store_true")
+    parser.add_argument("-overfit", "--overfit_mode", action="store_true")
     args = parser.parse_args()
     cfg = get_cfg_defaults()
     cfg.merge_from_file(args.config_file)
+    
+    cfg.overfit = args.overfit_mode if args.overfit_mode else False
+    cfg.test_mode = args.test_mode if args.test_mode else False
     cfg.freeze()
 
     os.makedirs(osp.join(cfg.results_path, cfg.name), exist_ok=True)
@@ -40,13 +44,15 @@ if __name__ == "__main__":
 
     os.environ["WANDB_NOTEBOOK_NAME"] = osp.join(cfg.results_path, f"wandb")
     wandb_logger = pl_loggers.WandbLogger(
-        offline=True if (cfg.test_mode or args.test_mode) else False,
+        offline=cfg.test_mode,
         project="ICON",
         save_dir=cfg.results_path,
         name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}",
     )
+    
 
     if cfg.overfit:
+        
         cfg_overfit_list = [
             "batch_size",
             1,
@@ -71,7 +77,7 @@ if __name__ == "__main__":
         filename="epoch={epoch:02d}-val_avgloss={val/avgloss:.2f}",
     )
 
-    if cfg.test_mode or args.test_mode:
+    if cfg.test_mode:
         cfg.merge_from_list(cfg_test_mode)
 
     # customized progress_bar

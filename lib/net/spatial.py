@@ -67,20 +67,20 @@ class SpatialEncoder(pl.LightningModule):
 
     def forward(self, cxyz, kptxyz):
 
+        B, N = cxyz.shape[:2]
+        K = kptxyz.shape[1]
+
         dz = cxyz[:, :, None, 2:3] - kptxyz[:, None, :, 2:3]
         dxyz = cxyz[:, :, None] - kptxyz[:, None, :]
+        
+        # (B, N, K)
+        weight = torch.exp(-(dxyz**2).sum(-1) / (2.0 * (self.sigma**2)))
 
-        weight = torch.exp(-(dxyz**2).sum(-1, keepdim=True) /
-                           (2.0 * (self.sigma**2)))
-        weight = weight.view(*weight.shape[:2], -1)  # (B, N, K)
-
-        # position embedding
-        out = self.position_embedding(dz.view(*dz.shape[:2], -1),
-                                      self.sp_level)
-
-        out = (out.view(*out.shape[:2], -1, weight.shape[-1]) *
-               weight[:, :, None])  # BV,N,7,13 * BV,N,1,13
-        out = out.view(out.shape[0], -1, out.shape[1])
+        # position embedding ( B, N, K * (2*n_levels+1) )
+        out = self.position_embedding(dz.view(B, N, K), self.sp_level)
+        
+        # BV,N,K,(2*n_levels+1) * B,N,K,1 = B,N,K*(2*n_levels+1) -> BV,K*(2*n_levels+1),N
+        out = (out.view(B, N, -1, K) * weight[:, :, None]).view(B, N, -1).permute(0,2,1) 
 
         return out
 
