@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -38,15 +37,30 @@ from PIL import Image, ImageFont, ImageDraw
 from kaolin.ops.mesh import check_sign
 from kaolin.metrics.trianglemesh import point_to_mesh_distance
 
-from pytorch3d.loss import (
-    mesh_laplacian_smoothing,
-    mesh_normal_consistency
-)
+from pytorch3d.loss import (mesh_laplacian_smoothing, mesh_normal_consistency)
 
 import tinyobjloader
 
+
+def rot6d_to_rotmat(x):
+    """Convert 6D rotation representation to 3x3 rotation matrix.
+    Based on Zhou et al., "On the Continuity of Rotation Representations in Neural Networks", CVPR 2019
+    Input:
+        (B,6) Batch of 6-D rotation representations
+    Output:
+        (B,3,3) Batch of corresponding rotation matrices
+    """
+    x = x.view(-1, 3, 2)
+    a1 = x[:, :, 0]
+    a2 = x[:, :, 1]
+    b1 = F.normalize(a1)
+    b2 = F.normalize(a2 - torch.einsum("bi,bi->b", b1, a2).unsqueeze(-1) * b1)
+    b3 = torch.cross(b1, b2)
+    return torch.stack((b1, b2, b3), dim=-1)
+
+
 def obj_loader(path):
-       # Create reader.
+    # Create reader.
     reader = tinyobjloader.ObjReader()
 
     # Load .obj(and .mtl) using default configuration
@@ -63,10 +77,12 @@ def obj_loader(path):
     shapes = reader.GetShapes()
     tri = shapes[0].mesh.numpy_indices().reshape(-1, 9)
     faces = tri[:, [0, 3, 6]]
-    
+
     return verts, faces
 
+
 class HoppeMesh:
+
     def __init__(self, verts, faces):
         '''
         The HoppeSDF calculates signed distance towards a predefined oriented point cloud
@@ -78,15 +94,17 @@ class HoppeMesh:
         self.trimesh = trimesh.Trimesh(verts, faces, process=True)
         self.verts = np.array(self.trimesh.vertices)
         self.faces = np.array(self.trimesh.faces)
-        self.vert_normals, self.faces_normals = compute_normal(self.verts, self.faces)
-        
+        self.vert_normals, self.faces_normals = compute_normal(
+            self.verts, self.faces)
+
     def contains(self, points):
 
-        labels = check_sign(torch.as_tensor(self.verts).unsqueeze(0), 
-                            torch.as_tensor(self.faces),
-                            torch.as_tensor(points).unsqueeze(0))
+        labels = check_sign(
+            torch.as_tensor(self.verts).unsqueeze(0),
+            torch.as_tensor(self.faces),
+            torch.as_tensor(points).unsqueeze(0))
         return labels.squeeze(0).numpy()
-    
+
     def triangles(self):
         return self.verts[self.faces]  # [n, 3, 3]
 
@@ -95,7 +113,9 @@ def tensor2variable(tensor, device):
     # [1,23,3,3]
     return torch.tensor(tensor, device=device, requires_grad=True)
 
+
 class GMoF(torch.nn.Module):
+
     def __init__(self, rho=1):
         super(GMoF, self).__init__()
         self.rho = rho
@@ -104,8 +124,8 @@ class GMoF(torch.nn.Module):
         return 'rho = {}'.format(self.rho)
 
     def forward(self, residual):
-        dist = torch.div(residual, residual + self.rho ** 2)
-        return self.rho ** 2 * dist
+        dist = torch.div(residual, residual + self.rho**2)
+        return self.rho**2 * dist
 
 
 def mesh_edge_loss(meshes, target_length: float = 0.0):
@@ -126,9 +146,10 @@ def mesh_edge_loss(meshes, target_length: float = 0.0):
         no meshes or all empty meshes.
     """
     if meshes.isempty():
-        return torch.tensor(
-            [0.0], dtype=torch.float32, device=meshes.device, requires_grad=True
-        )
+        return torch.tensor([0.0],
+                            dtype=torch.float32,
+                            device=meshes.device,
+                            requires_grad=True)
 
     N = len(meshes)
     edges_packed = meshes.edges_packed()  # (sum(E_n), 3)
@@ -145,7 +166,7 @@ def mesh_edge_loss(meshes, target_length: float = 0.0):
 
     verts_edges = verts_packed[edges_packed]
     v0, v1 = verts_edges.unbind(1)
-    loss = ((v0 - v1).norm(dim=1, p=2) - target_length) ** 2.0
+    loss = ((v0 - v1).norm(dim=1, p=2) - target_length)**2.0
     loss_vertex = loss * weights
     # loss_outlier = torch.topk(loss, 100)[0].mean()
     # loss_all = (loss_vertex.sum() + loss_outlier.mean()) / N
@@ -163,7 +184,8 @@ def remesh(obj_path, perc, device):
         targetlen=pymeshlab.Percentage(perc), adaptive=True)
     ms.save_current_mesh(obj_path.replace("recon", "remesh"))
     polished_mesh = trimesh.load_mesh(obj_path.replace("recon", "remesh"))
-    verts_pr = torch.tensor(polished_mesh.vertices).float().unsqueeze(0).to(device)
+    verts_pr = torch.tensor(
+        polished_mesh.vertices).float().unsqueeze(0).to(device)
     faces_pr = torch.tensor(polished_mesh.faces).long().unsqueeze(0).to(device)
 
     return verts_pr, faces_pr
@@ -192,17 +214,19 @@ def get_mask(tensor, dim):
 def blend_rgb_norm(rgb, norm, mask):
 
     # [0,0,0] or [127,127,127] should be marked as mask
-    final = rgb * (1-mask) + norm * (mask)
+    final = rgb * (1 - mask) + norm * (mask)
 
     return final.astype(np.uint8)
 
 
 def unwrap(image, data):
 
-    img_uncrop = uncrop(np.array(Image.fromarray(image).resize(data['uncrop_param']['box_shape'][:2])),
-                        data['uncrop_param']['center'],
-                        data['uncrop_param']['scale'],
-                        data['uncrop_param']['crop_shape'])
+    img_uncrop = uncrop(
+        np.array(
+            Image.fromarray(image).resize(
+                data['uncrop_param']['box_shape'][:2])),
+        data['uncrop_param']['center'], data['uncrop_param']['scale'],
+        data['uncrop_param']['crop_shape'])
 
     img_orig = cv2.warpAffine(img_uncrop,
                               np.linalg.inv(data['uncrop_param']['M'])[:2, :],
@@ -220,8 +244,8 @@ def update_mesh_shape_prior_losses(mesh, losses):
     # mesh normal consistency
     losses["nc"]['value'] = mesh_normal_consistency(mesh)
     # mesh laplacian smoothing
-    losses["laplacian"]['value'] = mesh_laplacian_smoothing(
-        mesh, method="uniform")
+    losses["laplacian"]['value'] = mesh_laplacian_smoothing(mesh,
+                                                            method="uniform")
 
 
 def rename(old_dict, old_name, new_name):
@@ -413,46 +437,54 @@ def cal_sdf_batch(verts, faces, cmaps, vis, points):
     Bsize = points.shape[0]
 
     normals = Meshes(verts, faces).verts_normals_padded()
-    
+
     # SMPL has watertight mesh, but SMPL-X has two eyeballs and open mouth
     # 1. remove eye_ball faces from SMPL-X: 9928-9383, 10474-9929
     # 2. fill mouth holes with 30 more faces
 
     if verts.shape[1] == 10475:
         faces = faces[:, ~SMPLX().smplx_eyeball_fid]
-        mouth_faces = torch.as_tensor(SMPLX().smplx_mouth_fid).unsqueeze(
-            0).repeat(Bsize, 1, 1).to(faces.device)
+        mouth_faces = torch.as_tensor(
+            SMPLX().smplx_mouth_fid).unsqueeze(0).repeat(Bsize, 1,
+                                                         1).to(faces.device)
         faces = torch.cat([faces, mouth_faces], dim=1)
 
     triangles = face_vertices(verts, faces)
     normals = face_vertices(normals, faces)
     cmaps = face_vertices(cmaps, faces)
     vis = face_vertices(vis, faces)
-    
+
     residues, pts_ind, _ = point_to_mesh_distance(points, triangles)
     closest_triangles = torch.gather(
-        triangles, 1, pts_ind[:, :, None, None].expand(-1, -1, 3, 3)).view(-1, 3, 3)
+        triangles, 1, pts_ind[:, :, None, None].expand(-1, -1, 3,
+                                                       3)).view(-1, 3, 3)
     closest_normals = torch.gather(
-        normals, 1, pts_ind[:, :, None, None].expand(-1, -1, 3, 3)).view(-1, 3, 3)
+        normals, 1, pts_ind[:, :, None, None].expand(-1, -1, 3,
+                                                     3)).view(-1, 3, 3)
     closest_cmaps = torch.gather(
-        cmaps, 1, pts_ind[:, :, None, None].expand(-1, -1, 3, 3)).view(-1, 3, 3)
-    closest_vis = torch.gather(
-        vis, 1, pts_ind[:, :, None, None].expand(-1, -1, 3, 1)).view(-1, 3, 1)
+        cmaps, 1, pts_ind[:, :, None, None].expand(-1, -1, 3,
+                                                   3)).view(-1, 3, 3)
+    closest_vis = torch.gather(vis, 1, pts_ind[:, :, None,
+                                               None].expand(-1, -1, 3,
+                                                            1)).view(-1, 3, 1)
     bary_weights = barycentric_coordinates_of_projection(
         points.view(-1, 3), closest_triangles)
-    
-    pts_cmap = (closest_cmaps*bary_weights[:, :, None]).sum(1).unsqueeze(0)
-    pts_vis = (closest_vis*bary_weights[:,
-               :, None]).sum(1).unsqueeze(0).ge(1e-1)
-    pts_norm = (closest_normals*bary_weights[:, :, None]).sum(
-        1).unsqueeze(0) * torch.tensor([-1.0, 1.0, -1.0]).type_as(normals)
+
+    pts_cmap = (closest_cmaps * bary_weights[:, :, None]).sum(1).unsqueeze(0)
+    pts_vis = (closest_vis *
+               bary_weights[:, :, None]).sum(1).unsqueeze(0).ge(1e-1)
+    pts_norm = (closest_normals *
+                bary_weights[:, :, None]).sum(1).unsqueeze(0) * torch.tensor(
+                    [-1.0, 1.0, -1.0]).type_as(normals)
     pts_norm = F.normalize(pts_norm, dim=2)
     pts_dist = torch.sqrt(residues) / torch.sqrt(torch.tensor(3))
 
     pts_signs = 2.0 * (check_sign(verts, faces[0], points).float() - 0.5)
     pts_sdf = (pts_dist * pts_signs).unsqueeze(-1)
 
-    return pts_sdf.view(Bsize, -1, 1), pts_norm.view(Bsize, -1, 3), pts_cmap.view(Bsize, -1, 3), pts_vis.view(Bsize, -1, 1)
+    return pts_sdf.view(Bsize, -1,
+                        1), pts_norm.view(Bsize, -1, 3), pts_cmap.view(
+                            Bsize, -1, 3), pts_vis.view(Bsize, -1, 1)
 
 
 def orthogonal(points, calibrations, transforms=None):
@@ -813,19 +845,23 @@ def get_optim_grid_image(per_loop_lst, loss=None, nrow=4, type='smpl'):
         draw.text((10, 5), f"error: {loss:.3f}", (255, 0, 0), font=font)
 
     if type == 'smpl':
-        for col_id, col_txt in enumerate(
-                ['image', 'smpl-norm(render)', 'cloth-norm(pred)', 'diff-norm', 'diff-mask']):
-            draw.text((10+(col_id*grid_size), 5),
-                      col_txt, (255, 0, 0), font=font)
+        for col_id, col_txt in enumerate([
+                'image', 'smpl-norm(render)', 'cloth-norm(pred)', 'diff-norm',
+                'diff-mask'
+        ]):
+            draw.text((10 + (col_id * grid_size), 5),
+                      col_txt, (255, 0, 0),
+                      font=font)
     elif type == 'cloth':
         for col_id, col_txt in enumerate(
-                ['image', 'cloth-norm(recon)', 'cloth-norm(pred)', 'diff-norm']):
-            draw.text((10+(col_id*grid_size), 5),
-                      col_txt, (255, 0, 0), font=font)
-        for col_id, col_txt in enumerate(
-                ['0', '90', '180', '270']):
-            draw.text((10+(col_id*grid_size), grid_size*2+5),
-                      col_txt, (255, 0, 0), font=font)
+            ['image', 'cloth-norm(recon)', 'cloth-norm(pred)', 'diff-norm']):
+            draw.text((10 + (col_id * grid_size), 5),
+                      col_txt, (255, 0, 0),
+                      font=font)
+        for col_id, col_txt in enumerate(['0', '90', '180', '270']):
+            draw.text((10 + (col_id * grid_size), grid_size * 2 + 5),
+                      col_txt, (255, 0, 0),
+                      font=font)
     else:
         print(f"{type} should be 'smpl' or 'cloth'")
 
@@ -886,19 +922,23 @@ def mesh_move(mesh_lst, step, scale=1.0):
 
     return results
 
-def rescale_smpl(fitted_path, scale=100, translate=(0,0,0)):
-    
-    fitted_body = trimesh.load(fitted_path, process=False, maintain_order=True, skip_materials=True)
+
+def rescale_smpl(fitted_path, scale=100, translate=(0, 0, 0)):
+
+    fitted_body = trimesh.load(fitted_path,
+                               process=False,
+                               maintain_order=True,
+                               skip_materials=True)
     resize_matrix = trimesh.transformations.scale_and_translate(
-                            scale=(scale), 
-                            translate=translate)
+        scale=(scale), translate=translate)
 
     fitted_body.apply_transform(resize_matrix)
-    
+
     return np.array(fitted_body.vertices)
 
 
 class SMPLX():
+
     def __init__(self):
 
         self.current_dir = osp.join(osp.dirname(__file__),
@@ -911,44 +951,46 @@ class SMPLX():
         self.smplx_verts_path = osp.join(self.current_dir,
                                          "smpl_data/smplx_verts.npy")
         self.smplx_faces_path = osp.join(self.current_dir,
-                                   "smpl_data/smplx_faces.npy")
+                                         "smpl_data/smplx_faces.npy")
         self.cmap_vert_path = osp.join(self.current_dir,
                                        "smpl_data/smplx_cmap.npy")
-        
+
         self.smplx_to_smplx_path = osp.join(self.current_dir,
-                                       "smpl_data/smplx_to_smpl.pkl")
-        
+                                            "smpl_data/smplx_to_smpl.pkl")
+
         self.smplx_eyeball_fid = osp.join(self.current_dir,
-                                        "smpl_data/eyeball_fid.npy")
+                                          "smpl_data/eyeball_fid.npy")
         self.smplx_fill_mouth_fid = osp.join(self.current_dir,
-                                        "smpl_data/fill_mouth_fid.npy")
+                                             "smpl_data/fill_mouth_fid.npy")
 
         self.faces = np.load(self.smplx_faces_path)
         self.verts = np.load(self.smplx_verts_path)
         self.smpl_verts = np.load(self.smpl_verts_path)
         self.smpl_faces = np.load(self.smpl_faces_path)
-        
+
         self.smplx_eyeball_fid = np.load(self.smplx_eyeball_fid)
         self.smplx_mouth_fid = np.load(self.smplx_fill_mouth_fid)
-        
+
         self.smplx_to_smpl = cPickle.load(open(self.smplx_to_smplx_path, 'rb'))
 
         self.model_dir = osp.join(self.current_dir, "models")
         self.tedra_dir = osp.join(self.current_dir, "../tedra_data")
-    
+
     def cmap_smpl_vids(self, type):
-        
+
         # keys:
         # closest_faces -   [6890, 3] with smplx vert_idx
         # bc            -   [6890, 3] with barycentric weights
-        
+
         cmap_smplx = torch.as_tensor(np.load(self.cmap_vert_path)).float()
         if type == 'smplx':
             return cmap_smplx
         elif type == 'smpl':
             bc = torch.as_tensor(self.smplx_to_smpl['bc'].astype(np.float32))
-            closest_faces = self.smplx_to_smpl['closest_faces'].astype(np.int32)
-            
-            cmap_smpl = torch.einsum('bij, bi->bj', cmap_smplx[closest_faces], bc)
-            
+            closest_faces = self.smplx_to_smpl['closest_faces'].astype(
+                np.int32)
+
+            cmap_smpl = torch.einsum('bij, bi->bj', cmap_smplx[closest_faces],
+                                     bc)
+
             return cmap_smpl

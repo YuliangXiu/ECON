@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -81,6 +80,7 @@ def init_weights(net, init_type='normal', init_gain=0.02):
     We use 'normal' in the original pix2pix and CycleGAN paper. But xavier and kaiming might
     work better for some applications. Feel free to try yourself.
     """
+
     def init_func(m):  # define the initialization function
         classname = m.__class__.__name__
         if hasattr(m, 'weight') and (classname.find('Conv') != -1
@@ -184,7 +184,7 @@ def cal_gradient_penalty(netD,
             retain_graph=True,
             only_inputs=True)
         gradients = gradients[0].view(real_data.size(0), -1)  # flat the data
-        gradient_penalty = (((gradients + 1e-16).norm(2, dim=1) - constant) **
+        gradient_penalty = (((gradients + 1e-16).norm(2, dim=1) - constant)**
                             2).mean() * lambda_gp  # added eps
         return gradient_penalty, gradients
     else:
@@ -217,11 +217,13 @@ def get_norm_layer(norm_type='instance'):
 
 
 class Flatten(nn.Module):
+
     def forward(self, input):
         return input.view(input.size(0), -1)
 
 
 class ConvBlock(nn.Module):
+
     def __init__(self, in_planes, out_planes, opt):
         super(ConvBlock, self).__init__()
         [k, s, d, p] = opt.conv3x3
@@ -281,6 +283,7 @@ class ConvBlock(nn.Module):
 
 
 class Vgg19(torch.nn.Module):
+
     def __init__(self, requires_grad=False):
         super(Vgg19, self).__init__()
         vgg_pretrained_features = models.vgg19(pretrained=True).features
@@ -314,6 +317,7 @@ class Vgg19(torch.nn.Module):
 
 
 class VGGLoss(nn.Module):
+
     def __init__(self):
         super(VGGLoss, self).__init__()
         self.vgg = Vgg19().cuda()

@@ -109,6 +109,7 @@ class Bottleneck(nn.Module):
 
 
 class HighResolutionModule(nn.Module):
+
     def __init__(self,
                  num_branches,
                  blocks,
@@ -276,6 +277,7 @@ blocks_dict = {'BASIC': BasicBlock, 'BOTTLENECK': Bottleneck}
 
 
 class PoseHighResolutionNet(nn.Module):
+
     def __init__(self, cfg):
         self.inplanes = 64
         extra = cfg['MODEL']['EXTRA']

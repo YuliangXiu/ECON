@@ -30,6 +30,7 @@ def _make_divisible(v, divisor, min_value=None):
 
 
 class ConvBNReLU(nn.Sequential):
+
     def __init__(self,
                  in_planes,
                  out_planes,
@@ -52,6 +53,7 @@ class ConvBNReLU(nn.Sequential):
 
 
 class InvertedResidual(nn.Module):
+
     def __init__(self, inp, oup, stride, expand_ratio, norm_layer=None):
         super(InvertedResidual, self).__init__()
         self.stride = stride
@@ -92,6 +94,7 @@ class InvertedResidual(nn.Module):
 
 
 class MobileNetV2(nn.Module):
+
     def __init__(self,
                  num_classes=1000,
                  width_mult=1.0,

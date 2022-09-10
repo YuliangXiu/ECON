@@ -12,14 +12,18 @@ import torch.nn.functional as F
 
 
 class TempSoftmaxFusion(nn.Module):
-    def __init__(self, channels=[2048*2, 1024, 1], detach_inputs=False, detach_feature=False):
+
+    def __init__(self,
+                 channels=[2048 * 2, 1024, 1],
+                 detach_inputs=False,
+                 detach_feature=False):
         super(TempSoftmaxFusion, self).__init__()
         self.detach_inputs = detach_inputs
         self.detach_feature = detach_feature
         # weight
         layers = []
         for l in range(0, len(channels) - 1):
-            layers.append(nn.Linear(channels[l], channels[l+1]))
+            layers.append(nn.Linear(channels[l], channels[l + 1]))
             if l < len(channels) - 2:
                 layers.append(nn.ReLU())
         self.layers = nn.Sequential(*layers)
@@ -38,13 +42,13 @@ class TempSoftmaxFusion(nn.Module):
             if self.detach_inputs:
                 f_in = f_in.detach()
             f_temp = self.layers(f_in)
-            f_weight = F.softmax(f_temp*self.temperature, dim=1)
+            f_weight = F.softmax(f_temp * self.temperature, dim=1)
 
             # 2. feature fusion
             if self.detach_feature:
                 x = x.detach()
                 y = y.detach()
-            f_out = f_weight[:, [0]]*x + f_weight[:, [1]]*y
+            f_out = f_weight[:, [0]] * x + f_weight[:, [1]] * y
             x_out = f_out
             y_out = f_out
         else:
@@ -53,12 +57,17 @@ class TempSoftmaxFusion(nn.Module):
             f_weight = None
         return x_out, y_out, f_weight
 
+
 # MLP + Gumbel-Softmax trick
 # w = w^{\prime} - w^{\prime}\text{.detach()} + w^{\prime}\text{.gt(0.5)}
 
 
 class GumbelSoftmaxFusion(nn.Module):
-    def __init__(self, channels=[2048*2, 1024, 1], detach_inputs=False, detach_feature=False):
+
+    def __init__(self,
+                 channels=[2048 * 2, 1024, 1],
+                 detach_inputs=False,
+                 detach_feature=False):
         super(GumbelSoftmaxFusion, self).__init__()
         self.detach_inputs = detach_inputs
         self.detach_feature = detach_feature
@@ -66,7 +75,7 @@ class GumbelSoftmaxFusion(nn.Module):
         # weight
         layers = []
         for l in range(0, len(channels) - 1):
-            layers.append(nn.Linear(channels[l], channels[l+1]))
+            layers.append(nn.Linear(channels[l], channels[l + 1]))
             if l < len(channels) - 2:
                 layers.append(nn.ReLU())
         layers.append(nn.Softmax())
@@ -91,7 +100,7 @@ class GumbelSoftmaxFusion(nn.Module):
             if self.detach_feature:
                 x = x.detach()
                 y = y.detach()
-            f_out = f_weight[:, [0]]*x + f_weight[:, [1]]*y
+            f_out = f_weight[:, [0]] * x + f_weight[:, [1]] * y
             x_out = f_out
             y_out = f_out
         else:

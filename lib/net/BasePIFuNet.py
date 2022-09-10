@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -22,6 +21,7 @@ from .geometry import index, orthogonal, perspective
 
 
 class BasePIFuNet(pl.LightningModule):
+
     def __init__(
             self,
             projection_mode='orthogonal',

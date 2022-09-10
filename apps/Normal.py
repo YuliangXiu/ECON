@@ -11,10 +11,12 @@ torch.backends.cudnn.benchmark = True
 
 logging.getLogger("lightning").setLevel(logging.ERROR)
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
 class Normal(pl.LightningModule):
+
     def __init__(self, cfg):
         super(Normal, self).__init__()
         self.cfg = cfg
@@ -40,26 +42,28 @@ class Normal(pl.LightningModule):
         weight_decay = self.cfg.weight_decay
         momentum = self.cfg.momentum
 
-        optim_params_N_F = [
-            {"params": self.netG.netF.parameters(), "lr": self.lr_N}]
-        optim_params_N_B = [
-            {"params": self.netG.netB.parameters(), "lr": self.lr_N}]
+        optim_params_N_F = [{
+            "params": self.netG.netF.parameters(),
+            "lr": self.lr_N
+        }]
+        optim_params_N_B = [{
+            "params": self.netG.netB.parameters(),
+            "lr": self.lr_N
+        }]
 
-        optimizer_N_F = torch.optim.Adam(
-            optim_params_N_F, lr=self.lr_N, weight_decay=weight_decay
-        )
+        optimizer_N_F = torch.optim.Adam(optim_params_N_F,
+                                         lr=self.lr_N,
+                                         weight_decay=weight_decay)
 
-        optimizer_N_B = torch.optim.Adam(
-            optim_params_N_B, lr=self.lr_N, weight_decay=weight_decay
-        )
+        optimizer_N_B = torch.optim.Adam(optim_params_N_B,
+                                         lr=self.lr_N,
+                                         weight_decay=weight_decay)
 
         scheduler_N_F = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer_N_F, milestones=self.cfg.schedule, gamma=self.cfg.gamma
-        )
+            optimizer_N_F, milestones=self.cfg.schedule, gamma=self.cfg.gamma)
 
         scheduler_N_B = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer_N_B, milestones=self.cfg.schedule, gamma=self.cfg.gamma
-        )
+            optimizer_N_B, milestones=self.cfg.schedule, gamma=self.cfg.gamma)
 
         self.schedulers = [scheduler_N_F, scheduler_N_B]
         optims = [optimizer_N_F, optimizer_N_B]
@@ -74,13 +78,11 @@ class Normal(pl.LightningModule):
         for name in render_tensor.keys():
             result_list.append(
                 resize(
-                    ((render_tensor[name].cpu().numpy()[0] + 1.0) / 2.0).transpose(
-                        1, 2, 0
-                    ),
+                    ((render_tensor[name].cpu().numpy()[0] + 1.0) /
+                     2.0).transpose(1, 2, 0),
                     (height, height),
                     anti_aliasing=True,
-                )
-            )
+                ))
         result_array = np.concatenate(result_list, axis=1)
 
         return result_array
@@ -94,14 +96,16 @@ class Normal(pl.LightningModule):
         for name in self.in_nml:
             in_tensor[name] = batch[name]
 
-        FB_tensor = {"normal_F": batch["normal_F"],
-                     "normal_B": batch["normal_B"]}
+        FB_tensor = {
+            "normal_F": batch["normal_F"],
+            "normal_B": batch["normal_B"]
+        }
 
         self.netG.train()
 
         preds_F, preds_B = self.netG(in_tensor)
-        error_NF, error_NB = self.netG.get_norm_error(
-            preds_F, preds_B, FB_tensor)
+        error_NF, error_NB = self.netG.get_norm_error(preds_F, preds_B,
+                                                      FB_tensor)
 
         (opt_nf, opt_nb) = self.optimizers()
 
@@ -171,18 +175,19 @@ class Normal(pl.LightningModule):
         for name in self.in_nml:
             in_tensor[name] = batch[name]
 
-        FB_tensor = {"normal_F": batch["normal_F"],
-                     "normal_B": batch["normal_B"]}
+        FB_tensor = {
+            "normal_F": batch["normal_F"],
+            "normal_B": batch["normal_B"]
+        }
 
         self.netG.train()
 
         preds_F, preds_B = self.netG(in_tensor)
-        error_NF, error_NB = self.netG.get_norm_error(
-            preds_F, preds_B, FB_tensor)
+        error_NF, error_NB = self.netG.get_norm_error(preds_F, preds_B,
+                                                      FB_tensor)
 
-        if (batch_idx > 0 and batch_idx % int(self.cfg.freq_show_train) == 0) or (
-            batch_idx == 0
-        ):
+        if (batch_idx > 0 and batch_idx % int(self.cfg.freq_show_train)
+                == 0) or (batch_idx == 0):
 
             with torch.no_grad():
                 nmlF, nmlB = self.netG(in_tensor)

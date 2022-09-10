@@ -13,6 +13,7 @@ class VoxelizationFunction(Function):
     Definition of differentiable voxelization function
     Currently implemented only for cuda Tensors
     """
+
     @staticmethod
     def forward(ctx, smpl_vertices, smpl_face_center, smpl_face_normal,
                 smpl_vertex_code, smpl_face_code, smpl_tetrahedrons,

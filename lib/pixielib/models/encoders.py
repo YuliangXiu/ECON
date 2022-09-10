@@ -5,6 +5,7 @@ import torch.nn.functional as F
 
 
 class ResnetEncoder(nn.Module):
+
     def __init__(self, append_layers=None):
         super(ResnetEncoder, self).__init__()
         from . import resnet
@@ -22,7 +23,7 @@ class ResnetEncoder(nn.Module):
     def forward(self, inputs):
         ''' inputs: [bz, 3, h, w], range: [0,1]
         '''
-        inputs = (inputs - self.MEAN)/self.STD
+        inputs = (inputs - self.MEAN) / self.STD
         features = self.encoder(inputs)
         if self.append_layers:
             features = self.last_op(features)
@@ -30,12 +31,13 @@ class ResnetEncoder(nn.Module):
 
 
 class MLP(nn.Module):
+
     def __init__(self, channels=[2048, 1024, 1], last_op=None):
         super(MLP, self).__init__()
         layers = []
 
         for l in range(0, len(channels) - 1):
-            layers.append(nn.Linear(channels[l], channels[l+1]))
+            layers.append(nn.Linear(channels[l], channels[l + 1]))
             if l < len(channels) - 2:
                 layers.append(nn.ReLU())
         if last_op:
@@ -49,6 +51,7 @@ class MLP(nn.Module):
 
 
 class HRNEncoder(nn.Module):
+
     def __init__(self, append_layers=None):
         super(HRNEncoder, self).__init__()
         from . import hrnet
@@ -65,7 +68,7 @@ class HRNEncoder(nn.Module):
     def forward(self, inputs):
         ''' inputs: [bz, 3, h, w], range: [0,1]
         '''
-        inputs = (inputs - self.MEAN)/self.STD
+        inputs = (inputs - self.MEAN) / self.STD
         features = self.encoder(inputs)['concat']
         if self.append_layers:
             features = self.last_op(features)

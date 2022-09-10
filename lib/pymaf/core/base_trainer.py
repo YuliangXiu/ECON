@@ -9,7 +9,6 @@ from tqdm import tqdm
 
 tqdm.monitor_interval = 0
 
-
 logger = logging.getLogger(__name__)
 
 

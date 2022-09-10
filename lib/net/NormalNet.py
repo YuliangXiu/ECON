@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -83,11 +82,11 @@ class NormalNet(BasePIFuNet):
 
         nmlF = self.netF(torch.cat(inF_list, dim=1))
         nmlB = self.netB(torch.cat(inB_list, dim=1))
-        
+
         # ||normal|| == 1
         nmlF = nmlF / torch.norm(nmlF, dim=1, keepdim=True)
         nmlB = nmlB / torch.norm(nmlB, dim=1, keepdim=True)
-        
+
         # output: float_arr [-1,1] with [B, C, H, W]
 
         mask = (in_tensor['image'].abs().sum(dim=1, keepdim=True) !=

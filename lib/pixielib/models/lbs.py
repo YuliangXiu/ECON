@@ -35,9 +35,12 @@ def rot_mat_to_euler(rot_mats):
     return torch.atan2(-rot_mats[:, 2, 0], sy)
 
 
-def find_dynamic_lmk_idx_and_bcoords(vertices, pose, dynamic_lmk_faces_idx,
+def find_dynamic_lmk_idx_and_bcoords(vertices,
+                                     pose,
+                                     dynamic_lmk_faces_idx,
                                      dynamic_lmk_b_coords,
-                                     head_kin_chain, dtype=torch.float32):
+                                     head_kin_chain,
+                                     dtype=torch.float32):
     ''' Compute the faces, barycentric coordinates for the dynamic landmarks
 
 
@@ -94,14 +97,12 @@ def find_dynamic_lmk_idx_and_bcoords(vertices, pose, dynamic_lmk_faces_idx,
     neg_mask = y_rot_angle.lt(0).to(dtype=torch.long)
     mask = y_rot_angle.lt(-39).to(dtype=torch.long)
     neg_vals = mask * 78 + (1 - mask) * (39 - y_rot_angle)
-    y_rot_angle = (neg_mask * neg_vals +
-                   (1 - neg_mask) * y_rot_angle)
+    y_rot_angle = (neg_mask * neg_vals + (1 - neg_mask) * y_rot_angle)
     # print(y_rot_angle[0])
 
-    dyn_lmk_faces_idx = torch.index_select(dynamic_lmk_faces_idx,
-                                           0, y_rot_angle)
-    dyn_lmk_b_coords = torch.index_select(dynamic_lmk_b_coords,
-                                          0, y_rot_angle)
+    dyn_lmk_faces_idx = torch.index_select(dynamic_lmk_faces_idx, 0,
+                                           y_rot_angle)
+    dyn_lmk_b_coords = torch.index_select(dynamic_lmk_b_coords, 0, y_rot_angle)
 
     return dyn_lmk_faces_idx, dyn_lmk_b_coords
 
@@ -135,18 +136,25 @@ def vertices2landmarks(vertices, faces, lmk_faces_idx, lmk_bary_coords):
     lmk_faces = torch.index_select(faces, 0, lmk_faces_idx.view(-1)).view(
         batch_size, -1, 3)
 
-    lmk_faces += torch.arange(
-        batch_size, dtype=torch.long, device=device).view(-1, 1, 1) * num_verts
+    lmk_faces += torch.arange(batch_size, dtype=torch.long,
+                              device=device).view(-1, 1, 1) * num_verts
 
-    lmk_vertices = vertices.view(-1, 3)[lmk_faces].view(
-        batch_size, -1, 3, 3)
+    lmk_vertices = vertices.view(-1, 3)[lmk_faces].view(batch_size, -1, 3, 3)
 
     landmarks = torch.einsum('blfi,blf->bli', [lmk_vertices, lmk_bary_coords])
     return landmarks
 
 
-def lbs(betas, pose, v_template, shapedirs, posedirs, J_regressor, parents,
-        lbs_weights, pose2rot=True, dtype=torch.float32):
+def lbs(betas,
+        pose,
+        v_template,
+        shapedirs,
+        posedirs,
+        J_regressor,
+        parents,
+        lbs_weights,
+        pose2rot=True,
+        dtype=torch.float32):
     ''' Performs Linear Blend Skinning with the given shape and pose parameters
 
         Parameters
@@ -199,8 +207,8 @@ def lbs(betas, pose, v_template, shapedirs, posedirs, J_regressor, parents,
     # N x J x 3 x 3
     ident = torch.eye(3, dtype=dtype, device=device)
     if pose2rot:
-        rot_mats = batch_rodrigues(
-            pose.view(-1, 3), dtype=dtype).view([batch_size, -1, 3, 3])
+        rot_mats = batch_rodrigues(pose.view(-1, 3),
+                                   dtype=dtype).view([batch_size, -1, 3, 3])
 
         pose_feature = (rot_mats[:, 1:, :, :] - ident).view([batch_size, -1])
         # (N x P) x (P, V * 3) -> N x V x 3
@@ -226,7 +234,8 @@ def lbs(betas, pose, v_template, shapedirs, posedirs, J_regressor, parents,
         .view(batch_size, -1, 4, 4)
 
     homogen_coord = torch.ones([batch_size, v_posed.shape[1], 1],
-                               dtype=dtype, device=device)
+                               dtype=dtype,
+                               device=device)
     v_posed_homo = torch.cat([v_posed, homogen_coord], dim=2)
     v_homo = torch.matmul(T, torch.unsqueeze(v_posed_homo, dim=-1))
 
@@ -323,7 +332,8 @@ def transform_mat(R, t):
     '''
     # No padding left or right, only add an extra row
     return torch.cat([F.pad(R, [0, 0, 0, 1]),
-                      F.pad(t, [0, 0, 0, 1], value=1)], dim=2)
+                      F.pad(t, [0, 0, 0, 1], value=1)],
+                     dim=2)
 
 
 def batch_rigid_transform(rot_mats, joints, parents, dtype=torch.float32):
@@ -355,16 +365,16 @@ def batch_rigid_transform(rot_mats, joints, parents, dtype=torch.float32):
     rel_joints = joints.clone()
     rel_joints[:, 1:] -= joints[:, parents[1:]]
 
-    transforms_mat = transform_mat(
-        rot_mats.reshape(-1, 3, 3),
-        rel_joints.reshape(-1, 3, 1)).reshape(-1, joints.shape[1], 4, 4)
+    transforms_mat = transform_mat(rot_mats.reshape(-1, 3, 3),
+                                   rel_joints.reshape(-1, 3, 1)).reshape(
+                                       -1, joints.shape[1], 4, 4)
 
     transform_chain = [transforms_mat[:, 0]]
     for i in range(1, parents.shape[0]):
         # Subtract the joint location at the rest pose
         # No need for rotation, since it's identity when at rest
-        curr_res = torch.matmul(transform_chain[parents[i]],
-                                transforms_mat[:, i])
+        curr_res = torch.matmul(transform_chain[parents[i]], transforms_mat[:,
+                                                                            i])
         transform_chain.append(curr_res)
 
     transforms = torch.stack(transform_chain, dim=1)
@@ -384,17 +394,16 @@ def batch_rigid_transform(rot_mats, joints, parents, dtype=torch.float32):
 
 
 class JointsFromVerticesSelector(nn.Module):
+
     def __init__(self, fname):
         ''' Selects extra joints from vertices
         '''
         super(JointsFromVerticesSelector, self).__init__()
 
-        err_msg = (
-            'Either pass a filename or triangle face ids, names and'
-            ' barycentrics')
-        assert fname is not None or (
-            face_ids is not None and bcs is not None and names is not None
-        ), err_msg
+        err_msg = ('Either pass a filename or triangle face ids, names and'
+                   ' barycentrics')
+        assert fname is not None or (face_ids is not None and bcs is not None
+                                     and names is not None), err_msg
         if fname is not None:
             fname = os.path.expanduser(os.path.expandvars(fname))
             with open(fname, 'r') as f:
@@ -408,16 +417,14 @@ class JointsFromVerticesSelector(nn.Module):
             bcs = np.array(bcs, dtype=np.float32)
             face_ids = np.array(face_ids, dtype=np.int32)
         assert len(bcs) == len(face_ids), (
-            'The number of barycentric coordinates must be equal to the faces'
-        )
+            'The number of barycentric coordinates must be equal to the faces')
         assert len(names) == len(face_ids), (
-            'The number of names must be equal to the number of '
-        )
+            'The number of names must be equal to the number of ')
 
         self.names = names
         self.register_buffer('bcs', torch.tensor(bcs, dtype=torch.float32))
-        self.register_buffer(
-            'face_ids', torch.tensor(face_ids, dtype=torch.long))
+        self.register_buffer('face_ids',
+                             torch.tensor(face_ids, dtype=torch.long))
 
     def extra_joint_names(self):
         ''' Returns the names of the extra joints
@@ -432,6 +439,7 @@ class JointsFromVerticesSelector(nn.Module):
         triangles = torch.index_select(vertices, 1, vertex_ids).reshape(
             -1, len(self.bcs), 3, 3)
         return (triangles * self.bcs[None, :, :, None]).sum(dim=2)
+
 
 # def to_tensor(array, dtype=torch.float32):
 #     if torch.is_tensor(array):
@@ -452,6 +460,7 @@ def to_np(array, dtype=np.float32):
 
 
 class Struct(object):
+
     def __init__(self, **kwargs):
         for key, val in kwargs.items():
             setattr(self, key, val)

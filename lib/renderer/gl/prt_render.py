@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -23,6 +22,7 @@ from .cam_render import CamRender
 
 
 class PRTRender(CamRender):
+
     def __init__(self,
                  width=1600,
                  height=1200,

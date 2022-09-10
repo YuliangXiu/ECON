@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -25,6 +24,7 @@ GLUT = None
 
 # NOTE: Render class assumes GL context is created already.
 class Render:
+
     def __init__(self,
                  width=1600,
                  height=1200,

@@ -97,9 +97,7 @@ def find_joint_kin_chain(joint_id, kinematic_tree):
     return kin_chain
 
 
-def to_tensor(
-        array: Union[Array, Tensor], dtype=torch.float32
-) -> Tensor:
+def to_tensor(array: Union[Array, Tensor], dtype=torch.float32) -> Tensor:
     if torch.is_tensor(array):
         return array
     else:
@@ -107,6 +105,7 @@ def to_tensor(
 
 
 class Struct(object):
+
     def __init__(self, **kwargs):
         for key, val in kwargs.items():
             setattr(self, key, val)

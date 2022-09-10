@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -23,25 +22,24 @@ import trimesh
 import torch
 import torch.nn.functional as F
 
-model_init_params = dict(
-    gender='male',
-    model_type='smplx',
-    model_path=SMPLX().model_dir,
-    create_global_orient=False,
-    create_body_pose=False,
-    create_betas=False,
-    create_left_hand_pose=False,
-    create_right_hand_pose=False,
-    create_expression=False,
-    create_jaw_pose=False,
-    create_leye_pose=False,
-    create_reye_pose=False,
-    create_transl=False,
-    num_pca_comps=12)
+model_init_params = dict(gender='male',
+                         model_type='smplx',
+                         model_path=SMPLX().model_dir,
+                         create_global_orient=False,
+                         create_body_pose=False,
+                         create_betas=False,
+                         create_left_hand_pose=False,
+                         create_right_hand_pose=False,
+                         create_expression=False,
+                         create_jaw_pose=False,
+                         create_leye_pose=False,
+                         create_reye_pose=False,
+                         create_transl=False,
+                         num_pca_comps=12)
 
 
-def get_smpl_model(model_type, gender): return smplx.create(
-    **model_init_params)
+def get_smpl_model(model_type, gender):
+    return smplx.create(**model_init_params)
 
 
 def normalization(data):
@@ -54,7 +52,11 @@ def sigmoid(x):
     return z
 
 
-def load_fit_body(fitted_path, scale, smpl_type='smplx', smpl_gender='neutral', noise_dict=None):
+def load_fit_body(fitted_path,
+                  scale,
+                  smpl_type='smplx',
+                  smpl_gender='neutral',
+                  noise_dict=None):
 
     param = np.load(fitted_path, allow_pickle=True)
     for key in param.keys():
@@ -78,12 +80,15 @@ def load_fit_body(fitted_path, scale, smpl_type='smplx', smpl_gender='neutral', 
     smpl_out = smpl_model(**model_forward_params)
 
     smpl_verts = (
-        (smpl_out.vertices[0] * param['scale'] + param['translation']) * scale).detach()
+        (smpl_out.vertices[0] * param['scale'] + param['translation']) *
+        scale).detach()
     smpl_joints = (
-        (smpl_out.joints[0] * param['scale'] + param['translation']) * scale).detach()
+        (smpl_out.joints[0] * param['scale'] + param['translation']) *
+        scale).detach()
     smpl_mesh = trimesh.Trimesh(smpl_verts,
                                 smpl_model.faces,
-                                process=False, maintain_order=True)
+                                process=False,
+                                maintain_order=True)
 
     return smpl_mesh, smpl_joints
 
@@ -111,7 +116,8 @@ def load_ori_fit_body(fitted_path, smpl_type='smplx', smpl_gender='neutral'):
     smpl_verts = smpl_out.vertices[0].detach()
     smpl_mesh = trimesh.Trimesh(smpl_verts,
                                 smpl_model.faces,
-                                process=False, maintain_order=True)
+                                process=False,
+                                maintain_order=True)
 
     return smpl_mesh
 

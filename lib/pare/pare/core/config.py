@@ -243,6 +243,7 @@ def get_grid_search_configs(config, excluded_keys=[]):
     :param config: dictionary with the configurations
     :return: The different configurations
     """
+
     def bool_to_string(x: Union[List[bool], bool]) -> Union[List[str], str]:
         """
         boolean to string conversion

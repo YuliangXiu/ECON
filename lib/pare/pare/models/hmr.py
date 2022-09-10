@@ -26,6 +26,7 @@ from ..utils.train_utils import load_pretrained_model
 
 
 class HMR(nn.Module):
+
     def __init__(
         self,
         backbone='resnet50',

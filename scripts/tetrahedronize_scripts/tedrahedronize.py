@@ -26,10 +26,13 @@ for sex in ['male', 'female', 'neutral']:
         smpl.set_params(beta=beta, pose=pose, trans=trans)
         smpl.save_to_obj(f'./data/objs/smpl_{sex}_{age}.obj')
 
-        input_mesh = trimesh.Trimesh(smpl.verts, smpl.faces,
-                                     maintain_order=True, process=False)
+        input_mesh = trimesh.Trimesh(smpl.verts,
+                                     smpl.faces,
+                                     maintain_order=True,
+                                     process=False)
         vertices = torch.tensor(input_mesh.vertices,
-                                dtype=torch.float32, device=device)
+                                dtype=torch.float32,
+                                device=device)
         faces = torch.tensor(input_mesh.faces.astype(np.int64),
                              dtype=torch.long,
                              device=device)
@@ -49,8 +52,8 @@ for sex in ['male', 'female', 'neutral']:
         print(collisions.shape)
 
         isect_vid = input_mesh.faces[collisions.flatten(), :].flatten()
-        input_mesh.vertices[isect_vid,
-                            :] -= input_mesh.vertex_normals[isect_vid, :] * 1e-3
+        input_mesh.vertices[
+            isect_vid, :] -= input_mesh.vertex_normals[isect_vid, :] * 1e-3
         input_mesh.export(f'./data/objs/smpl_{sex}_{age}_fix.obj')
 
         if True:
@@ -75,20 +78,26 @@ for sex in ['male', 'female', 'neutral']:
 
             for v_added in tet_smpl_vertices_added:
                 v_added = np.expand_dims(v_added, axis=0)
-                dist_list = np.linalg.norm(
-                    v_added - tet_smpl_vertices_orig, axis=1)
+                dist_list = np.linalg.norm(v_added - tet_smpl_vertices_orig,
+                                           axis=1)
                 min_dist = np.min(dist_list)
                 neighbors = dist_list < 2.0 * min_dist
-                neighbor_weights = np.exp(-dist_list*dist_list /
-                                          (2*min_dist*min_dist)) * np.float32(neighbors)
+                neighbor_weights = np.exp(
+                    -dist_list * dist_list /
+                    (2 * min_dist * min_dist)) * np.float32(neighbors)
                 neighbor_weights_sum = np.sum(neighbor_weights)
                 neighbor_weights /= neighbor_weights_sum
                 added_weights.append(
-                    np.sum(smpl.weights * neighbor_weights[:, np.newaxis], axis=0))
+                    np.sum(smpl.weights * neighbor_weights[:, np.newaxis],
+                           axis=0))
                 added_shape_dirs.append(
-                    np.sum(smpl.shapedirs * neighbor_weights[:, np.newaxis, np.newaxis], axis=0))
+                    np.sum(smpl.shapedirs *
+                           neighbor_weights[:, np.newaxis, np.newaxis],
+                           axis=0))
                 added_pose_dirs.append(
-                    np.sum(smpl.posedirs * neighbor_weights[:, np.newaxis, np.newaxis], axis=0))
+                    np.sum(smpl.posedirs *
+                           neighbor_weights[:, np.newaxis, np.newaxis],
+                           axis=0))
 
             added_weights = np.asarray(added_weights)
             added_shape_dirs = np.asarray(added_shape_dirs)
@@ -101,8 +110,9 @@ for sex in ['male', 'female', 'neutral']:
                 (posed_shape_added, np.ones([posed_shape_added.shape[0], 1])))
             for ti in range(len(T)):
                 T[ti] = np.linalg.inv(T[ti])
-            rest_shape_added = np.matmul(T, posed_shape_added_h.reshape(
-                [-1, 4, 1])).reshape([-1, 4])[:, :3]
+            rest_shape_added = np.matmul(
+                T, posed_shape_added_h.reshape([-1, 4, 1])).reshape([-1,
+                                                                     4])[:, :3]
 
             tetra_smpl_structure = np.load(
                 f'./data/tetgen_{sex}_{age}_structure.npy')
@@ -113,8 +123,9 @@ for sex in ['male', 'female', 'neutral']:
                                 posedirs_added=added_pose_dirs,
                                 tetrahedrons=tetra_smpl_structure)
 
-            np.savetxt(
-                f'./data/tetrahedrons_{sex}_{age}.txt', np.int32(tetra_smpl_structure+1), fmt='%d')
+            np.savetxt(f'./data/tetrahedrons_{sex}_{age}.txt',
+                       np.int32(tetra_smpl_structure + 1),
+                       fmt='%d')
 
             smpl = TetraSMPLModel(f'./smpl/SMPL_{sex.upper()}.pkl',
                                   f'./data/tetra_{sex}_{age}_smpl.npz', age)

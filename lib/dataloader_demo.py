@@ -3,7 +3,7 @@ from lib.common.config import get_cfg_defaults
 from lib.dataset.PIFuDataset import PIFuDataset
 
 if __name__ == '__main__':
-        
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-v',
                         '--show',
@@ -21,27 +21,19 @@ if __name__ == '__main__':
                         '--config',
                         default='./configs/train/icon-filter.yaml',
                         help='vis sampler 3D')
-    parser.add_argument('-d',
-                        '--dataset',
-                        default='thuman2')
+    parser.add_argument('-d', '--dataset', default='thuman2')
     args_c = parser.parse_args()
 
     args = get_cfg_defaults()
     args.merge_from_file(args_c.config)
-    
+
     if args.dataset == 'cape':
-        
+
         # for cape test set
         cfg_test_mode = [
-                "test_mode",
-                True,
-                "dataset.types",
-                ["cape"],
-                "dataset.scales",
-                [100.0],
-                "dataset.rotation_num",
-                3
-            ]
+            "test_mode", True, "dataset.types", ["cape"], "dataset.scales",
+            [100.0], "dataset.rotation_num", 3
+        ]
         args.merge_from_list(cfg_test_mode)
 
     # dataset sampler

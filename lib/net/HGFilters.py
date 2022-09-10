@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -21,6 +20,7 @@ import torch.nn.functional as F
 
 
 class HourGlass(nn.Module):
+
     def __init__(self, num_modules, depth, num_features, opt):
         super(HourGlass, self).__init__()
         self.num_modules = num_modules
@@ -80,6 +80,7 @@ class HourGlass(nn.Module):
 
 
 class HGFilter(nn.Module):
+
     def __init__(self, opt, num_modules, in_dim):
         super(HGFilter, self).__init__()
         self.num_modules = num_modules

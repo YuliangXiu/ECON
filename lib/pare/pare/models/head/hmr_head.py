@@ -26,6 +26,7 @@ BN_MOMENTUM = 0.1
 
 
 class HMRHead(nn.Module):
+
     def __init__(
         self,
         num_input_features,

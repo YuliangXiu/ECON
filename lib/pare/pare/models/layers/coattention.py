@@ -22,6 +22,7 @@ from ..backbone.resnet import conv1x1, conv3x3
 
 
 class CoAttention(nn.Module):
+
     def __init__(
             self,
             n_channel,

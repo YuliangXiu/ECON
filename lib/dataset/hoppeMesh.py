@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -71,6 +70,7 @@ def save_ply(mesh_path, points, rgb):
 
 
 class HoppeMesh:
+
     def __init__(self, verts, faces, vert_normals, face_normals):
         '''
         The HoppeSDF calculates signed distance towards a predefined oriented point cloud

@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -24,6 +23,7 @@ import torchvision.transforms as transforms
 
 
 class NormalDataset():
+
     def __init__(self, cfg, split='train'):
 
         self.split = split
@@ -45,8 +45,8 @@ class NormalDataset():
         if self.split != 'train':
             self.rotations = range(0, 360, 120)
         else:
-            self.rotations = np.arange(
-                0, 360, 360//self.opt.rotation_num).astype(np.int)
+            self.rotations = np.arange(0, 360, 360 //
+                                       self.opt.rotation_num).astype(np.int)
 
         self.datasets_dict = {}
 
@@ -55,7 +55,8 @@ class NormalDataset():
             dataset_dir = osp.join(self.root, dataset)
 
             self.datasets_dict[dataset] = {
-                "subjects": np.loadtxt(osp.join(dataset_dir, "all.txt"), dtype=str),
+                "subjects": np.loadtxt(osp.join(dataset_dir, "all.txt"),
+                                       dtype=str),
                 "scale": self.scales[dataset_id]
             }
 
@@ -91,12 +92,16 @@ class NormalDataset():
                 print(f"split {full_txt} into train/val/test")
 
                 full_lst = np.loadtxt(full_txt, dtype=str)
-                full_lst = [dataset+"/"+item for item in full_lst]
-                [train_lst, test_lst, val_lst] = np.split(
-                    full_lst, [500, 500+5, ])
+                full_lst = [dataset + "/" + item for item in full_lst]
+                [train_lst, test_lst,
+                 val_lst] = np.split(full_lst, [
+                     500,
+                     500 + 5,
+                 ])
 
-                np.savetxt(full_txt.replace(
-                    "all", "train"), train_lst, fmt="%s")
+                np.savetxt(full_txt.replace("all", "train"),
+                           train_lst,
+                           fmt="%s")
                 np.savetxt(full_txt.replace("all", "test"), test_lst, fmt="%s")
                 np.savetxt(full_txt.replace("all", "val"), val_lst, fmt="%s")
 
@@ -127,16 +132,21 @@ class NormalDataset():
         rotation = self.rotations[rid]
         subject = self.subject_list[mid].split("/")[1]
         dataset = self.subject_list[mid].split("/")[0]
-        render_folder = "/".join([dataset +
-                                 f"_{self.opt.rotation_num}views", subject])
+        render_folder = "/".join(
+            [dataset + f"_{self.opt.rotation_num}views", subject])
 
         # setup paths
         data_dict = {
-            'dataset': dataset,
-            'subject': subject,
-            'rotation': rotation,
-            'scale': self.datasets_dict[dataset]["scale"],
-            'image_path': osp.join(self.root, render_folder, 'render', f'{rotation:03d}.png')
+            'dataset':
+            dataset,
+            'subject':
+            subject,
+            'rotation':
+            rotation,
+            'scale':
+            self.datasets_dict[dataset]["scale"],
+            'image_path':
+            osp.join(self.root, render_folder, 'render', f'{rotation:03d}.png')
         }
 
         # image/normal/depth loader
@@ -144,13 +154,17 @@ class NormalDataset():
 
             if f'{name}_path' not in data_dict.keys():
                 data_dict.update({
-                    f'{name}_path': osp.join(self.root, render_folder, name, f'{rotation:03d}.png')
+                    f'{name}_path':
+                    osp.join(self.root, render_folder, name,
+                             f'{rotation:03d}.png')
                 })
 
             # tensor update
             data_dict.update({
-                name: self.imagepath2tensor(
-                    data_dict[f'{name}_path'], channel, inv=False)
+                name:
+                self.imagepath2tensor(data_dict[f'{name}_path'],
+                                      channel,
+                                      inv=False)
             })
 
         path_keys = [

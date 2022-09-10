@@ -16,6 +16,7 @@ BN_MOMENTUM = 0.1
 
 
 class Regressor(nn.Module):
+
     def __init__(self, feat_dim, smpl_mean_params):
         super().__init__()
 

@@ -33,6 +33,7 @@ BN_MOMENTUM = 0.1
 
 
 class PareHead(nn.Module):
+
     def __init__(
         self,
         num_joints,
@@ -333,14 +334,14 @@ class PareHead(nn.Module):
                     in_channels=num_deconv_filters[-1],
                     sub_sample=False,
                     bn_layer=True,
-            )
+                )
 
             self.branch_3d_nonlocal = eval(
                 self.use_branch_nonlocal).NONLocalBlock2D(
                     in_channels=num_deconv_filters[-1],
                     sub_sample=False,
                     bn_layer=True,
-            )
+                )
 
         if self.use_final_nonlocal:
             logger.info(
@@ -350,14 +351,14 @@ class PareHead(nn.Module):
                     in_channels=self.pose_mlp_inp_dim,
                     sub_sample=False,
                     bn_layer=True,
-            )
+                )
 
             self.final_shape_nonlocal = eval(
                 self.use_final_nonlocal).NONLocalBlock1D(
                     in_channels=num_features_smpl,
                     sub_sample=False,
                     bn_layer=True,
-            )
+                )
 
         if self.use_keypoint_attention:
             logger.info('Keypoint attention is active')

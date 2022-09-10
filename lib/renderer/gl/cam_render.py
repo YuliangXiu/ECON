@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -21,6 +20,7 @@ GLUT = None
 
 
 class CamRender(Render):
+
     def __init__(self,
                  width=1600,
                  height=1200,

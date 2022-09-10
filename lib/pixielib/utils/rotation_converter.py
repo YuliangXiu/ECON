@@ -1,7 +1,6 @@
 import torch
 import torch.nn.functional as F
 import numpy as np
-
 ''' Rotation Converter
     This function is borrowed from https://github.com/kornia/kornia
 
@@ -28,8 +27,8 @@ def rad2deg(tensor):
         >>> output = tgm.rad2deg(input)
     """
     if not torch.is_tensor(tensor):
-        raise TypeError("Input type is not a torch.Tensor. Got {}"
-                        .format(type(tensor)))
+        raise TypeError("Input type is not a torch.Tensor. Got {}".format(
+            type(tensor)))
 
     return 180. * tensor / pi.to(tensor.device).type(tensor.dtype)
 
@@ -51,10 +50,11 @@ def deg2rad(tensor):
         >>> output = tgm.deg2rad(input)
     """
     if not torch.is_tensor(tensor):
-        raise TypeError("Input type is not a torch.Tensor. Got {}"
-                        .format(type(tensor)))
+        raise TypeError("Input type is not a torch.Tensor. Got {}".format(
+            type(tensor)))
 
     return tensor * pi.to(tensor.device).type(tensor.dtype) / 180.
+
 
 # to quaternion
 
@@ -64,9 +64,9 @@ def euler_to_quaternion(r):
     y = r[..., 1]
     z = r[..., 2]
 
-    z = z/2.0
-    y = y/2.0
-    x = x/2.0
+    z = z / 2.0
+    y = y / 2.0
+    x = x / 2.0
     cz = torch.cos(z)
     sz = torch.sin(z)
     cy = torch.cos(y)
@@ -74,10 +74,10 @@ def euler_to_quaternion(r):
     cx = torch.cos(x)
     sx = torch.sin(x)
     quaternion = torch.zeros_like(r.repeat(1, 2))[..., :4].to(r.device)
-    quaternion[..., 0] += cx*cy*cz - sx*sy*sz
-    quaternion[..., 1] += cx*sy*sz + cy*cz*sx
-    quaternion[..., 2] += cx*cz*sy - sx*cy*sz
-    quaternion[..., 3] += cx*cy*sz + sx*cz*sy
+    quaternion[..., 0] += cx * cy * cz - sx * sy * sz
+    quaternion[..., 1] += cx * sy * sz + cy * cz * sx
+    quaternion[..., 2] += cx * cz * sy - sx * cy * sz
+    quaternion[..., 3] += cx * cy * sz + sx * cz * sy
     return quaternion
 
 
@@ -122,27 +122,31 @@ def rotation_matrix_to_quaternion(rotation_matrix, eps=1e-6):
     mask_d0_nd1 = rmat_t[:, 0, 0] < -rmat_t[:, 1, 1]
 
     t0 = 1 + rmat_t[:, 0, 0] - rmat_t[:, 1, 1] - rmat_t[:, 2, 2]
-    q0 = torch.stack([rmat_t[:, 1, 2] - rmat_t[:, 2, 1],
-                      t0, rmat_t[:, 0, 1] + rmat_t[:, 1, 0],
-                      rmat_t[:, 2, 0] + rmat_t[:, 0, 2]], -1)
+    q0 = torch.stack([
+        rmat_t[:, 1, 2] - rmat_t[:, 2, 1], t0,
+        rmat_t[:, 0, 1] + rmat_t[:, 1, 0], rmat_t[:, 2, 0] + rmat_t[:, 0, 2]
+    ], -1)
     t0_rep = t0.repeat(4, 1).t()
 
     t1 = 1 - rmat_t[:, 0, 0] + rmat_t[:, 1, 1] - rmat_t[:, 2, 2]
-    q1 = torch.stack([rmat_t[:, 2, 0] - rmat_t[:, 0, 2],
-                      rmat_t[:, 0, 1] + rmat_t[:, 1, 0],
-                      t1, rmat_t[:, 1, 2] + rmat_t[:, 2, 1]], -1)
+    q1 = torch.stack([
+        rmat_t[:, 2, 0] - rmat_t[:, 0, 2], rmat_t[:, 0, 1] + rmat_t[:, 1, 0],
+        t1, rmat_t[:, 1, 2] + rmat_t[:, 2, 1]
+    ], -1)
     t1_rep = t1.repeat(4, 1).t()
 
     t2 = 1 - rmat_t[:, 0, 0] - rmat_t[:, 1, 1] + rmat_t[:, 2, 2]
-    q2 = torch.stack([rmat_t[:, 0, 1] - rmat_t[:, 1, 0],
-                      rmat_t[:, 2, 0] + rmat_t[:, 0, 2],
-                      rmat_t[:, 1, 2] + rmat_t[:, 2, 1], t2], -1)
+    q2 = torch.stack([
+        rmat_t[:, 0, 1] - rmat_t[:, 1, 0], rmat_t[:, 2, 0] + rmat_t[:, 0, 2],
+        rmat_t[:, 1, 2] + rmat_t[:, 2, 1], t2
+    ], -1)
     t2_rep = t2.repeat(4, 1).t()
 
     t3 = 1 + rmat_t[:, 0, 0] + rmat_t[:, 1, 1] + rmat_t[:, 2, 2]
-    q3 = torch.stack([t3, rmat_t[:, 1, 2] - rmat_t[:, 2, 1],
-                      rmat_t[:, 2, 0] - rmat_t[:, 0, 2],
-                      rmat_t[:, 0, 1] - rmat_t[:, 1, 0]], -1)
+    q3 = torch.stack([
+        t3, rmat_t[:, 1, 2] - rmat_t[:, 2, 1],
+        rmat_t[:, 2, 0] - rmat_t[:, 0, 2], rmat_t[:, 0, 1] - rmat_t[:, 1, 0]
+    ], -1)
     t3_rep = t3.repeat(4, 1).t()
 
     mask_c0 = mask_d2 * mask_d0_d1.float()
@@ -185,8 +189,9 @@ def angle_axis_to_quaternion(angle_axis: torch.Tensor) -> torch.Tensor:
             type(angle_axis)))
 
     if not angle_axis.shape[-1] == 3:
-        raise ValueError("Input must be a tensor of shape Nx3 or 3. Got {}"
-                         .format(angle_axis.shape))
+        raise ValueError(
+            "Input must be a tensor of shape Nx3 or 3. Got {}".format(
+                angle_axis.shape))
     # unpack input and compute conversion
     a0: torch.Tensor = angle_axis[..., 0:1]
     a1: torch.Tensor = angle_axis[..., 1:2]
@@ -210,6 +215,7 @@ def angle_axis_to_quaternion(angle_axis: torch.Tensor) -> torch.Tensor:
     quaternion[..., 2:3] += a2 * k
     return torch.cat([w, quaternion], dim=-1)
 
+
 # quaternion to
 
 
@@ -222,8 +228,9 @@ def quaternion_to_rotation_matrix(quat):
     """
     norm_quat = quat
     norm_quat = norm_quat / norm_quat.norm(p=2, dim=1, keepdim=True)
-    w, x, y, z = norm_quat[:, 0], norm_quat[:,
-                                            1], norm_quat[:, 2], norm_quat[:, 3]
+    w, x, y, z = norm_quat[:, 0], norm_quat[:, 1], norm_quat[:,
+                                                             2], norm_quat[:,
+                                                                           3]
 
     B = quat.size(0)
 
@@ -231,9 +238,12 @@ def quaternion_to_rotation_matrix(quat):
     wx, wy, wz = w * x, w * y, w * z
     xy, xz, yz = x * y, x * z, y * z
 
-    rotMat = torch.stack([w2 + x2 - y2 - z2, 2 * xy - 2 * wz, 2 * wy + 2 * xz,
-                          2 * wz + 2 * xy, w2 - x2 + y2 - z2, 2 * yz - 2 * wx,
-                          2 * xz - 2 * wy, 2 * wx + 2 * yz, w2 - x2 - y2 + z2], dim=1).view(B, 3, 3)
+    rotMat = torch.stack([
+        w2 + x2 - y2 - z2, 2 * xy - 2 * wz, 2 * wy + 2 * xz, 2 * wz + 2 * xy,
+        w2 - x2 + y2 - z2, 2 * yz - 2 * wx, 2 * xz - 2 * wy, 2 * wx + 2 * yz,
+        w2 - x2 - y2 + z2
+    ],
+                         dim=1).view(B, 3, 3)
     return rotMat
 
 
@@ -261,8 +271,9 @@ def quaternion_to_angle_axis(quaternion: torch.Tensor):
             type(quaternion)))
 
     if not quaternion.shape[-1] == 4:
-        raise ValueError("Input must be a tensor of shape Nx4 or 4. Got {}"
-                         .format(quaternion.shape))
+        raise ValueError(
+            "Input must be a tensor of shape Nx4 or 4. Got {}".format(
+                quaternion.shape))
     # unpack input and compute conversion
     q1: torch.Tensor = quaternion[..., 1]
     q2: torch.Tensor = quaternion[..., 2]
@@ -272,8 +283,7 @@ def quaternion_to_angle_axis(quaternion: torch.Tensor):
     sin_theta: torch.Tensor = torch.sqrt(sin_squared_theta)
     cos_theta: torch.Tensor = quaternion[..., 0]
     two_theta: torch.Tensor = 2.0 * torch.where(
-        cos_theta < 0.0,
-        torch.atan2(-sin_theta, -cos_theta),
+        cos_theta < 0.0, torch.atan2(-sin_theta, -cos_theta),
         torch.atan2(sin_theta, cos_theta))
 
     k_pos: torch.Tensor = two_theta / sin_theta
@@ -281,8 +291,8 @@ def quaternion_to_angle_axis(quaternion: torch.Tensor):
         torch.ones_like(sin_theta).to(quaternion.device)
     k: torch.Tensor = torch.where(sin_squared_theta > 0.0, k_pos, k_neg)
 
-    angle_axis: torch.Tensor = torch.zeros_like(
-        quaternion).to(quaternion.device)[..., :3]
+    angle_axis: torch.Tensor = torch.zeros_like(quaternion).to(
+        quaternion.device)[..., :3]
     angle_axis[..., 0] += q1 * k
     angle_axis[..., 1] += q2 * k
     angle_axis[..., 2] += q3 * k
@@ -379,13 +389,11 @@ def _compute_euler_from_matrix(dcm, seq='xyz', extrinsic=False):
         # 6b
         angles[~safe1, 2] = torch.atan2(
             dcm_transformed[~safe1, 1, 0] - dcm_transformed[~safe1, 0, 1],
-            dcm_transformed[~safe1, 0, 0] + dcm_transformed[~safe1, 1, 1]
-        )
+            dcm_transformed[~safe1, 0, 0] + dcm_transformed[~safe1, 1, 1])
         # 6c
         angles[~safe2, 2] = -torch.atan2(
             dcm_transformed[~safe2, 1, 0] + dcm_transformed[~safe2, 0, 1],
-            dcm_transformed[~safe2, 0, 0] - dcm_transformed[~safe2, 1, 1]
-        )
+            dcm_transformed[~safe2, 0, 0] - dcm_transformed[~safe2, 1, 1])
     else:
         # For instrinsic, set third angle to zero
         # 6a
@@ -393,13 +401,11 @@ def _compute_euler_from_matrix(dcm, seq='xyz', extrinsic=False):
         # 6b
         angles[~safe1, 0] = torch.atan2(
             dcm_transformed[~safe1, 1, 0] - dcm_transformed[~safe1, 0, 1],
-            dcm_transformed[~safe1, 0, 0] + dcm_transformed[~safe1, 1, 1]
-        )
+            dcm_transformed[~safe1, 0, 0] + dcm_transformed[~safe1, 1, 1])
         # 6c
         angles[~safe2, 0] = torch.atan2(
             dcm_transformed[~safe2, 1, 0] + dcm_transformed[~safe2, 0, 1],
-            dcm_transformed[~safe2, 0, 0] - dcm_transformed[~safe2, 1, 1]
-        )
+            dcm_transformed[~safe2, 0, 0] - dcm_transformed[~safe2, 1, 1])
 
     # Step 7
     if seq[0] == seq[2]:
@@ -429,10 +435,13 @@ def _compute_euler_from_matrix(dcm, seq='xyz', extrinsic=False):
     # zero for gimbal locked cases
     if extrinsic:
         # angles = angles[:, ::-1]
-        angles = torch.flip(angles, dims=[-1, ])
+        angles = torch.flip(angles, dims=[
+            -1,
+        ])
 
     angles = angles.to(orig_device)
     return angles
+
 
 # batch converter
 
@@ -524,8 +533,9 @@ def batch_cont2matrix(module_input):
     # Normalize the first vector
     b1 = F.normalize(reshaped_input[:, :, 0].clone(), dim=1)
 
-    dot_prod = torch.sum(
-        b1 * reshaped_input[:, :, 1].clone(), dim=1, keepdim=True)
+    dot_prod = torch.sum(b1 * reshaped_input[:, :, 1].clone(),
+                         dim=1,
+                         keepdim=True)
     # Compute the second vector by finding the orthogonal complement to it
     b2 = F.normalize(reshaped_input[:, :, 1] - dot_prod * b1, dim=1)
     # Finish building the basis by taking the cross product

@@ -124,6 +124,7 @@ resnet_spec = {
 
 
 class IUV_predict_layer(nn.Module):
+
     def __init__(self,
                  feat_dim=256,
                  final_cov_k=3,
@@ -204,6 +205,7 @@ class IUV_predict_layer(nn.Module):
 
 
 class SmplResNet(nn.Module):
+
     def __init__(self,
                  resnet_nums,
                  in_channels=3,
@@ -336,6 +338,7 @@ class SmplResNet(nn.Module):
 
 
 class LimbResLayers(nn.Module):
+
     def __init__(self,
                  resnet_nums,
                  inplanes,

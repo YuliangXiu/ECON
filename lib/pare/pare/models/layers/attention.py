@@ -25,6 +25,7 @@ def init_weights(m):
 
 
 class SelfAttention(nn.Module):
+
     def __init__(self,
                  attention_size,
                  batch_first=False,

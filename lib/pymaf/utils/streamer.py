@@ -8,16 +8,13 @@ def aug_matrix(w1, h1, w2, h2):
     dx = (w2 - w1) / 2.0
     dy = (h2 - h1) / 2.0
 
-    matrix_trans = np.array([[1.0, 0, dx],
-                             [0, 1.0, dy],
-                             [0, 0,   1.0]])
+    matrix_trans = np.array([[1.0, 0, dx], [0, 1.0, dy], [0, 0, 1.0]])
 
-    scale = np.min([float(w2)/w1, float(h2)/h1])
+    scale = np.min([float(w2) / w1, float(h2) / h1])
 
-    M = get_affine_matrix(
-        center=(w2 / 2.0, h2 / 2.0),
-        translate=(0, 0),
-        scale=scale)
+    M = get_affine_matrix(center=(w2 / 2.0, h2 / 2.0),
+                          translate=(0, 0),
+                          scale=scale)
 
     M = np.array(M + [0., 0., 1.]).reshape(3, 3)
     M = M.dot(matrix_trans)
@@ -29,8 +26,7 @@ def get_affine_matrix(center, translate, scale):
     cx, cy = center
     tx, ty = translate
 
-    M = [1, 0, 0,
-         0, 1, 0]
+    M = [1, 0, 0, 0, 1, 0]
     M = [x * scale for x in M]
 
     # Apply translation and of center translation: RSS * C^-1
@@ -48,8 +44,11 @@ class BaseStreamer():
     """
 
     def __init__(self,
-                 width=512, height=512, pad=True,
-                 mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5),
+                 width=512,
+                 height=512,
+                 pad=True,
+                 mean=(0.5, 0.5, 0.5),
+                 std=(0.5, 0.5, 0.5),
                  **kwargs):
         self.width = width
         self.height = height
@@ -67,8 +66,9 @@ class BaseStreamer():
         image = next(self.loader)
         in_height, in_width, _ = image.shape
         M = aug_matrix(in_width, in_height, self.width, self.height, self.pad)
-        image = cv2.warpAffine(
-            image, M[0:2, :], (self.width, self.height), flags=cv2.INTER_CUBIC)
+        image = cv2.warpAffine(image,
+                               M[0:2, :], (self.width, self.height),
+                               flags=cv2.INTER_CUBIC)
 
         input = np.float32(image)
         input = (input / 255.0 - self.mean) / self.std  # TO [-1.0, 1.0]
@@ -108,8 +108,10 @@ class VideoListStreamer(BaseStreamer):
         super().__init__(width, height, pad, **kwargs)
         self.files = files
         self.captures = [imageio.get_reader(f) for f in files]
-        self.nframes = sum([int(cap._meta["fps"] * cap._meta["duration"])
-                            for cap in self.captures])
+        self.nframes = sum([
+            int(cap._meta["fps"] * cap._meta["duration"])
+            for cap in self.captures
+        ])
 
     def create_loader(self):
         for capture in self.captures:

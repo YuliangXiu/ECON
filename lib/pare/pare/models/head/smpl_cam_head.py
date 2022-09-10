@@ -22,6 +22,7 @@ from .smpl_head import SMPL
 
 
 class SMPLCamHead(nn.Module):
+
     def __init__(self, img_res=224):
         super(SMPLCamHead, self).__init__()
         self.smpl = SMPL(config.SMPL_MODEL_DIR, create_transl=False)

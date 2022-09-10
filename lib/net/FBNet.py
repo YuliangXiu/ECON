@@ -100,6 +100,7 @@ def print_network(net):
 # Generator
 ##############################################################################
 class LocalEnhancer(pl.LightningModule):
+
     def __init__(self,
                  input_nc,
                  output_nc,
@@ -200,6 +201,7 @@ class LocalEnhancer(pl.LightningModule):
 
 
 class GlobalGenerator(pl.LightningModule):
+
     def __init__(self,
                  input_nc,
                  output_nc,
@@ -266,6 +268,7 @@ class GlobalGenerator(pl.LightningModule):
 
 # Define a resnet block
 class ResnetBlock(pl.LightningModule):
+
     def __init__(self,
                  dim,
                  padding_type,
@@ -320,6 +323,7 @@ class ResnetBlock(pl.LightningModule):
 
 
 class Encoder(pl.LightningModule):
+
     def __init__(self,
                  input_nc,
                  output_nc,

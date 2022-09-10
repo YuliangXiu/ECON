@@ -55,6 +55,7 @@ class SMPL(_SMPL):
 
 
 class SMPLHead(nn.Module):
+
     def __init__(self, focal_length=5000., img_res=224):
         super(SMPLHead, self).__init__()
         self.smpl = SMPL(config.SMPL_MODEL_DIR, create_transl=False)

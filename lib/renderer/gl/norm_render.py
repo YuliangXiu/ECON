@@ -27,6 +27,7 @@ from .render2 import Render
 
 
 class NormRender(Render):
+
     def __init__(self,
                  width=1600,
                  height=1200,

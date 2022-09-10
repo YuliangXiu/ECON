@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 
 
 class MLP(pl.LightningModule):
+
     def __init__(self,
                  filter_channels,
                  name=None,

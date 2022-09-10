@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -14,7 +13,6 @@
 # for Intelligent Systems. All rights reserved.
 #
 # Contact: ps-license@tuebingen.mpg.de
-
 
 from .seg3d_utils import (
     create_grid3D,
@@ -34,6 +32,7 @@ logging.getLogger("lightning").setLevel(logging.ERROR)
 
 
 class Seg3dLossless(nn.Module):
+
     def __init__(self,
                  query_func,
                  b_min,
@@ -587,13 +586,13 @@ class Seg3dLossless(nn.Module):
         if final.shape[0] > 256:
             # for voxelgrid larger than 256^3, the required GPU memory will be > 9GB
             # thus we use CPU marching_cube to avoid "CUDA out of memory"
-            occu_arr = final.detach().cpu().numpy()                 # non-smooth surface
+            occu_arr = final.detach().cpu().numpy()  # non-smooth surface
             # occu_arr = mcubes.smooth(final.detach().cpu().numpy())  # smooth surface
             vertices, triangles = mcubes.marching_cubes(
                 occu_arr, self.balance_value)
             verts = torch.as_tensor(vertices[:, [2, 1, 0]])
-            faces = torch.as_tensor(triangles.astype(
-                np.long), dtype=torch.long)[:, [0, 2, 1]]
+            faces = torch.as_tensor(triangles.astype(np.long),
+                                    dtype=torch.long)[:, [0, 2, 1]]
         else:
             torch.cuda.empty_cache()
             vertices, triangles = voxelgrids_to_trianglemeshes(

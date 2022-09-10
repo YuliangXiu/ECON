@@ -145,6 +145,7 @@ def parse_datasets_ratios(datasets_and_ratios):
 
 
 class CheckBatchGradient(pl.Callback):
+
     def on_train_start(self, trainer, model):
         n = 0
 

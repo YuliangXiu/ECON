@@ -29,6 +29,7 @@ from .norm_render import NormRender
 
 
 class NormalRender(NormRender):
+
     def __init__(self, width=1600, height=1200, name='Normal Renderer'):
         NormRender.__init__(self,
                             width,

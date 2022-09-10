@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -24,6 +23,7 @@ import pytorch_lightning as pl
 
 
 class NormalModule(pl.LightningDataModule):
+
     def __init__(self, cfg):
         super(NormalModule, self).__init__()
         self.cfg = cfg

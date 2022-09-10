@@ -157,6 +157,7 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
+
     def __init__(self,
                  block,
                  layers,

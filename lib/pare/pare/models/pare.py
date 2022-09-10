@@ -26,6 +26,7 @@ from ..utils.train_utils import load_pretrained_model
 
 
 class PARE(nn.Module):
+
     def __init__(
         self,
         num_joints=24,
@@ -101,7 +102,8 @@ class PARE(nn.Module):
             shape_mlp_num_layers=shape_mlp_num_layers,
             pose_mlp_hidden_size=pose_mlp_hidden_size,
             shape_mlp_hidden_size=shape_mlp_hidden_size,
-            use_keypoint_features_for_smpl_regression=use_keypoint_features_for_smpl_regression,
+            use_keypoint_features_for_smpl_regression=
+            use_keypoint_features_for_smpl_regression,
             use_heatmaps=use_heatmaps,
             use_keypoint_attention=use_keypoint_attention,
             use_postconv_keypoint_attention=use_postconv_keypoint_attention,

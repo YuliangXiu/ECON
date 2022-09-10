@@ -20,6 +20,7 @@ import torch.nn.functional as F
 
 
 class NonLocalAttention(nn.Module):
+
     def __init__(
         self,
         in_channels=256,

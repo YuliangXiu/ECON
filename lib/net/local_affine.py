@@ -8,8 +8,10 @@ import torch
 import torch.nn as nn
 import torch.sparse as sp
 
+
 # reference: https://github.com/wuhaozhe/pytorch-nicp
 class LocalAffine(nn.Module):
+
     def __init__(self, num_points, batch_size=1, edges=None):
         '''
             specify the number of points, the number of points should be constant across the batch
@@ -19,10 +21,12 @@ class LocalAffine(nn.Module):
             add additional pooling on top of w matrix
         '''
         super(LocalAffine, self).__init__()
-        self.A = nn.Parameter(torch.eye(3).unsqueeze(
-            0).unsqueeze(0).repeat(batch_size, num_points, 1, 1))
-        self.b = nn.Parameter(torch.zeros(3).unsqueeze(0).unsqueeze(
-            0).unsqueeze(3).repeat(batch_size, num_points, 1, 1))
+        self.A = nn.Parameter(
+            torch.eye(3).unsqueeze(0).unsqueeze(0).repeat(
+                batch_size, num_points, 1, 1))
+        self.b = nn.Parameter(
+            torch.zeros(3).unsqueeze(0).unsqueeze(0).unsqueeze(3).repeat(
+                batch_size, num_points, 1, 1))
         self.edges = edges
         self.num_points = num_points
 
@@ -38,8 +42,8 @@ class LocalAffine(nn.Module):
         affine_weight = torch.cat((self.A, self.b), dim=3)
         w1 = torch.index_select(affine_weight, dim=1, index=idx1)
         w2 = torch.index_select(affine_weight, dim=1, index=idx2)
-        w_diff = (w1 - w2) ** 2
-        w_rigid = (torch.linalg.det(self.A) - 1.0) ** 2
+        w_diff = (w1 - w2)**2
+        w_rigid = (torch.linalg.det(self.A) - 1.0)**2
         return w_diff, w_rigid
 
     def forward(self, x, return_stiff=False):

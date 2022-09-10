@@ -14,7 +14,6 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-
 import torch
 from loguru import logger
 
@@ -26,6 +25,7 @@ MIN_NUM_FRAMES = 0
 
 
 class PARETester:
+
     def __init__(self, cfg, ckpt):
         self.model_cfg = update_hparams(cfg)
         self.device = torch.device(

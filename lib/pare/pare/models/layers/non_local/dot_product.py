@@ -4,6 +4,7 @@ from torch.nn import functional as F
 
 
 class _NonLocalBlockND(nn.Module):
+
     def __init__(self,
                  in_channels,
                  inter_channels=None,
@@ -109,6 +110,7 @@ class _NonLocalBlockND(nn.Module):
 
 
 class NONLocalBlock1D(_NonLocalBlockND):
+
     def __init__(self,
                  in_channels,
                  inter_channels=None,
@@ -122,6 +124,7 @@ class NONLocalBlock1D(_NonLocalBlockND):
 
 
 class NONLocalBlock2D(_NonLocalBlockND):
+
     def __init__(self,
                  in_channels,
                  inter_channels=None,
@@ -135,6 +138,7 @@ class NONLocalBlock2D(_NonLocalBlockND):
 
 
 class NONLocalBlock3D(_NonLocalBlockND):
+
     def __init__(self,
                  in_channels,
                  inter_channels=None,

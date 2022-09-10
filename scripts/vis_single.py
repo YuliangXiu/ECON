@@ -10,14 +10,10 @@ import glob
 t0 = time.time()
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    '-s', '--subject', type=str, help='subject name')
-parser.add_argument(
-    '-o', '--out_dir', type=str, help='output dir')
-parser.add_argument(
-    '-r', '--rotation', type=str, help='rotation num')
-parser.add_argument(
-    '-m', '--mode', type=str, help='gen/debug')
+parser.add_argument('-s', '--subject', type=str, help='subject name')
+parser.add_argument('-o', '--out_dir', type=str, help='output dir')
+parser.add_argument('-r', '--rotation', type=str, help='rotation num')
+parser.add_argument('-m', '--mode', type=str, help='gen/debug')
 
 args = parser.parse_args()
 
@@ -27,8 +23,7 @@ rotation = int(args.rotation)
 
 dataset = save_folder.split("/")[-1].split("_")[0]
 
-mesh_file = os.path.join(
-    f'./data/{dataset}/scans/{subject}', f'{subject}.obj')
+mesh_file = os.path.join(f'./data/{dataset}/scans/{subject}', f'{subject}.obj')
 fit_file = f'./data/{dataset}/fits/{subject}/smplx_param.pkl'
 
 rescale_fitted_body, _ = load_fit_body(fit_file,
@@ -39,12 +34,10 @@ rescale_fitted_body, _ = load_fit_body(fit_file,
 smpl_verts = torch.from_numpy(rescale_fitted_body.vertices).cuda().float()
 smpl_faces = torch.from_numpy(rescale_fitted_body.faces).cuda().long()
 
-for y in range(0, 360, 360//rotation):
+for y in range(0, 360, 360 // rotation):
 
-    calib_file = os.path.join(
-        f'{save_folder}/{subject}/calib', f'{y:03d}.txt')
-    vis_file = os.path.join(
-        f'{save_folder}/{subject}/vis', f'{y:03d}.pt')
+    calib_file = os.path.join(f'{save_folder}/{subject}/calib', f'{y:03d}.txt')
+    vis_file = os.path.join(f'{save_folder}/{subject}/vis', f'{y:03d}.pt')
 
     os.makedirs(os.path.dirname(vis_file), exist_ok=True)
 
@@ -56,8 +49,9 @@ for y in range(0, 360, 360//rotation):
         smpl_vis = get_visibility(xy, z, smpl_faces)
 
         if args.mode == 'debug':
-            mesh = trimesh.Trimesh(smpl_verts.cpu().numpy(
-            ), smpl_faces.cpu().numpy(), process=False)
+            mesh = trimesh.Trimesh(smpl_verts.cpu().numpy(),
+                                   smpl_faces.cpu().numpy(),
+                                   process=False)
             mesh.visual.vertex_colors = torch.tile(smpl_vis, (1, 3)).numpy()
             mesh.export(vis_file.replace("pt", "obj"))
 
@@ -66,4 +60,5 @@ for y in range(0, 360, 360//rotation):
 done_jobs = len(glob.glob(f"{save_folder}/*/vis"))
 all_jobs = len(os.listdir(f"./data/{dataset}/scans"))
 print(
-    f"Finish visibility computing {subject}| {done_jobs}/{all_jobs} | Time: {(time.time()-t0):.0f} secs")
+    f"Finish visibility computing {subject}| {done_jobs}/{all_jobs} | Time: {(time.time()-t0):.0f} secs"
+)

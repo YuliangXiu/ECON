@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -15,12 +14,12 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-
 import torch.nn as nn
 import pytorch_lightning as pl
 
 
 class BaseNetwork(pl.LightningModule):
+
     def __init__(self):
         super(BaseNetwork, self).__init__()
 
@@ -30,6 +29,7 @@ class BaseNetwork(pl.LightningModule):
         init_type: normal | xavier | kaiming | orthogonal
         https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/9451e70673400885567d08a9e97ade2524c700d0/models/networks.py#L39
         '''
+
         def init_func(m):
             classname = m.__class__.__name__
             if hasattr(m, 'weight') and (classname.find('Conv') != -1
@@ -54,6 +54,7 @@ class BaseNetwork(pl.LightningModule):
 
 
 class Residual3D(BaseNetwork):
+
     def __init__(self, numIn, numOut):
         super(Residual3D, self).__init__()
         self.numIn = numIn

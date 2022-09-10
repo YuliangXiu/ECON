@@ -29,6 +29,7 @@ _glut_window = None
 
 
 class Render:
+
     def __init__(self,
                  width=1600,
                  height=1200,

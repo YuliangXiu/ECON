@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -22,6 +21,7 @@ import os
 
 
 class SMPLModel():
+
     def __init__(self, model_path, age):
         """
         SMPL model.
@@ -231,6 +231,7 @@ class SMPLModel():
 
 
 class TetraSMPLModel():
+
     def __init__(self,
                  model_path,
                  model_addition_path,
