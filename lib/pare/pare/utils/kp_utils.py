@@ -21,15 +21,15 @@ def keypoint_hflip(kp, img_width):
     # Flip a keypoint horizontally around the y-axis
     # kp N,2
     if len(kp.shape) == 2:
-        kp[:, 0] = (img_width - 1.) - kp[:, 0]
+        kp[:, 0] = (img_width - 1.0) - kp[:, 0]
     elif len(kp.shape) == 3:
-        kp[:, :, 0] = (img_width - 1.) - kp[:, :, 0]
+        kp[:, :, 0] = (img_width - 1.0) - kp[:, :, 0]
     return kp
 
 
 def convert_kps(joints2d, src, dst):
-    src_names = eval(f'get_{src}_joint_names')()
-    dst_names = eval(f'get_{dst}_joint_names')()
+    src_names = eval(f"get_{src}_joint_names")()
+    dst_names = eval(f"get_{dst}_joint_names")()
 
     out_joints2d = np.zeros(
         (joints2d.shape[0], len(dst_names), joints2d.shape[-1]))
@@ -42,64 +42,64 @@ def convert_kps(joints2d, src, dst):
 
 
 def get_perm_idxs(src, dst):
-    src_names = eval(f'get_{src}_joint_names')()
-    dst_names = eval(f'get_{dst}_joint_names')()
+    src_names = eval(f"get_{src}_joint_names")()
+    dst_names = eval(f"get_{dst}_joint_names")()
     idxs = [src_names.index(h) for h in dst_names if h in src_names]
     return idxs
 
 
 def get_mpii3d_test_joint_names():
     return [
-        'headtop',  # 'head_top',
-        'neck',
-        'rshoulder',  # 'right_shoulder',
-        'relbow',  # 'right_elbow',
-        'rwrist',  # 'right_wrist',
-        'lshoulder',  # 'left_shoulder',
-        'lelbow',  # 'left_elbow',
-        'lwrist',  # 'left_wrist',
-        'rhip',  # 'right_hip',
-        'rknee',  # 'right_knee',
-        'rankle',  # 'right_ankle',
-        'lhip',  # 'left_hip',
-        'lknee',  # 'left_knee',
-        'lankle',  # 'left_ankle'
-        'hip',  # 'pelvis',
-        'Spine (H36M)',  # 'spine',
-        'Head (H36M)',  # 'head'
+        "headtop",  # 'head_top',
+        "neck",
+        "rshoulder",  # 'right_shoulder',
+        "relbow",  # 'right_elbow',
+        "rwrist",  # 'right_wrist',
+        "lshoulder",  # 'left_shoulder',
+        "lelbow",  # 'left_elbow',
+        "lwrist",  # 'left_wrist',
+        "rhip",  # 'right_hip',
+        "rknee",  # 'right_knee',
+        "rankle",  # 'right_ankle',
+        "lhip",  # 'left_hip',
+        "lknee",  # 'left_knee',
+        "lankle",  # 'left_ankle'
+        "hip",  # 'pelvis',
+        "Spine (H36M)",  # 'spine',
+        "Head (H36M)",  # 'head'
     ]
 
 
 def get_mpii3d_joint_names():
     return [
-        'spine3',  # 0,
-        'spine4',  # 1,
-        'spine2',  # 2,
-        'Spine (H36M)',  # 'spine', # 3,
-        'hip',  # 'pelvis', # 4,
-        'neck',  # 5,
-        'Head (H36M)',  # 'head', # 6,
+        "spine3",  # 0,
+        "spine4",  # 1,
+        "spine2",  # 2,
+        "Spine (H36M)",  # 'spine', # 3,
+        "hip",  # 'pelvis', # 4,
+        "neck",  # 5,
+        "Head (H36M)",  # 'head', # 6,
         "headtop",  # 'head_top', # 7,
-        'left_clavicle',  # 8,
+        "left_clavicle",  # 8,
         "lshoulder",  # 'left_shoulder', # 9,
         "lelbow",  # 'left_elbow',# 10,
         "lwrist",  # 'left_wrist',# 11,
-        'left_hand',  # 12,
-        'right_clavicle',  # 13,
-        'rshoulder',  # 'right_shoulder',# 14,
-        'relbow',  # 'right_elbow',# 15,
-        'rwrist',  # 'right_wrist',# 16,
-        'right_hand',  # 17,
-        'lhip',  # left_hip',# 18,
-        'lknee',  # 'left_knee',# 19,
-        'lankle',  # left ankle # 20
-        'left_foot',  # 21
-        'left_toe',  # 22
+        "left_hand",  # 12,
+        "right_clavicle",  # 13,
+        "rshoulder",  # 'right_shoulder',# 14,
+        "relbow",  # 'right_elbow',# 15,
+        "rwrist",  # 'right_wrist',# 16,
+        "right_hand",  # 17,
+        "lhip",  # left_hip',# 18,
+        "lknee",  # 'left_knee',# 19,
+        "lankle",  # left ankle # 20
+        "left_foot",  # 21
+        "left_toe",  # 22
         "rhip",  # 'right_hip',# 23
         "rknee",  # 'right_knee',# 24
         "rankle",  # 'right_ankle', # 25
-        'right_foot',  # 26
-        'right_toe'  # 27
+        "right_foot",  # 26
+        "right_toe",  # 27
     ]
 
 
@@ -135,31 +135,31 @@ def get_mpii3d_joint_names():
 
 def get_insta_joint_names():
     return [
-        'OP RHeel',
-        'OP RKnee',
-        'OP RHip',
-        'OP LHip',
-        'OP LKnee',
-        'OP LHeel',
-        'OP RWrist',
-        'OP RElbow',
-        'OP RShoulder',
-        'OP LShoulder',
-        'OP LElbow',
-        'OP LWrist',
-        'OP Neck',
-        'headtop',
-        'OP Nose',
-        'OP LEye',
-        'OP REye',
-        'OP LEar',
-        'OP REar',
-        'OP LBigToe',
-        'OP RBigToe',
-        'OP LSmallToe',
-        'OP RSmallToe',
-        'OP LAnkle',
-        'OP RAnkle',
+        "OP RHeel",
+        "OP RKnee",
+        "OP RHip",
+        "OP LHip",
+        "OP LKnee",
+        "OP LHeel",
+        "OP RWrist",
+        "OP RElbow",
+        "OP RShoulder",
+        "OP LShoulder",
+        "OP LElbow",
+        "OP LWrist",
+        "OP Neck",
+        "headtop",
+        "OP Nose",
+        "OP LEye",
+        "OP REye",
+        "OP LEar",
+        "OP REar",
+        "OP LBigToe",
+        "OP RBigToe",
+        "OP LSmallToe",
+        "OP RSmallToe",
+        "OP LAnkle",
+        "OP RAnkle",
     ]
 
 
@@ -167,29 +167,29 @@ def get_mmpose_joint_names():
     # this naming is for the first 23 joints of MMPose
     # does not include hands and face
     return [
-        'OP Nose',  # 1
-        'OP LEye',  # 2
-        'OP REye',  # 3
-        'OP LEar',  # 4
-        'OP REar',  # 5
-        'OP LShoulder',  # 6
-        'OP RShoulder',  # 7
-        'OP LElbow',  # 8
-        'OP RElbow',  # 9
-        'OP LWrist',  # 10
-        'OP RWrist',  # 11
-        'OP LHip',  # 12
-        'OP RHip',  # 13
-        'OP LKnee',  # 14
-        'OP RKnee',  # 15
-        'OP LAnkle',  # 16
-        'OP RAnkle',  # 17
-        'OP LBigToe',  # 18
-        'OP LSmallToe',  # 19
-        'OP LHeel',  # 20
-        'OP RBigToe',  # 21
-        'OP RSmallToe',  # 22
-        'OP RHeel',  # 23
+        "OP Nose",  # 1
+        "OP LEye",  # 2
+        "OP REye",  # 3
+        "OP LEar",  # 4
+        "OP REar",  # 5
+        "OP LShoulder",  # 6
+        "OP RShoulder",  # 7
+        "OP LElbow",  # 8
+        "OP RElbow",  # 9
+        "OP LWrist",  # 10
+        "OP RWrist",  # 11
+        "OP LHip",  # 12
+        "OP RHip",  # 13
+        "OP LKnee",  # 14
+        "OP RKnee",  # 15
+        "OP LAnkle",  # 16
+        "OP RAnkle",  # 17
+        "OP LBigToe",  # 18
+        "OP LSmallToe",  # 19
+        "OP LHeel",  # 20
+        "OP RBigToe",  # 21
+        "OP RSmallToe",  # 22
+        "OP RHeel",  # 23
     ]
 
 
@@ -253,172 +253,189 @@ def get_staf_skeleton():
 
 def get_staf_joint_names():
     return [
-        'OP Nose',  # 0,
-        'OP Neck',  # 1,
-        'OP RShoulder',  # 2,
-        'OP RElbow',  # 3,
-        'OP RWrist',  # 4,
-        'OP LShoulder',  # 5,
-        'OP LElbow',  # 6,
-        'OP LWrist',  # 7,
-        'OP MidHip',  # 8,
-        'OP RHip',  # 9,
-        'OP RKnee',  # 10,
-        'OP RAnkle',  # 11,
-        'OP LHip',  # 12,
-        'OP LKnee',  # 13,
-        'OP LAnkle',  # 14,
-        'OP REye',  # 15,
-        'OP LEye',  # 16,
-        'OP REar',  # 17,
-        'OP LEar',  # 18,
-        'Neck (LSP)',  # 19,
-        'Top of Head (LSP)',  # 20,
+        "OP Nose",  # 0,
+        "OP Neck",  # 1,
+        "OP RShoulder",  # 2,
+        "OP RElbow",  # 3,
+        "OP RWrist",  # 4,
+        "OP LShoulder",  # 5,
+        "OP LElbow",  # 6,
+        "OP LWrist",  # 7,
+        "OP MidHip",  # 8,
+        "OP RHip",  # 9,
+        "OP RKnee",  # 10,
+        "OP RAnkle",  # 11,
+        "OP LHip",  # 12,
+        "OP LKnee",  # 13,
+        "OP LAnkle",  # 14,
+        "OP REye",  # 15,
+        "OP LEye",  # 16,
+        "OP REar",  # 17,
+        "OP LEar",  # 18,
+        "Neck (LSP)",  # 19,
+        "Top of Head (LSP)",  # 20,
     ]
 
 
 def get_spin_op_joint_names():
     return [
-        'OP Nose',  # 0
-        'OP Neck',  # 1
-        'OP RShoulder',  # 2
-        'OP RElbow',  # 3
-        'OP RWrist',  # 4
-        'OP LShoulder',  # 5
-        'OP LElbow',  # 6
-        'OP LWrist',  # 7
-        'OP MidHip',  # 8
-        'OP RHip',  # 9
-        'OP RKnee',  # 10
-        'OP RAnkle',  # 11
-        'OP LHip',  # 12
-        'OP LKnee',  # 13
-        'OP LAnkle',  # 14
-        'OP REye',  # 15
-        'OP LEye',  # 16
-        'OP REar',  # 17
-        'OP LEar',  # 18
-        'OP LBigToe',  # 19
-        'OP LSmallToe',  # 20
-        'OP LHeel',  # 21
-        'OP RBigToe',  # 22
-        'OP RSmallToe',  # 23
-        'OP RHeel',  # 24
+        "OP Nose",  # 0
+        "OP Neck",  # 1
+        "OP RShoulder",  # 2
+        "OP RElbow",  # 3
+        "OP RWrist",  # 4
+        "OP LShoulder",  # 5
+        "OP LElbow",  # 6
+        "OP LWrist",  # 7
+        "OP MidHip",  # 8
+        "OP RHip",  # 9
+        "OP RKnee",  # 10
+        "OP RAnkle",  # 11
+        "OP LHip",  # 12
+        "OP LKnee",  # 13
+        "OP LAnkle",  # 14
+        "OP REye",  # 15
+        "OP LEye",  # 16
+        "OP REar",  # 17
+        "OP LEar",  # 18
+        "OP LBigToe",  # 19
+        "OP LSmallToe",  # 20
+        "OP LHeel",  # 21
+        "OP RBigToe",  # 22
+        "OP RSmallToe",  # 23
+        "OP RHeel",  # 24
     ]
 
 
 def get_openpose_joint_names():
     return [
-        'OP Nose',  # 0
-        'OP Neck',  # 1
-        'OP RShoulder',  # 2
-        'OP RElbow',  # 3
-        'OP RWrist',  # 4
-        'OP LShoulder',  # 5
-        'OP LElbow',  # 6
-        'OP LWrist',  # 7
-        'OP MidHip',  # 8
-        'OP RHip',  # 9
-        'OP RKnee',  # 10
-        'OP RAnkle',  # 11
-        'OP LHip',  # 12
-        'OP LKnee',  # 13
-        'OP LAnkle',  # 14
-        'OP REye',  # 15
-        'OP LEye',  # 16
-        'OP REar',  # 17
-        'OP LEar',  # 18
-        'OP LBigToe',  # 19
-        'OP LSmallToe',  # 20
-        'OP LHeel',  # 21
-        'OP RBigToe',  # 22
-        'OP RSmallToe',  # 23
-        'OP RHeel',  # 24
+        "OP Nose",  # 0
+        "OP Neck",  # 1
+        "OP RShoulder",  # 2
+        "OP RElbow",  # 3
+        "OP RWrist",  # 4
+        "OP LShoulder",  # 5
+        "OP LElbow",  # 6
+        "OP LWrist",  # 7
+        "OP MidHip",  # 8
+        "OP RHip",  # 9
+        "OP RKnee",  # 10
+        "OP RAnkle",  # 11
+        "OP LHip",  # 12
+        "OP LKnee",  # 13
+        "OP LAnkle",  # 14
+        "OP REye",  # 15
+        "OP LEye",  # 16
+        "OP REar",  # 17
+        "OP LEar",  # 18
+        "OP LBigToe",  # 19
+        "OP LSmallToe",  # 20
+        "OP LHeel",  # 21
+        "OP RBigToe",  # 22
+        "OP RSmallToe",  # 23
+        "OP RHeel",  # 24
     ]
 
 
 def get_spin_joint_names():
     return [
-        'OP Nose',  # 0
-        'OP Neck',  # 1
-        'OP RShoulder',  # 2
-        'OP RElbow',  # 3
-        'OP RWrist',  # 4
-        'OP LShoulder',  # 5
-        'OP LElbow',  # 6
-        'OP LWrist',  # 7
-        'OP MidHip',  # 8
-        'OP RHip',  # 9
-        'OP RKnee',  # 10
-        'OP RAnkle',  # 11
-        'OP LHip',  # 12
-        'OP LKnee',  # 13
-        'OP LAnkle',  # 14
-        'OP REye',  # 15
-        'OP LEye',  # 16
-        'OP REar',  # 17
-        'OP LEar',  # 18
-        'OP LBigToe',  # 19
-        'OP LSmallToe',  # 20
-        'OP LHeel',  # 21
-        'OP RBigToe',  # 22
-        'OP RSmallToe',  # 23
-        'OP RHeel',  # 24
-        'rankle',  # 25
-        'rknee',  # 26
-        'rhip',  # 27
-        'lhip',  # 28
-        'lknee',  # 29
-        'lankle',  # 30
-        'rwrist',  # 31
-        'relbow',  # 32
-        'rshoulder',  # 33
-        'lshoulder',  # 34
-        'lelbow',  # 35
-        'lwrist',  # 36
-        'neck',  # 37
-        'headtop',  # 38
-        'hip',  # 39 'Pelvis (MPII)', # 39
-        'thorax',  # 40 'Thorax (MPII)', # 40
-        'Spine (H36M)',  # 41
-        'Jaw (H36M)',  # 42
-        'Head (H36M)',  # 43
-        'nose',  # 44
-        'leye',  # 45 'Left Eye', # 45
-        'reye',  # 46 'Right Eye', # 46
-        'lear',  # 47 'Left Ear', # 47
-        'rear',  # 48 'Right Ear', # 48
+        "OP Nose",  # 0
+        "OP Neck",  # 1
+        "OP RShoulder",  # 2
+        "OP RElbow",  # 3
+        "OP RWrist",  # 4
+        "OP LShoulder",  # 5
+        "OP LElbow",  # 6
+        "OP LWrist",  # 7
+        "OP MidHip",  # 8
+        "OP RHip",  # 9
+        "OP RKnee",  # 10
+        "OP RAnkle",  # 11
+        "OP LHip",  # 12
+        "OP LKnee",  # 13
+        "OP LAnkle",  # 14
+        "OP REye",  # 15
+        "OP LEye",  # 16
+        "OP REar",  # 17
+        "OP LEar",  # 18
+        "OP LBigToe",  # 19
+        "OP LSmallToe",  # 20
+        "OP LHeel",  # 21
+        "OP RBigToe",  # 22
+        "OP RSmallToe",  # 23
+        "OP RHeel",  # 24
+        "rankle",  # 25
+        "rknee",  # 26
+        "rhip",  # 27
+        "lhip",  # 28
+        "lknee",  # 29
+        "lankle",  # 30
+        "rwrist",  # 31
+        "relbow",  # 32
+        "rshoulder",  # 33
+        "lshoulder",  # 34
+        "lelbow",  # 35
+        "lwrist",  # 36
+        "neck",  # 37
+        "headtop",  # 38
+        "hip",  # 39 'Pelvis (MPII)', # 39
+        "thorax",  # 40 'Thorax (MPII)', # 40
+        "Spine (H36M)",  # 41
+        "Jaw (H36M)",  # 42
+        "Head (H36M)",  # 43
+        "nose",  # 44
+        "leye",  # 45 'Left Eye', # 45
+        "reye",  # 46 'Right Eye', # 46
+        "lear",  # 47 'Left Ear', # 47
+        "rear",  # 48 'Right Ear', # 48
     ]
 
 
 def get_muco3dhp_joint_names():
     return [
-        'headtop', 'thorax', 'rshoulder', 'relbow', 'rwrist', 'lshoulder',
-        'lelbow', 'lwrist', 'rhip', 'rknee', 'rankle', 'lhip', 'lknee',
-        'lankle', 'hip', 'Spine (H36M)', 'Head (H36M)', 'R_Hand', 'L_Hand',
-        'R_Toe', 'L_Toe'
+        "headtop",
+        "thorax",
+        "rshoulder",
+        "relbow",
+        "rwrist",
+        "lshoulder",
+        "lelbow",
+        "lwrist",
+        "rhip",
+        "rknee",
+        "rankle",
+        "lhip",
+        "lknee",
+        "lankle",
+        "hip",
+        "Spine (H36M)",
+        "Head (H36M)",
+        "R_Hand",
+        "L_Hand",
+        "R_Toe",
+        "L_Toe",
     ]
 
 
 def get_h36m_joint_names():
     return [
-        'hip',  # 0
-        'lhip',  # 1
-        'lknee',  # 2
-        'lankle',  # 3
-        'rhip',  # 4
-        'rknee',  # 5
-        'rankle',  # 6
-        'Spine (H36M)',  # 7
-        'neck',  # 8
-        'Head (H36M)',  # 9
-        'headtop',  # 10
-        'lshoulder',  # 11
-        'lelbow',  # 12
-        'lwrist',  # 13
-        'rshoulder',  # 14
-        'relbow',  # 15
-        'rwrist',  # 16
+        "hip",  # 0
+        "lhip",  # 1
+        "lknee",  # 2
+        "lankle",  # 3
+        "rhip",  # 4
+        "rknee",  # 5
+        "rankle",  # 6
+        "Spine (H36M)",  # 7
+        "neck",  # 8
+        "Head (H36M)",  # 9
+        "headtop",  # 10
+        "lshoulder",  # 11
+        "lelbow",  # 12
+        "lwrist",  # 13
+        "rshoulder",  # 14
+        "relbow",  # 15
+        "rwrist",  # 16
     ]
 
 
@@ -483,18 +500,45 @@ def get_openpose_skeleton():
 
 def get_posetrack_joint_names():
     return [
-        "nose", "neck", "headtop", "lear", "rear", "lshoulder", "rshoulder",
-        "lelbow", "relbow", "lwrist", "rwrist", "lhip", "rhip", "lknee",
-        "rknee", "lankle", "rankle"
+        "nose",
+        "neck",
+        "headtop",
+        "lear",
+        "rear",
+        "lshoulder",
+        "rshoulder",
+        "lelbow",
+        "relbow",
+        "lwrist",
+        "rwrist",
+        "lhip",
+        "rhip",
+        "lknee",
+        "rknee",
+        "lankle",
+        "rankle",
     ]
 
 
 def get_posetrack_original_kp_names():
     return [
-        'nose', 'head_bottom', 'head_top', 'left_ear', 'right_ear',
-        'left_shoulder', 'right_shoulder', 'left_elbow', 'right_elbow',
-        'left_wrist', 'right_wrist', 'left_hip', 'right_hip', 'left_knee',
-        'right_knee', 'left_ankle', 'right_ankle'
+        "nose",
+        "head_bottom",
+        "head_top",
+        "left_ear",
+        "right_ear",
+        "left_shoulder",
+        "right_shoulder",
+        "left_elbow",
+        "right_elbow",
+        "left_wrist",
+        "right_wrist",
+        "left_hip",
+        "right_hip",
+        "left_knee",
+        "right_knee",
+        "left_ankle",
+        "right_ankle",
     ]
 
 
@@ -512,7 +556,7 @@ def get_pennaction_joint_names():
         "lknee",  # 9
         "rknee",  # 10
         "lankle",  # 11
-        "rankle"  # 12
+        "rankle",  # 12
     ]
 
 
@@ -598,16 +642,44 @@ def get_coco_joint_names():
 
 def get_ochuman_joint_names():
     return [
-        'rshoulder', 'relbow', 'rwrist', 'lshoulder', 'lelbow', 'lwrist',
-        'rhip', 'rknee', 'rankle', 'lhip', 'lknee', 'lankle', 'headtop',
-        'neck', 'rear', 'lear', 'nose', 'reye', 'leye'
+        "rshoulder",
+        "relbow",
+        "rwrist",
+        "lshoulder",
+        "lelbow",
+        "lwrist",
+        "rhip",
+        "rknee",
+        "rankle",
+        "lhip",
+        "lknee",
+        "lankle",
+        "headtop",
+        "neck",
+        "rear",
+        "lear",
+        "nose",
+        "reye",
+        "leye",
     ]
 
 
 def get_crowdpose_joint_names():
     return [
-        'lshoulder', 'rshoulder', 'lelbow', 'relbow', 'lwrist', 'rwrist',
-        'lhip', 'rhip', 'lknee', 'rknee', 'lankle', 'rankle', 'headtop', 'neck'
+        "lshoulder",
+        "rshoulder",
+        "lelbow",
+        "relbow",
+        "lwrist",
+        "rwrist",
+        "lhip",
+        "rhip",
+        "lknee",
+        "rknee",
+        "lankle",
+        "rankle",
+        "headtop",
+        "neck",
     ]
 
 
@@ -629,9 +701,27 @@ def get_coco_skeleton():
     # 14 - rknee,
     # 15 - lankle,
     # 16 - rankle,
-    return np.array([[15, 13], [13, 11], [16, 14], [14, 12], [11, 12], [5, 11],
-                     [6, 12], [5, 6], [5, 7], [6, 8], [7, 9], [8, 10], [1, 2],
-                     [0, 1], [0, 2], [1, 3], [2, 4], [3, 5], [4, 6]])
+    return np.array([
+        [15, 13],
+        [13, 11],
+        [16, 14],
+        [14, 12],
+        [11, 12],
+        [5, 11],
+        [6, 12],
+        [5, 6],
+        [5, 7],
+        [6, 8],
+        [7, 9],
+        [8, 10],
+        [1, 2],
+        [0, 1],
+        [0, 2],
+        [1, 3],
+        [2, 4],
+        [3, 5],
+        [4, 6],
+    ])
 
 
 def get_mpii_joint_names():
@@ -672,9 +762,23 @@ def get_mpii_skeleton():
     # 13 - lshoulder,
     # 14 - lelbow,
     # 15 - lwrist,
-    return np.array([[0, 1], [1, 2], [2, 6], [6, 3], [3, 4], [4, 5], [6, 7],
-                     [7, 8], [8, 9], [7, 12], [12, 11], [11, 10], [7, 13],
-                     [13, 14], [14, 15]])
+    return np.array([
+        [0, 1],
+        [1, 2],
+        [2, 6],
+        [6, 3],
+        [3, 4],
+        [4, 5],
+        [6, 7],
+        [7, 8],
+        [8, 9],
+        [7, 12],
+        [12, 11],
+        [11, 10],
+        [7, 13],
+        [13, 14],
+        [14, 15],
+    ])
 
 
 def get_aich_joint_names():
@@ -711,8 +815,21 @@ def get_aich_skeleton():
     # 11 - lankle,
     # 12 - headtop,
     # 13 - neck,
-    return np.array([[0, 1], [1, 2], [3, 4], [4, 5], [6, 7], [7, 8], [9, 10],
-                     [10, 11], [12, 13], [13, 0], [13, 3], [0, 6], [3, 9]])
+    return np.array([
+        [0, 1],
+        [1, 2],
+        [3, 4],
+        [4, 5],
+        [6, 7],
+        [7, 8],
+        [9, 10],
+        [10, 11],
+        [12, 13],
+        [13, 0],
+        [13, 3],
+        [0, 6],
+        [3, 9],
+    ])
 
 
 def get_3dpw_joint_names():
@@ -735,9 +852,22 @@ def get_3dpw_joint_names():
 
 
 def get_3dpw_skeleton():
-    return np.array([[0, 1], [1, 2], [2, 3], [3, 4], [1, 5], [5, 6], [6, 7],
-                     [2, 8], [5, 11], [8, 11], [8, 9], [9, 10], [11, 12],
-                     [12, 13]])
+    return np.array([
+        [0, 1],
+        [1, 2],
+        [2, 3],
+        [3, 4],
+        [1, 5],
+        [5, 6],
+        [6, 7],
+        [2, 8],
+        [5, 11],
+        [8, 11],
+        [8, 9],
+        [9, 10],
+        [11, 12],
+        [12, 13],
+    ])
 
 
 def get_smplcoco_joint_names():
@@ -789,59 +919,59 @@ def get_smplcoco_skeleton():
 
 def get_smpl_joint_names():
     return [
-        'hips',  # 0
-        'leftUpLeg',  # 1
-        'rightUpLeg',  # 2
-        'spine',  # 3
-        'leftLeg',  # 4
-        'rightLeg',  # 5
-        'spine1',  # 6
-        'leftFoot',  # 7
-        'rightFoot',  # 8
-        'spine2',  # 9
-        'leftToeBase',  # 10
-        'rightToeBase',  # 11
-        'neck',  # 12
-        'leftShoulder',  # 13
-        'rightShoulder',  # 14
-        'head',  # 15
-        'leftArm',  # 16
-        'rightArm',  # 17
-        'leftForeArm',  # 18
-        'rightForeArm',  # 19
-        'leftHand',  # 20
-        'rightHand',  # 21
-        'leftHandIndex1',  # 22
-        'rightHandIndex1',  # 23
+        "hips",  # 0
+        "leftUpLeg",  # 1
+        "rightUpLeg",  # 2
+        "spine",  # 3
+        "leftLeg",  # 4
+        "rightLeg",  # 5
+        "spine1",  # 6
+        "leftFoot",  # 7
+        "rightFoot",  # 8
+        "spine2",  # 9
+        "leftToeBase",  # 10
+        "rightToeBase",  # 11
+        "neck",  # 12
+        "leftShoulder",  # 13
+        "rightShoulder",  # 14
+        "head",  # 15
+        "leftArm",  # 16
+        "rightArm",  # 17
+        "leftForeArm",  # 18
+        "rightForeArm",  # 19
+        "leftHand",  # 20
+        "rightHand",  # 21
+        "leftHandIndex1",  # 22
+        "rightHandIndex1",  # 23
     ]
 
 
 def get_smpl_paper_joint_names():
     return [
-        'Hips',  # 0
-        'Left Hip',  # 1
-        'Right Hip',  # 2
-        'Spine',  # 3
-        'Left Knee',  # 4
-        'Right Knee',  # 5
-        'Spine_1',  # 6
-        'Left Ankle',  # 7
-        'Right Ankle',  # 8
-        'Spine_2',  # 9
-        'Left Toe',  # 10
-        'Right Toe',  # 11
-        'Neck',  # 12
-        'Left Shoulder',  # 13
-        'Right Shoulder',  # 14
-        'Head',  # 15
-        'Left Arm',  # 16
-        'Right Arm',  # 17
-        'Left Elbow',  # 18
-        'Right Elbow',  # 19
-        'Left Hand',  # 20
-        'Right Hand',  # 21
-        'Left Thumb',  # 22
-        'Right Thumb',  # 23
+        "Hips",  # 0
+        "Left Hip",  # 1
+        "Right Hip",  # 2
+        "Spine",  # 3
+        "Left Knee",  # 4
+        "Right Knee",  # 5
+        "Spine_1",  # 6
+        "Left Ankle",  # 7
+        "Right Ankle",  # 8
+        "Spine_2",  # 9
+        "Left Toe",  # 10
+        "Right Toe",  # 11
+        "Neck",  # 12
+        "Left Shoulder",  # 13
+        "Right Shoulder",  # 14
+        "Head",  # 15
+        "Left Arm",  # 16
+        "Right Arm",  # 17
+        "Left Elbow",  # 18
+        "Right Elbow",  # 19
+        "Left Hand",  # 20
+        "Right Hand",  # 21
+        "Left Thumb",  # 22
+        "Right Thumb",  # 23
     ]
 
 
@@ -912,12 +1042,15 @@ def map_spin_joints_to_smpl():
         [(41, 27, 28, 39), 3],  # Spine->spine
         [(29, ), 4],  # lknee->leftLeg
         [(26, ), 5],  # rknee->rightLeg
-        [(
-            41,
-            40,
-            33,
-            34,
-        ), 6],  # spine, thorax ->spine1
+        [
+            (
+                41,
+                40,
+                33,
+                34,
+            ),
+            6,
+        ],  # spine, thorax ->spine1
         [(30, ), 7],  # lankle->leftFoot
         [(25, ), 8],  # rankle->rightFoot
         [(40, 33, 34), 9],  # thorax,shoulders->spine2
@@ -926,17 +1059,20 @@ def map_spin_joints_to_smpl():
         [(37, 42, 33, 34), 12],  # neck, shoulders -> neck
         [(34, ), 13],  # lshoulder->leftShoulder
         [(33, ), 14],  # rshoulder->rightShoulder
-        [(
-            33,
-            34,
-            38,
-            43,
-            44,
-            45,
-            46,
-            47,
-            48,
-        ), 15],  # nose, eyes, ears, headtop, shoulders->head
+        [
+            (
+                33,
+                34,
+                38,
+                43,
+                44,
+                45,
+                46,
+                47,
+                48,
+            ),
+            15,
+        ],  # nose, eyes, ears, headtop, shoulders->head
         [(34, ), 16],  # lshoulder->leftArm
         [(33, ), 17],  # rshoulder->rightArm
         [(35, ), 18],  # lelbow->leftForeArm
@@ -983,63 +1119,84 @@ def relation_among_spin_joints():
         [(), 34],
         [(), 35],
         [(), 36],
-        [(
-            40,
-            42,
-            44,
-            43,
-            38,
-            33,
-            34,
-        ), 37],
-        [(
-            43,
-            44,
-            45,
-            46,
-            47,
-            48,
-            33,
-            34,
-        ), 38],
-        [(
-            27,
-            28,
-        ), 39],
-        [(
-            27,
-            28,
+        [
+            (
+                40,
+                42,
+                44,
+                43,
+                38,
+                33,
+                34,
+            ),
             37,
-            41,
-            42,
-        ), 40],
-        [(
-            27,
-            28,
+        ],
+        [
+            (
+                43,
+                44,
+                45,
+                46,
+                47,
+                48,
+                33,
+                34,
+            ),
+            38,
+        ],
+        [
+            (
+                27,
+                28,
+            ),
             39,
+        ],
+        [
+            (
+                27,
+                28,
+                37,
+                41,
+                42,
+            ),
             40,
-        ), 41],
-        [(
-            37,
-            38,
-            44,
-            45,
-            46,
-            47,
-            48,
-        ), 42],
-        [(
-            44,
-            45,
-            46,
-            47,
-            48,
-            38,
+        ],
+        [
+            (
+                27,
+                28,
+                39,
+                40,
+            ),
+            41,
+        ],
+        [
+            (
+                37,
+                38,
+                44,
+                45,
+                46,
+                47,
+                48,
+            ),
             42,
-            37,
-            33,
-            34,
-        ), 43],
+        ],
+        [
+            (
+                44,
+                45,
+                46,
+                47,
+                48,
+                38,
+                42,
+                37,
+                33,
+                34,
+            ),
+            43,
+        ],
         [(44, 45, 46, 47, 48, 38, 42, 37, 33, 34), 44],
         [(44, 45, 46, 47, 48, 38, 42, 37, 33, 34), 45],
         [(44, 45, 46, 47, 48, 38, 42, 37, 33, 34), 46],

@@ -20,6 +20,7 @@ import torch.nn.functional as F
 
 
 class NonLocalAttention(nn.Module):
+
     def __init__(
         self,
         in_channels=256,
@@ -29,10 +30,10 @@ class NonLocalAttention(nn.Module):
         self.conv1x1 = nn.Conv1d(in_channels, out_channels, kernel_size=1)
 
     def forward(self, input):
-        '''
+        """
         input [N, Feats, J, 1]
         output [N, Feats, J, 1]
-        '''
+        """
         batch_size, n_feats, n_joints, _ = input.shape
         input = input.squeeze(-1)
 
@@ -48,7 +49,7 @@ class NonLocalAttention(nn.Module):
         return out
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     nla = NonLocalAttention()
 
     inp = torch.rand(32, 256, 24, 1)

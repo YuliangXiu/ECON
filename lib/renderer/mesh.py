@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -24,8 +23,8 @@ import torch
 import torch.nn.functional as F
 
 model_init_params = dict(
-    gender='male',
-    model_type='smplx',
+    gender="male",
+    model_type="smplx",
     model_path=SMPLX().model_dir,
     create_global_orient=False,
     create_body_pose=False,
@@ -37,16 +36,17 @@ model_init_params = dict(
     create_leye_pose=False,
     create_reye_pose=False,
     create_transl=False,
-    num_pca_comps=12)
+    num_pca_comps=12,
+)
 
 
-def get_smpl_model(model_type, gender): return smplx.create(
-    **model_init_params)
+def get_smpl_model(model_type, gender):
+    return smplx.create(**model_init_params)
 
 
 def normalization(data):
     _range = np.max(data) - np.min(data)
-    return ((data - np.min(data)) / _range)
+    return (data - np.min(data)) / _range
 
 
 def sigmoid(x):
@@ -54,23 +54,29 @@ def sigmoid(x):
     return z
 
 
-def load_fit_body(fitted_path, scale, smpl_type='smplx', smpl_gender='neutral', noise_dict=None):
+def load_fit_body(fitted_path,
+                  scale,
+                  smpl_type="smplx",
+                  smpl_gender="neutral",
+                  noise_dict=None):
 
     param = np.load(fitted_path, allow_pickle=True)
     for key in param.keys():
         param[key] = torch.as_tensor(param[key])
 
     smpl_model = get_smpl_model(smpl_type, smpl_gender)
-    model_forward_params = dict(betas=param['betas'],
-                                global_orient=param['global_orient'],
-                                body_pose=param['body_pose'],
-                                left_hand_pose=param['left_hand_pose'],
-                                right_hand_pose=param['right_hand_pose'],
-                                jaw_pose=param['jaw_pose'],
-                                leye_pose=param['leye_pose'],
-                                reye_pose=param['reye_pose'],
-                                expression=param['expression'],
-                                return_verts=True)
+    model_forward_params = dict(
+        betas=param["betas"],
+        global_orient=param["global_orient"],
+        body_pose=param["body_pose"],
+        left_hand_pose=param["left_hand_pose"],
+        right_hand_pose=param["right_hand_pose"],
+        jaw_pose=param["jaw_pose"],
+        leye_pose=param["leye_pose"],
+        reye_pose=param["reye_pose"],
+        expression=param["expression"],
+        return_verts=True,
+    )
 
     if noise_dict is not None:
         model_forward_params.update(noise_dict)
@@ -78,23 +84,26 @@ def load_fit_body(fitted_path, scale, smpl_type='smplx', smpl_gender='neutral', 
     smpl_out = smpl_model(**model_forward_params)
 
     smpl_verts = (
-        (smpl_out.vertices[0] * param['scale'] + param['translation']) * scale).detach()
+        (smpl_out.vertices[0] * param["scale"] + param["translation"]) *
+        scale).detach()
     smpl_joints = (
-        (smpl_out.joints[0] * param['scale'] + param['translation']) * scale).detach()
+        (smpl_out.joints[0] * param["scale"] + param["translation"]) *
+        scale).detach()
     smpl_mesh = trimesh.Trimesh(smpl_verts,
                                 smpl_model.faces,
-                                process=False, maintain_order=True)
+                                process=False,
+                                maintain_order=True)
 
     return smpl_mesh, smpl_joints
 
 
 def save_obj_mesh(mesh_path, verts, faces):
-    file = open(mesh_path, 'w')
+    file = open(mesh_path, "w")
     for v in verts:
-        file.write('v %.4f %.4f %.4f\n' % (v[0], v[1], v[2]))
+        file.write("v %.4f %.4f %.4f\n" % (v[0], v[1], v[2]))
     for f in faces:
         f_plus = f + 1
-        file.write('f %d %d %d\n' % (f_plus[0], f_plus[1], f_plus[2]))
+        file.write("f %d %d %d\n" % (f_plus[0], f_plus[1], f_plus[2]))
     file.close()
 
 
@@ -106,22 +115,22 @@ def read_mtlfile(fname):
 
     for line in lines:
         if line:
-            split_line = line.strip().split(' ', 1)
+            split_line = line.strip().split(" ", 1)
             if len(split_line) < 2:
                 continue
 
             prefix, data = split_line[0], split_line[1]
-            if 'newmtl' in prefix:
+            if "newmtl" in prefix:
                 material = {}
                 materials[data] = material
             elif materials:
                 if data:
-                    split_data = data.strip().split(' ')
+                    split_data = data.strip().split(" ")
 
                     # assume texture maps are in the same level
                     # WARNING: do not include space in your filename!!
-                    if 'map' in prefix:
-                        material[prefix] = split_data[-1].split('\\')[-1]
+                    if "map" in prefix:
+                        material[prefix] = split_data[-1].split("\\")[-1]
                     elif len(split_data) > 1:
                         material[prefix] = tuple(float(d) for d in split_data)
                     else:
@@ -158,27 +167,27 @@ def load_obj_mesh_mtl(mesh_file):
     for line in f:
         if isinstance(line, bytes):
             line = line.decode("utf-8")
-        if line.startswith('#'):
+        if line.startswith("#"):
             continue
         values = line.split()
         if not values:
             continue
 
-        if values[0] == 'v':
+        if values[0] == "v":
             v = list(map(float, values[1:4]))
             vertex_data.append(v)
-        elif values[0] == 'vn':
+        elif values[0] == "vn":
             vn = list(map(float, values[1:4]))
             norm_data.append(vn)
-        elif values[0] == 'vt':
+        elif values[0] == "vt":
             vt = list(map(float, values[1:3]))
             uv_data.append(vt)
-        elif values[0] == 'mtllib':
+        elif values[0] == "mtllib":
             mtl_data = read_mtlfile(
-                mesh_file.replace(mesh_file.split('/')[-1], values[1]))
-        elif values[0] == 'usemtl':
+                mesh_file.replace(mesh_file.split("/")[-1], values[1]))
+        elif values[0] == "usemtl":
             cur_mat = values[1]
-        elif values[0] == 'f':
+        elif values[0] == "f":
             # local triangle data
             l_face_data = []
             l_face_uv_data = []
@@ -188,71 +197,86 @@ def load_obj_mesh_mtl(mesh_file):
             if len(values) > 4:
                 f = list(
                     map(
-                        lambda x: int(x.split('/')[0]) if int(x.split('/')[0])
-                        < 0 else int(x.split('/')[0]) - 1, values[1:4]))
+                        lambda x: int(x.split("/")[0]) if int(x.split("/")[0])
+                        < 0 else int(x.split("/")[0]) - 1,
+                        values[1:4],
+                    ))
                 l_face_data.append(f)
                 f = list(
                     map(
-                        lambda x: int(x.split('/')[0])
-                        if int(x.split('/')[0]) < 0 else int(x.split('/')[0]) -
-                        1, [values[3], values[4], values[1]]))
+                        lambda x: int(x.split("/")[0]) if int(x.split("/")[0])
+                        < 0 else int(x.split("/")[0]) - 1,
+                        [values[3], values[4], values[1]],
+                    ))
                 l_face_data.append(f)
             # tri mesh
             else:
                 f = list(
                     map(
-                        lambda x: int(x.split('/')[0]) if int(x.split('/')[0])
-                        < 0 else int(x.split('/')[0]) - 1, values[1:4]))
+                        lambda x: int(x.split("/")[0]) if int(x.split("/")[0])
+                        < 0 else int(x.split("/")[0]) - 1,
+                        values[1:4],
+                    ))
                 l_face_data.append(f)
             # deal with texture
-            if len(values[1].split('/')) >= 2:
+            if len(values[1].split("/")) >= 2:
                 # quad mesh
                 if len(values) > 4:
                     f = list(
                         map(
-                            lambda x: int(x.split('/')[1])
-                            if int(x.split('/')[1]) < 0 else int(
-                                x.split('/')[1]) - 1, values[1:4]))
+                            lambda x: int(x.split("/")[1])
+                            if int(x.split("/")[1]) < 0 else int(
+                                x.split("/")[1]) - 1,
+                            values[1:4],
+                        ))
                     l_face_uv_data.append(f)
                     f = list(
                         map(
-                            lambda x: int(x.split('/')[1])
-                            if int(x.split('/')[1]) < 0 else int(
-                                x.split('/')[1]) - 1,
-                            [values[3], values[4], values[1]]))
+                            lambda x: int(x.split("/")[1])
+                            if int(x.split("/")[1]) < 0 else int(
+                                x.split("/")[1]) - 1,
+                            [values[3], values[4], values[1]],
+                        ))
                     l_face_uv_data.append(f)
                 # tri mesh
-                elif len(values[1].split('/')[1]) != 0:
+                elif len(values[1].split("/")[1]) != 0:
                     f = list(
                         map(
-                            lambda x: int(x.split('/')[1])
-                            if int(x.split('/')[1]) < 0 else int(
-                                x.split('/')[1]) - 1, values[1:4]))
+                            lambda x: int(x.split("/")[1])
+                            if int(x.split("/")[1]) < 0 else int(
+                                x.split("/")[1]) - 1,
+                            values[1:4],
+                        ))
                     l_face_uv_data.append(f)
             # deal with normal
-            if len(values[1].split('/')) == 3:
+            if len(values[1].split("/")) == 3:
                 # quad mesh
                 if len(values) > 4:
                     f = list(
                         map(
-                            lambda x: int(x.split('/')[2])
-                            if int(x.split('/')[2]) < 0 else int(
-                                x.split('/')[2]) - 1, values[1:4]))
+                            lambda x: int(x.split("/")[2])
+                            if int(x.split("/")[2]) < 0 else int(
+                                x.split("/")[2]) - 1,
+                            values[1:4],
+                        ))
                     l_face_norm_data.append(f)
                     f = list(
                         map(
-                            lambda x: int(x.split('/')[2])
-                            if int(x.split('/')[2]) < 0 else int(
-                                x.split('/')[2]) - 1,
-                            [values[3], values[4], values[1]]))
+                            lambda x: int(x.split("/")[2])
+                            if int(x.split("/")[2]) < 0 else int(
+                                x.split("/")[2]) - 1,
+                            [values[3], values[4], values[1]],
+                        ))
                     l_face_norm_data.append(f)
                 # tri mesh
-                elif len(values[1].split('/')[2]) != 0:
+                elif len(values[1].split("/")[2]) != 0:
                     f = list(
                         map(
-                            lambda x: int(x.split('/')[2])
-                            if int(x.split('/')[2]) < 0 else int(
-                                x.split('/')[2]) - 1, values[1:4]))
+                            lambda x: int(x.split("/")[2])
+                            if int(x.split("/")[2]) < 0 else int(
+                                x.split("/")[2]) - 1,
+                            values[1:4],
+                        ))
                     l_face_norm_data.append(f)
 
             face_data += l_face_data
@@ -310,63 +334,69 @@ def load_scan(mesh_file, with_normal=False, with_texture=False):
     for line in f:
         if isinstance(line, bytes):
             line = line.decode("utf-8")
-        if line.startswith('#'):
+        if line.startswith("#"):
             continue
         values = line.split()
         if not values:
             continue
 
-        if values[0] == 'v':
+        if values[0] == "v":
             v = list(map(float, values[1:4]))
             vertex_data.append(v)
-        elif values[0] == 'vn':
+        elif values[0] == "vn":
             vn = list(map(float, values[1:4]))
             norm_data.append(vn)
-        elif values[0] == 'vt':
+        elif values[0] == "vt":
             vt = list(map(float, values[1:3]))
             uv_data.append(vt)
 
-        elif values[0] == 'f':
+        elif values[0] == "f":
             # quad mesh
             if len(values) > 4:
-                f = list(map(lambda x: int(x.split('/')[0]), values[1:4]))
+                f = list(map(lambda x: int(x.split("/")[0]), values[1:4]))
                 face_data.append(f)
                 f = list(
-                    map(lambda x: int(x.split('/')[0]),
-                        [values[3], values[4], values[1]]))
+                    map(
+                        lambda x: int(x.split("/")[0]),
+                        [values[3], values[4], values[1]],
+                    ))
                 face_data.append(f)
             # tri mesh
             else:
-                f = list(map(lambda x: int(x.split('/')[0]), values[1:4]))
+                f = list(map(lambda x: int(x.split("/")[0]), values[1:4]))
                 face_data.append(f)
 
             # deal with texture
-            if len(values[1].split('/')) >= 2:
+            if len(values[1].split("/")) >= 2:
                 # quad mesh
                 if len(values) > 4:
-                    f = list(map(lambda x: int(x.split('/')[1]), values[1:4]))
+                    f = list(map(lambda x: int(x.split("/")[1]), values[1:4]))
                     face_uv_data.append(f)
                     f = list(
-                        map(lambda x: int(x.split('/')[1]),
-                            [values[3], values[4], values[1]]))
+                        map(
+                            lambda x: int(x.split("/")[1]),
+                            [values[3], values[4], values[1]],
+                        ))
                     face_uv_data.append(f)
                 # tri mesh
-                elif len(values[1].split('/')[1]) != 0:
-                    f = list(map(lambda x: int(x.split('/')[1]), values[1:4]))
+                elif len(values[1].split("/")[1]) != 0:
+                    f = list(map(lambda x: int(x.split("/")[1]), values[1:4]))
                     face_uv_data.append(f)
             # deal with normal
-            if len(values[1].split('/')) == 3:
+            if len(values[1].split("/")) == 3:
                 # quad mesh
                 if len(values) > 4:
-                    f = list(map(lambda x: int(x.split('/')[2]), values[1:4]))
+                    f = list(map(lambda x: int(x.split("/")[2]), values[1:4]))
                     face_norm_data.append(f)
                     f = list(
-                        map(lambda x: int(x.split('/')[2]),
-                            [values[3], values[4], values[1]]))
+                        map(
+                            lambda x: int(x.split("/")[2]),
+                            [values[3], values[4], values[1]],
+                        ))
                     face_norm_data.append(f)
                 # tri mesh
-                elif len(values[1].split('/')[2]) != 0:
-                    f = list(map(lambda x: int(x.split('/')[2]), values[1:4]))
+                elif len(values[1].split("/")[2]) != 0:
+                    f = list(map(lambda x: int(x.split("/")[2]), values[1:4]))
                     face_norm_data.append(f)
 
     vertices = np.array(vertex_data)
@@ -399,7 +429,7 @@ def load_scan(mesh_file, with_normal=False, with_texture=False):
 
 
 def normalize_v3(arr):
-    ''' Normalize a numpy array of 3 component vectors shape=(n,3) '''
+    """ Normalize a numpy array of 3 component vectors shape=(n,3) """
     lens = np.sqrt(arr[:, 0]**2 + arr[:, 1]**2 + arr[:, 2]**2)
     eps = 0.00000001
     lens[lens < eps] = eps
@@ -438,9 +468,11 @@ def compute_normal_batch(vertices, faces):
 
     vert_norm = torch.zeros(bs * nv, 3).type_as(vertices)
     tris = face_vertices(vertices, faces)
-    face_norm = F.normalize(torch.cross(tris[:, :, 1] - tris[:, :, 0],
-                                        tris[:, :, 2] - tris[:, :, 0]),
-                            dim=-1)
+    face_norm = F.normalize(
+        torch.cross(tris[:, :, 1] - tris[:, :, 0],
+                    tris[:, :, 2] - tris[:, :, 0]),
+        dim=-1,
+    )
 
     faces = (faces +
              (torch.arange(bs).type_as(faces) * nv)[:, None, None]).view(

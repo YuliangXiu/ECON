@@ -25,17 +25,20 @@ def init_weights(m):
 
 
 class SelfAttention(nn.Module):
-    def __init__(self,
-                 attention_size,
-                 batch_first=False,
-                 layers=1,
-                 dropout=.0,
-                 non_linearity='tanh'):
+
+    def __init__(
+        self,
+        attention_size,
+        batch_first=False,
+        layers=1,
+        dropout=0.0,
+        non_linearity="tanh",
+    ):
         super(SelfAttention, self).__init__()
 
         self.batch_first = batch_first
 
-        if non_linearity == 'relu':
+        if non_linearity == "relu":
             activation = nn.ReLU()
         else:
             activation = nn.Tanh()

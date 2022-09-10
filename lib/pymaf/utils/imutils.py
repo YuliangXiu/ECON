@@ -51,24 +51,22 @@ def get_transformer(input_res):
     image_to_tensor = transforms.Compose([
         transforms.Resize(input_res),
         transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
 
     mask_to_tensor = transforms.Compose([
         transforms.Resize(input_res),
         transforms.ToTensor(),
-        transforms.Normalize((0.0, ), (1.0, ))
+        transforms.Normalize((0.0, ), (1.0, )),
     ])
 
     image_to_pymaf_tensor = transforms.Compose([
         transforms.Resize(size=224),
         transforms.Normalize(mean=constants.IMG_NORM_MEAN,
-                             std=constants.IMG_NORM_STD)
+                             std=constants.IMG_NORM_STD),
     ])
 
-    image_to_pixie_tensor = transforms.Compose([
-        transforms.Resize(224)
-    ])
+    image_to_pixie_tensor = transforms.Compose([transforms.Resize(224)])
 
     def image_to_hybrik_tensor(img):
         # mean
@@ -82,17 +80,23 @@ def get_transformer(input_res):
         img[2].div_(0.229)
         return img
 
-    return [image_to_tensor, mask_to_tensor, image_to_pymaf_tensor, image_to_pixie_tensor, image_to_hybrik_tensor]
+    return [
+        image_to_tensor,
+        mask_to_tensor,
+        image_to_pymaf_tensor,
+        image_to_pixie_tensor,
+        image_to_hybrik_tensor,
+    ]
 
 
 def get_keypoints(image):
-    
+
     def collect_xyv(x):
         lmk = x.landmark
         all_lmks = []
         for i in range(len(lmk)):
-            all_lmks.append([lmk[i].x, lmk[i].y, lmk[i].visibility])
-        return np.array(all_lmks).reshape(-1,3)
+            all_lmks.append([lmk[i].x, lmk[i].y, lmk[i].z, lmk[i].visibility])
+        return np.array(all_lmks).reshape(-1, 4)
 
     mp_holistic = mp.solutions.holistic
 
@@ -100,30 +104,41 @@ def get_keypoints(image):
             static_image_mode=True,
             model_complexity=2,
             enable_segmentation=False,
-            refine_face_landmarks=True) as holistic:
+            refine_face_landmarks=True,
+    ) as holistic:
         results = holistic.process(image)
-        
+
     return {"pose_landmarks": collect_xyv(results.pose_landmarks)}
 
 
-def process_image(img_file, det, hps_type, input_res=512, device=None, seg_path=None):
-    
+def process_image(img_file,
+                  det,
+                  hps_type,
+                  input_res=512,
+                  device=None,
+                  seg_path=None):
     """Read image, do preprocessing and possibly crop it according to the bounding box.
     If there are bounding box annotations, use them to crop the image.
     If no bounding box is specified but openpose detections are available, use them to get the bounding box.
     """
 
-    [image_to_tensor, mask_to_tensor, image_to_pymaf_tensor,
-        image_to_pixie_tensor, image_to_hybrik_tensor] = get_transformer(input_res)
+    [
+        image_to_tensor,
+        mask_to_tensor,
+        image_to_pymaf_tensor,
+        image_to_pixie_tensor,
+        image_to_hybrik_tensor,
+    ] = get_transformer(input_res)
 
     img_ori = load_img(img_file)
 
     in_height, in_width, _ = img_ori.shape
-    M = aug_matrix(in_width, in_height, input_res*2, input_res*2)
+    M = aug_matrix(in_width, in_height, input_res * 2, input_res * 2)
 
     # from rectangle to square
-    img_for_crop = cv2.warpAffine(img_ori, M[0:2, :],
-                                  (input_res*2, input_res*2), flags=cv2.INTER_CUBIC)
+    img_for_crop = cv2.warpAffine(img_ori,
+                                  M[0:2, :], (input_res * 2, input_res * 2),
+                                  flags=cv2.INTER_CUBIC)
 
     if det is not None:
 
@@ -143,83 +158,95 @@ def process_image(img_file, det, hps_type, input_res=512, device=None, seg_path=
 
     scale = max(height, width) / 180
 
-    if hps_type == 'hybrik':
+    if hps_type == "hybrik":
         img_np = crop_for_hybrik(img_for_crop, center,
                                  np.array([scale * 180, scale * 180]))
     else:
-        img_np, cropping_parameters = crop(
-            img_for_crop, center, scale, (input_res, input_res))
+        img_np, cropping_parameters = crop(img_for_crop, center, scale,
+                                           (input_res, input_res))
 
     with torch.no_grad():
         buf = io.BytesIO()
-        Image.fromarray(img_np).save(buf, format='png')
-        img_pil = Image.open(
-            io.BytesIO(remove(buf.getvalue()))).convert("RGBA")
+        Image.fromarray(img_np).save(buf, format="png")
+        img_pil = Image.open(io.BytesIO(remove(
+            buf.getvalue()))).convert("RGBA")
 
     # for icon
     img_rgb = image_to_tensor(img_pil.convert("RGB"))
-    img_mask = torch.tensor(1.0) - (mask_to_tensor(img_pil.split()[-1]) <
-                                    torch.tensor(0.5)).float()
+    img_mask = (
+        torch.tensor(1.0) -
+        (mask_to_tensor(img_pil.split()[-1]) < torch.tensor(0.5)).float())
     img_tensor = img_rgb * img_mask
 
     # for hps
     img_crop = img_np.copy()
-    img_hps = img_np.astype(np.float32) / 255.
+    img_hps = img_np.astype(np.float32) / 255.0
     img_hps = torch.from_numpy(img_hps).permute(2, 0, 1)
 
-    if hps_type == 'bev':
+    if hps_type == "bev":
         img_hps = img_np[:, :, [2, 1, 0]]
-    elif hps_type == 'hybrik':
+    elif hps_type == "hybrik":
         img_hps = image_to_hybrik_tensor(img_hps).unsqueeze(0).to(device)
-    elif hps_type != 'pixie':
+    elif hps_type != "pixie":
         img_hps = image_to_pymaf_tensor(img_hps).unsqueeze(0).to(device)
     else:
         img_hps = image_to_pixie_tensor(img_hps).unsqueeze(0).to(device)
-        
+
     # keypoints estimation
     landmark_dict = get_keypoints(img_np)
-    
-    # uncrop params
-    uncrop_param = {'center': center,
-                    'scale': scale,
-                    'ori_shape': img_ori.shape,
-                    'box_shape': img_np.shape,
-                    'crop_shape': img_for_crop.shape,
-                    'M': M}
 
-    return_dict = {"img_icon": img_tensor, "img_crop": img_crop, "img_hps": img_hps,
-                   "img_ori": img_ori, "img_mask": img_mask, "uncrop_param": uncrop_param,
-                   "landmark_dict": landmark_dict}
+    # uncrop params
+    uncrop_param = {
+        "center": center,
+        "scale": scale,
+        "ori_shape": img_ori.shape,
+        "box_shape": img_np.shape,
+        "crop_shape": img_for_crop.shape,
+        "M": M,
+    }
+
+    return_dict = {
+        "img_icon": img_tensor,
+        "img_crop": img_crop,
+        "img_hps": img_hps,
+        "img_ori": img_ori,
+        "img_mask": img_mask,
+        "uncrop_param": uncrop_param,
+        "landmark_dict": landmark_dict,
+    }
 
     if not (seg_path is None):
         segmentations = load_segmentation(seg_path, (in_height, in_width))
         seg_coord_normalized = []
         for seg in segmentations:
             coord_normalized = []
-            for xy in seg['coordinates']:
+            for xy in seg["coordinates"]:
                 xy_h = np.vstack((xy[:, 0], xy[:, 1], np.ones(len(xy)))).T
                 warped_indeces = M[0:2, :] @ xy_h[:, :, None]
                 warped_indeces = np.array(warped_indeces).astype(int)
                 warped_indeces.resize((warped_indeces.shape[:2]))
 
                 # cropped_indeces = crop_segmentation(warped_indeces, center, scale, (input_res, input_res), img_np.shape)
-                cropped_indeces = crop_segmentation(
-                    warped_indeces, (input_res, input_res), cropping_parameters)
+                cropped_indeces = crop_segmentation(warped_indeces,
+                                                    (input_res, input_res),
+                                                    cropping_parameters)
 
                 indices = np.vstack(
                     (cropped_indeces[:, 0], cropped_indeces[:, 1])).T
 
                 # Convert to NDC coordinates
-                seg_cropped_normalized = 2*(indices / input_res) - 1
+                seg_cropped_normalized = 2 * (indices / input_res) - 1
                 # Don't know why we need to divide by 50 but it works ¯\_(ツ)_/¯ (probably some scaling factor somewhere)
                 # Divide only by 45 on the horizontal axis to take the curve of the human body into account
-                seg_cropped_normalized[:, 0] = (
-                    1/40) * seg_cropped_normalized[:, 0]
-                seg_cropped_normalized[:, 1] = (
-                    1/50) * seg_cropped_normalized[:, 1]
+                seg_cropped_normalized[:,
+                                       0] = (1 /
+                                             40) * seg_cropped_normalized[:, 0]
+                seg_cropped_normalized[:,
+                                       1] = (1 /
+                                             50) * seg_cropped_normalized[:, 1]
                 coord_normalized.append(seg_cropped_normalized)
 
-            seg['coord_normalized'] = coord_normalized
+            seg["coord_normalized"] = coord_normalized
             seg_coord_normalized.append(seg)
 
         return_dict.update({"segmentations": seg_coord_normalized})
@@ -233,8 +260,8 @@ def get_transform(center, scale, res):
     t = np.zeros((3, 3))
     t[0, 0] = float(res[1]) / h
     t[1, 1] = float(res[0]) / h
-    t[0, 2] = res[1] * (-float(center[0]) / h + .5)
-    t[1, 2] = res[0] * (-float(center[1]) / h + .5)
+    t[0, 2] = res[1] * (-float(center[0]) / h + 0.5)
+    t[1, 2] = res[0] * (-float(center[1]) / h + 0.5)
     t[2, 2] = 1
 
     return t
@@ -245,7 +272,7 @@ def transform(pt, center, scale, res, invert=0):
     t = get_transform(center, scale, res)
     if invert:
         t = np.linalg.inv(t)
-    new_pt = np.array([pt[0] - 1, pt[1] - 1, 1.]).T
+    new_pt = np.array([pt[0] - 1, pt[1] - 1, 1.0]).T
     new_pt = np.dot(t, new_pt)
     return np.around(new_pt[:2]).astype(np.int16)
 
@@ -272,13 +299,13 @@ def crop(img, center, scale, res):
     old_x = max(0, ul[0]), min(len(img[0]), br[0])
     old_y = max(0, ul[1]), min(len(img), br[1])
 
-    new_img[new_y[0]:new_y[1], new_x[0]:new_x[1]
-            ] = img[old_y[0]:old_y[1], old_x[0]:old_x[1]]
+    new_img[new_y[0]:new_y[1], new_x[0]:new_x[1]] = img[old_y[0]:old_y[1],
+                                                        old_x[0]:old_x[1]]
     if len(img.shape) == 2:
         new_img = np.array(Image.fromarray(new_img).resize(res))
     else:
-        new_img = np.array(Image.fromarray(
-            new_img.astype(np.uint8)).resize(res))
+        new_img = np.array(
+            Image.fromarray(new_img.astype(np.uint8)).resize(res))
 
     return new_img, (old_x, new_x, old_y, new_y, new_shape)
 
@@ -299,8 +326,9 @@ def crop_segmentation(org_coord, res, cropping_parameters):
 def crop_for_hybrik(img, center, scale):
     inp_h, inp_w = (256, 256)
     trans = get_affine_transform(center, scale, 0, [inp_w, inp_h])
-    new_img = cv2.warpAffine(
-        img, trans, (int(inp_w), int(inp_h)), flags=cv2.INTER_LINEAR)
+    new_img = cv2.warpAffine(img,
+                             trans, (int(inp_w), int(inp_h)),
+                             flags=cv2.INTER_LINEAR)
     return new_img
 
 
@@ -358,8 +386,8 @@ def get_affine_transform(center,
 
 def corner_align(ul, br):
 
-    if ul[1]-ul[0] != br[1]-br[0]:
-        ul[1] = ul[0]+br[1]-br[0]
+    if ul[1] - ul[0] != br[1] - br[0]:
+        ul[1] = ul[0] + br[1] - br[0]
 
     return ul, br
 
@@ -393,8 +421,8 @@ def uncrop(img, center, scale, orig_shape):
 
     img = np.array(Image.fromarray(img.astype(np.uint8)).resize(crop_shape))
 
-    new_img[old_y[0]:old_y[1], old_x[0]:old_x[1]
-            ] = img[new_y[0]:new_y[1], new_x[0]:new_x[1]]
+    new_img[old_y[0]:old_y[1], old_x[0]:old_x[1]] = img[new_y[0]:new_y[1],
+                                                        new_x[0]:new_x[1]]
 
     return new_img
 
@@ -402,9 +430,12 @@ def uncrop(img, center, scale, orig_shape):
 def rot_aa(aa, rot):
     """Rotate axis angle parameters."""
     # pose parameters
-    R = np.array([[np.cos(np.deg2rad(-rot)), -np.sin(np.deg2rad(-rot)), 0],
-                  [np.sin(np.deg2rad(-rot)),
-                   np.cos(np.deg2rad(-rot)), 0], [0, 0, 1]])
+    R = np.array([
+        [np.cos(np.deg2rad(-rot)), -np.sin(np.deg2rad(-rot)), 0],
+        [np.sin(np.deg2rad(-rot)),
+         np.cos(np.deg2rad(-rot)), 0],
+        [0, 0, 1],
+    ])
     # find the rotation of the body in camera frame
     per_rdg, _ = cv2.Rodrigues(aa)
     # apply the global rotation to the global orientation
@@ -462,25 +493,39 @@ def normalize_2d_kp(kp_2d, crop_size=224, inv=False):
     return kp_2d
 
 
+def visualize_landmarks(image, joints, color):
+
+    img_w, img_h = image.shape[:2]
+
+    for joint in joints:
+        image = cv2.circle(image,
+                           (int(joint[0] * img_w), int(joint[1] * img_h)), 5,
+                           color)
+
+    return image
+
+
 def generate_heatmap(joints, heatmap_size, sigma=1, joints_vis=None):
-    '''
+    """
     param joints:  [num_joints, 3]
     param joints_vis: [num_joints, 3]
     return: target, target_weight(1: visible, 0: invisible)
-    '''
+    """
     num_joints = joints.shape[0]
     device = joints.device
     cur_device = torch.device(device.type, device.index)
-    if not hasattr(heatmap_size, '__len__'):
+    if not hasattr(heatmap_size, "__len__"):
         # width  height
         heatmap_size = [heatmap_size, heatmap_size]
     assert len(heatmap_size) == 2
     target_weight = np.ones((num_joints, 1), dtype=np.float32)
     if joints_vis is not None:
         target_weight[:, 0] = joints_vis[:, 0]
-    target = torch.zeros((num_joints, heatmap_size[1], heatmap_size[0]),
-                         dtype=torch.float32,
-                         device=cur_device)
+    target = torch.zeros(
+        (num_joints, heatmap_size[1], heatmap_size[0]),
+        dtype=torch.float32,
+        device=cur_device,
+    )
 
     tmp_size = sigma * 3
 
@@ -490,8 +535,8 @@ def generate_heatmap(joints, heatmap_size, sigma=1, joints_vis=None):
         # Check that any part of the gaussian is in-bounds
         ul = [int(mu_x - tmp_size), int(mu_y - tmp_size)]
         br = [int(mu_x + tmp_size + 1), int(mu_y + tmp_size + 1)]
-        if ul[0] >= heatmap_size[0] or ul[1] >= heatmap_size[1] \
-                or br[0] < 0 or br[1] < 0:
+        if (ul[0] >= heatmap_size[0] or ul[1] >= heatmap_size[1] or br[0] < 0
+                or br[1] < 0):
             # If not, just return the image as is
             target_weight[joint_id] = 0
             continue
@@ -520,7 +565,8 @@ def generate_heatmap(joints, heatmap_size, sigma=1, joints_vis=None):
 
         v = target_weight[joint_id]
         if v > 0.5:
-            target[joint_id][img_y[0]:img_y[1], img_x[0]:img_x[1]] = \
-                g[g_y[0]:g_y[1], g_x[0]:g_x[1]]
+            target[joint_id][img_y[0]:img_y[1],
+                             img_x[0]:img_x[1]] = g[g_y[0]:g_y[1],
+                                                    g_x[0]:g_x[1]]
 
     return target, target_weight

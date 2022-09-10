@@ -17,9 +17,10 @@ logging.getLogger("lightning").setLevel(logging.ERROR)
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-cfg", "--config_file", type=str, help="path of the yaml config file"
-    )
+    parser.add_argument("-cfg",
+                        "--config_file",
+                        type=str,
+                        help="path of the yaml config file")
     args = parser.parse_args()
     cfg = get_cfg_defaults()
     cfg.merge_from_file(args.config_file)
@@ -28,9 +29,9 @@ if __name__ == "__main__":
     os.makedirs(osp.join(cfg.results_path, cfg.name), exist_ok=True)
     os.makedirs(osp.join(cfg.ckpt_dir, cfg.name), exist_ok=True)
 
-    tb_logger = pl_loggers.WandbLogger(
-        save_dir=cfg.results_path, name=cfg.name, default_hp_metric=False
-    )
+    tb_logger = pl_loggers.WandbLogger(save_dir=cfg.results_path,
+                                       name=cfg.name,
+                                       default_hp_metric=False)
 
     save_k = 3
 
@@ -65,8 +66,10 @@ if __name__ == "__main__":
         "num_sanity_val_steps": cfg.num_sanity_val_steps,
         "checkpoint_callback": checkpoint,
         "limit_train_batches": cfg.dataset.train_bsize,
-        "limit_val_batches": cfg.dataset.val_bsize if not cfg.overfit else 0.001,
-        "limit_test_batches": cfg.dataset.test_bsize if not cfg.overfit else 0.0,
+        "limit_val_batches":
+        cfg.dataset.val_bsize if not cfg.overfit else 0.001,
+        "limit_test_batches":
+        cfg.dataset.test_bsize if not cfg.overfit else 0.0,
         "profiler": None,
         "fast_dev_run": cfg.fast_dev,
         "max_epochs": cfg.num_epoch,
@@ -79,14 +82,13 @@ if __name__ == "__main__":
         datamodule.setup(stage="fit")
         train_len = datamodule.data_size["train"]
         val_len = datamodule.data_size["val"]
-        trainer_kwargs.update(
-            {
-                "log_every_n_steps": int(cfg.freq_plot * train_len / cfg.batch_size),
-                "val_check_interval": int(freq_eval * train_len / cfg.batch_size)
-                if freq_eval > 10
-                else freq_eval,
-            }
-        )
+        trainer_kwargs.update({
+            "log_every_n_steps":
+            int(cfg.freq_plot * train_len / cfg.batch_size),
+            "val_check_interval":
+            int(freq_eval * train_len /
+                cfg.batch_size) if freq_eval > 10 else freq_eval,
+        })
 
         if cfg.overfit:
             cfg_show_list = ["freq_show_train", 200.0, "freq_show_val", 10.0]
@@ -104,23 +106,17 @@ if __name__ == "__main__":
 
     trainer = pl.Trainer(**trainer_kwargs)
 
-    if (
-        cfg.resume
-        and os.path.exists(cfg.resume_path)
-        and cfg.resume_path.endswith("ckpt")
-    ):
+    if (cfg.resume and os.path.exists(cfg.resume_path)
+            and cfg.resume_path.endswith("ckpt")):
         trainer_kwargs["resume_from_checkpoint"] = cfg.resume_path
         trainer = pl.Trainer(**trainer_kwargs)
         print(f"Resume weights and hparams from {cfg.resume_path}")
-    elif (
-        not cfg.resume
-        and os.path.exists(cfg.resume_path)
-        and cfg.resume_path.endswith("ckpt")
-    ):
+    elif (not cfg.resume and os.path.exists(cfg.resume_path)
+          and cfg.resume_path.endswith("ckpt")):
 
         pretrained_dict = torch.load(
-            cfg.resume_path, map_location=torch.device(f"cuda:{cfg.gpus[0]}")
-        )["state_dict"]
+            cfg.resume_path,
+            map_location=torch.device(f"cuda:{cfg.gpus[0]}"))["state_dict"]
         model_dict = model.state_dict()
 
         # 1. filter out unnecessary keys

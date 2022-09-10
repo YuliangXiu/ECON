@@ -1,4 +1,4 @@
-'''
+"""
 MIT License
 
 Copyright (c) 2019 Shunsuke Saito, Zeng Huang, and Ryota Natsume
@@ -20,20 +20,23 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-'''
+"""
 from OpenGL.GLUT import *
 
 from .render2 import Render
 
 
 class NormRender(Render):
-    def __init__(self,
-                 width=1600,
-                 height=1200,
-                 name='Cam Renderer',
-                 program_files=['simple.fs', 'simple.vs'],
-                 color_size=1,
-                 ms_rate=1):
+
+    def __init__(
+        self,
+        width=1600,
+        height=1200,
+        name="Cam Renderer",
+        program_files=["simple.fs", "simple.vs"],
+        color_size=1,
+        ms_rate=1,
+    ):
         Render.__init__(self, width, height, name, program_files, color_size,
                         ms_rate)
         self.camera = None
@@ -53,22 +56,22 @@ class NormRender(Render):
         # up
         eps = 1
         # print(key)
-        if key == b'w':
+        if key == b"w":
             self.camera.center += eps * self.camera.direction
-        elif key == b's':
+        elif key == b"s":
             self.camera.center -= eps * self.camera.direction
-        if key == b'a':
+        if key == b"a":
             self.camera.center -= eps * self.camera.right
-        elif key == b'd':
+        elif key == b"d":
             self.camera.center += eps * self.camera.right
-        if key == b' ':
+        if key == b" ":
             self.camera.center += eps * self.camera.up
-        elif key == b'x':
+        elif key == b"x":
             self.camera.center -= eps * self.camera.up
-        elif key == b'i':
+        elif key == b"i":
             self.camera.near += 0.1 * eps
             self.camera.far += 0.1 * eps
-        elif key == b'o':
+        elif key == b"o":
             self.camera.near -= 0.1 * eps
             self.camera.far -= 0.1 * eps
 

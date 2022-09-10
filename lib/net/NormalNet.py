@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -24,7 +23,7 @@ import torch.nn as nn
 
 
 class NormalNet(BasePIFuNet):
-    '''
+    """
     HG PIFu network uses Hourglass stacks as the image filter.
     It does the following:
         1. Compute image feature stacks and store it in self.im_feat_list
@@ -34,7 +33,7 @@ class NormalNet(BasePIFuNet):
             If testing, it index on the last stack.
         4. Classification.
         5. During training, error is calculated on all stacks.
-    '''
+    """
 
     def __init__(self, cfg, error_term=nn.SmoothL1Loss()):
 
@@ -49,19 +48,19 @@ class NormalNet(BasePIFuNet):
 
         self.in_nmlF = [
             item[0] for item in self.opt.in_nml
-            if '_F' in item[0] or item[0] == 'image'
+            if "_F" in item[0] or item[0] == "image"
         ]
         self.in_nmlB = [
             item[0] for item in self.opt.in_nml
-            if '_B' in item[0] or item[0] == 'image'
+            if "_B" in item[0] or item[0] == "image"
         ]
         self.in_nmlF_dim = sum([
             item[1] for item in self.opt.in_nml
-            if '_F' in item[0] or item[0] == 'image'
+            if "_F" in item[0] or item[0] == "image"
         ])
         self.in_nmlB_dim = sum([
             item[1] for item in self.opt.in_nml
-            if '_B' in item[0] or item[0] == 'image'
+            if "_B" in item[0] or item[0] == "image"
         ])
 
         self.netF = define_G(self.in_nmlF_dim, 3, 64, "global", 4, 9, 1, 3,
@@ -83,15 +82,15 @@ class NormalNet(BasePIFuNet):
 
         nmlF = self.netF(torch.cat(inF_list, dim=1))
         nmlB = self.netB(torch.cat(inB_list, dim=1))
-        
+
         # ||normal|| == 1
         nmlF = nmlF / torch.norm(nmlF, dim=1, keepdim=True)
         nmlB = nmlB / torch.norm(nmlB, dim=1, keepdim=True)
-        
+
         # output: float_arr [-1,1] with [B, C, H, W]
 
-        mask = (in_tensor['image'].abs().sum(dim=1, keepdim=True) !=
-                0.0).detach().float()
+        mask = ((in_tensor["image"].abs().sum(dim=1, keepdim=True) !=
+                 0.0).detach().float())
 
         nmlF = nmlF * mask
         nmlB = nmlB * mask
@@ -106,7 +105,7 @@ class NormalNet(BasePIFuNet):
             tagt (torch.tensor): [B, 6, 512, 512]
         """
 
-        tgt_F, tgt_B = tgt['normal_F'], tgt['normal_B']
+        tgt_F, tgt_B = tgt["normal_F"], tgt["normal_B"]
 
         l1_F_loss = self.l1_loss(prd_F, tgt_F)
         l1_B_loss = self.l1_loss(prd_B, tgt_B)

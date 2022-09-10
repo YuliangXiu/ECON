@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -23,32 +22,32 @@ from typing import NewType
 from pytorch3d.structures import Meshes
 from pytorch3d.renderer.mesh import rasterize_meshes
 
-Tensor = NewType('Tensor', torch.Tensor)
+Tensor = NewType("Tensor", torch.Tensor)
 
 
 def solid_angles(points: Tensor,
                  triangles: Tensor,
                  thresh: float = 1e-8) -> Tensor:
-    ''' Compute solid angle between the input points and triangles
-        Follows the method described in:
-        The Solid Angle of a Plane Triangle
-        A. VAN OOSTEROM AND J. STRACKEE
-        IEEE TRANSACTIONS ON BIOMEDICAL ENGINEERING,
-        VOL. BME-30, NO. 2, FEBRUARY 1983
-        Parameters
-        -----------
-            points: BxQx3
-                Tensor of input query points
-            triangles: BxFx3x3
-                Target triangles
-            thresh: float
-                float threshold
-        Returns
-        -------
-            solid_angles: BxQxF
-                A tensor containing the solid angle between all query points
-                and input triangles
-    '''
+    """Compute solid angle between the input points and triangles
+    Follows the method described in:
+    The Solid Angle of a Plane Triangle
+    A. VAN OOSTEROM AND J. STRACKEE
+    IEEE TRANSACTIONS ON BIOMEDICAL ENGINEERING,
+    VOL. BME-30, NO. 2, FEBRUARY 1983
+    Parameters
+    -----------
+        points: BxQx3
+            Tensor of input query points
+        triangles: BxFx3x3
+            Target triangles
+        thresh: float
+            float threshold
+    Returns
+    -------
+        solid_angles: BxQxF
+            A tensor containing the solid angle between all query points
+            and input triangles
+    """
     # Center the triangles on the query points. Size should be BxQxFx3x3
     centered_tris = triangles[:, None] - points[:, :, None, None]
 
@@ -84,34 +83,34 @@ def solid_angles(points: Tensor,
 def winding_numbers(points: Tensor,
                     triangles: Tensor,
                     thresh: float = 1e-8) -> Tensor:
-    ''' Uses winding_numbers to compute inside/outside
-        Robust inside-outside segmentation using generalized winding numbers
-        Alec Jacobson,
-        Ladislav Kavan,
-        Olga Sorkine-Hornung
-        Fast Winding Numbers for Soups and Clouds SIGGRAPH 2018
-        Gavin Barill
-        NEIL G. Dickson
-        Ryan Schmidt
-        David I.W. Levin
-        and Alec Jacobson
-        Parameters
-        -----------
-            points: BxQx3
-                Tensor of input query points
-            triangles: BxFx3x3
-                Target triangles
-            thresh: float
-                float threshold
-        Returns
-        -------
-            winding_numbers: BxQ
-                A tensor containing the Generalized winding numbers
-    '''
+    """Uses winding_numbers to compute inside/outside
+    Robust inside-outside segmentation using generalized winding numbers
+    Alec Jacobson,
+    Ladislav Kavan,
+    Olga Sorkine-Hornung
+    Fast Winding Numbers for Soups and Clouds SIGGRAPH 2018
+    Gavin Barill
+    NEIL G. Dickson
+    Ryan Schmidt
+    David I.W. Levin
+    and Alec Jacobson
+    Parameters
+    -----------
+        points: BxQx3
+            Tensor of input query points
+        triangles: BxFx3x3
+            Target triangles
+        thresh: float
+            float threshold
+    Returns
+    -------
+        winding_numbers: BxQ
+            A tensor containing the Generalized winding numbers
+    """
     # The generalized winding number is the sum of solid angles of the point
     # with respect to all triangles.
-    return 1 / (4 * math.pi) * solid_angles(points, triangles,
-                                            thresh=thresh).sum(dim=-1)
+    return (1 / (4 * math.pi) *
+            solid_angles(points, triangles, thresh=thresh).sum(dim=-1))
 
 
 def batch_contains(verts, faces, points):
@@ -147,7 +146,7 @@ def dict2obj(d):
 
 
 def face_vertices(vertices, faces):
-    """ 
+    """
     :param vertices: [batch size, number of vertices, 3]
     :param faces: [batch size, number of faces, 3]
     :return: [batch size, number of faces, 3, 3]
@@ -156,14 +155,15 @@ def face_vertices(vertices, faces):
     bs, nv = vertices.shape[:2]
     bs, nf = faces.shape[:2]
     device = vertices.device
-    faces = faces + (torch.arange(bs, dtype=torch.int32).to(device) * nv)[:, None, None]
+    faces = faces + (torch.arange(bs, dtype=torch.int32).to(device) *
+                     nv)[:, None, None]
     vertices = vertices.reshape((bs * nv, vertices.shape[-1]))
 
     return vertices[faces.long()]
 
 
 class Pytorch3dRasterizer(nn.Module):
-    """  Borrowed from https://github.com/facebookresearch/pytorch3d
+    """Borrowed from https://github.com/facebookresearch/pytorch3d
     Notice:
         x,y,z are in image space, normalized
         can only render squared image now
@@ -175,13 +175,13 @@ class Pytorch3dRasterizer(nn.Module):
         """
         super().__init__()
         raster_settings = {
-            'image_size': image_size,
-            'blur_radius': 0.0,
-            'faces_per_pixel': 1,
-            'bin_size': 0,
-            'max_faces_per_bin': None,
-            'perspective_correct': True,
-            'cull_backfaces': True,
+            "image_size": image_size,
+            "blur_radius": 0.0,
+            "faces_per_pixel": 1,
+            "bin_size": 0,
+            "max_faces_per_bin": None,
+            "perspective_correct": True,
+            "cull_backfaces": True,
         }
         raster_settings = dict2obj(raster_settings)
         self.raster_settings = raster_settings

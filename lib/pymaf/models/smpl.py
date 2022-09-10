@@ -25,19 +25,21 @@ class SMPL(_SMPL):
         joints = [constants.JOINT_MAP[i] for i in constants.JOINT_NAMES]
         J_regressor_extra = np.load(path_config.JOINT_REGRESSOR_TRAIN_EXTRA)
         self.register_buffer(
-            'J_regressor_extra',
+            "J_regressor_extra",
             torch.tensor(J_regressor_extra, dtype=torch.float32))
         self.joint_map = torch.tensor(joints, dtype=torch.long)
         self.ModelOutput = namedtuple(
-            'ModelOutput_', ModelOutput._fields + (
-                'smpl_joints',
-                'joints_J19',
-            ))
+            "ModelOutput_",
+            ModelOutput._fields + (
+                "smpl_joints",
+                "joints_J19",
+            ),
+        )
         self.ModelOutput.__new__.__defaults__ = (None, ) * len(
             self.ModelOutput._fields)
 
     def forward(self, *args, **kwargs):
-        kwargs['get_skin'] = True
+        kwargs["get_skin"] = True
         smpl_output = super().forward(*args, **kwargs)
         extra_joints = vertices2joints(self.J_regressor_extra,
                                        smpl_output.vertices)
@@ -48,14 +50,16 @@ class SMPL(_SMPL):
         joints = joints[:, self.joint_map, :]  # [B, 49, 3]
         joints_J24 = joints[:, -24:, :]
         joints_J19 = joints_J24[:, constants.J24_TO_J19, :]
-        output = self.ModelOutput(vertices=vertices,
-                                  global_orient=smpl_output.global_orient,
-                                  body_pose=smpl_output.body_pose,
-                                  joints=joints,
-                                  joints_J19=joints_J19,
-                                  smpl_joints=smpl_joints,
-                                  betas=smpl_output.betas,
-                                  full_pose=smpl_output.full_pose)
+        output = self.ModelOutput(
+            vertices=vertices,
+            global_orient=smpl_output.global_orient,
+            body_pose=smpl_output.body_pose,
+            joints=joints,
+            joints_J19=joints_J19,
+            smpl_joints=smpl_joints,
+            betas=smpl_output.betas,
+            full_pose=smpl_output.full_pose,
+        )
         return output
 
 
@@ -69,10 +73,28 @@ def get_part_joints(smpl_joints):
 
     # part_joints = torch.zeros().to(smpl_joints.device)
 
-    one_seg_pairs = [(0, 1), (0, 2), (0, 3), (3, 6), (9, 12), (9, 13), (9, 14),
-                     (12, 15), (13, 16), (14, 17)]
-    two_seg_pairs = [(1, 4), (2, 5), (4, 7), (5, 8), (16, 18), (17, 19),
-                     (18, 20), (19, 21)]
+    one_seg_pairs = [
+        (0, 1),
+        (0, 2),
+        (0, 3),
+        (3, 6),
+        (9, 12),
+        (9, 13),
+        (9, 14),
+        (12, 15),
+        (13, 16),
+        (14, 17),
+    ]
+    two_seg_pairs = [
+        (1, 4),
+        (2, 5),
+        (4, 7),
+        (5, 8),
+        (16, 18),
+        (17, 19),
+        (18, 20),
+        (19, 21),
+    ]
 
     one_seg_pairs.extend(two_seg_pairs)
 

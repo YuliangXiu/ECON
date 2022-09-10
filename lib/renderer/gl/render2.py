@@ -1,4 +1,4 @@
-'''
+"""
 MIT License
 
 Copyright (c) 2019 Shunsuke Saito, Zeng Huang, and Ryota Natsume
@@ -20,7 +20,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-'''
+"""
 import numpy as np
 from OpenGL.GLUT import *
 from .framework import *
@@ -29,13 +29,16 @@ _glut_window = None
 
 
 class Render:
-    def __init__(self,
-                 width=1600,
-                 height=1200,
-                 name='GL Renderer',
-                 program_files=['simple.fs', 'simple.vs'],
-                 color_size=1,
-                 ms_rate=1):
+
+    def __init__(
+        self,
+        width=1600,
+        height=1200,
+        name="GL Renderer",
+        program_files=["simple.fs", "simple.vs"],
+        color_size=1,
+        ms_rate=1,
+    ):
         self.width = width
         self.height = height
         self.name = name
@@ -62,12 +65,12 @@ class Render:
 
         for program_file in program_files:
             _, ext = os.path.splitext(program_file)
-            if ext == '.vs':
+            if ext == ".vs":
                 shader_list.append(loadShader(GL_VERTEX_SHADER, program_file))
-            elif ext == '.fs':
+            elif ext == ".fs":
                 shader_list.append(loadShader(GL_FRAGMENT_SHADER,
                                               program_file))
-            elif ext == '.gs':
+            elif ext == ".gs":
                 shader_list.append(loadShader(GL_GEOMETRY_SHADER,
                                               program_file))
 
@@ -77,8 +80,8 @@ class Render:
             glDeleteShader(shader)
 
         # Init uniform variables
-        self.model_mat_unif = glGetUniformLocation(self.program, 'ModelMat')
-        self.persp_mat_unif = glGetUniformLocation(self.program, 'PerspMat')
+        self.model_mat_unif = glGetUniformLocation(self.program, "ModelMat")
+        self.persp_mat_unif = glGetUniformLocation(self.program, "PerspMat")
 
         self.vertex_buffer = glGenBuffers(1)
 
@@ -105,26 +108,40 @@ class Render:
                                 GL_LINEAR)
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
                                 GL_LINEAR)
-                glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE,
-                                        multi_sample_rate, GL_RGBA32F,
-                                        self.width, self.height, GL_TRUE)
+                glTexImage2DMultisample(
+                    GL_TEXTURE_2D_MULTISAMPLE,
+                    multi_sample_rate,
+                    GL_RGBA32F,
+                    self.width,
+                    self.height,
+                    GL_TRUE,
+                )
                 glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0)
-                glFramebufferTexture2D(GL_FRAMEBUFFER,
-                                       GL_COLOR_ATTACHMENT0 + i,
-                                       GL_TEXTURE_2D_MULTISAMPLE, color_buffer,
-                                       0)
+                glFramebufferTexture2D(
+                    GL_FRAMEBUFFER,
+                    GL_COLOR_ATTACHMENT0 + i,
+                    GL_TEXTURE_2D_MULTISAMPLE,
+                    color_buffer,
+                    0,
+                )
                 self.color_buffer.append(color_buffer)
 
             self.render_buffer = glGenRenderbuffers(1)
             glBindRenderbuffer(GL_RENDERBUFFER, self.render_buffer)
-            glRenderbufferStorageMultisample(GL_RENDERBUFFER,
-                                             multi_sample_rate,
-                                             GL_DEPTH24_STENCIL8, self.width,
-                                             self.height)
+            glRenderbufferStorageMultisample(
+                GL_RENDERBUFFER,
+                multi_sample_rate,
+                GL_DEPTH24_STENCIL8,
+                self.width,
+                self.height,
+            )
             glBindRenderbuffer(GL_RENDERBUFFER, 0)
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER,
-                                      GL_DEPTH_STENCIL_ATTACHMENT,
-                                      GL_RENDERBUFFER, self.render_buffer)
+            glFramebufferRenderbuffer(
+                GL_FRAMEBUFFER,
+                GL_DEPTH_STENCIL_ATTACHMENT,
+                GL_RENDERBUFFER,
+                self.render_buffer,
+            )
 
             attachments = []
             for i in range(color_size):
@@ -139,15 +156,28 @@ class Render:
             for i in range(color_size):
                 screen_texture = glGenTextures(1)
                 glBindTexture(GL_TEXTURE_2D, screen_texture)
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, self.width,
-                             self.height, 0, GL_RGBA, GL_FLOAT, None)
+                glTexImage2D(
+                    GL_TEXTURE_2D,
+                    0,
+                    GL_RGBA32F,
+                    self.width,
+                    self.height,
+                    0,
+                    GL_RGBA,
+                    GL_FLOAT,
+                    None,
+                )
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
                                 GL_LINEAR)
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
                                 GL_LINEAR)
-                glFramebufferTexture2D(GL_FRAMEBUFFER,
-                                       GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D,
-                                       screen_texture, 0)
+                glFramebufferTexture2D(
+                    GL_FRAMEBUFFER,
+                    GL_COLOR_ATTACHMENT0 + i,
+                    GL_TEXTURE_2D,
+                    screen_texture,
+                    0,
+                )
                 self.screen_texture.append(screen_texture)
 
             glDrawBuffers(color_size, attachments)
@@ -165,11 +195,24 @@ class Render:
                                 GL_NEAREST)
                 glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
                                 GL_NEAREST)
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, self.width,
-                             self.height, 0, GL_RGBA, GL_FLOAT, None)
-                glFramebufferTexture2D(GL_FRAMEBUFFER,
-                                       GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D,
-                                       color_buffer, 0)
+                glTexImage2D(
+                    GL_TEXTURE_2D,
+                    0,
+                    GL_RGBA32F,
+                    self.width,
+                    self.height,
+                    0,
+                    GL_RGBA,
+                    GL_FLOAT,
+                    None,
+                )
+                glFramebufferTexture2D(
+                    GL_FRAMEBUFFER,
+                    GL_COLOR_ATTACHMENT0 + i,
+                    GL_TEXTURE_2D,
+                    color_buffer,
+                    0,
+                )
                 self.color_buffer.append(color_buffer)
 
             # Configure depth texture map to render to
@@ -183,8 +226,17 @@ class Render:
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE,
                             GL_COMPARE_R_TO_TEXTURE)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL)
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, self.width,
-                         self.height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, None)
+            glTexImage2D(
+                GL_TEXTURE_2D,
+                0,
+                GL_DEPTH_COMPONENT,
+                self.width,
+                self.height,
+                0,
+                GL_DEPTH_COMPONENT,
+                GL_FLOAT,
+                None,
+            )
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
                                    GL_TEXTURE_2D, self.depth_buffer, 0)
 
@@ -227,8 +279,30 @@ class Render:
         # vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
         # positions # texCoords
         quad_vertices = np.array([
-            -1.0, 1.0, 0.0, 1.0, -1.0, -1.0, 0.0, 0.0, 1.0, -1.0, 1.0, 0.0,
-            -1.0, 1.0, 0.0, 1.0, 1.0, -1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0
+            -1.0,
+            1.0,
+            0.0,
+            1.0,
+            -1.0,
+            -1.0,
+            0.0,
+            0.0,
+            1.0,
+            -1.0,
+            1.0,
+            0.0,
+            -1.0,
+            1.0,
+            0.0,
+            1.0,
+            1.0,
+            -1.0,
+            1.0,
+            0.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0,
         ])
 
         quad_buffer = glGenBuffers(1)
@@ -275,9 +349,18 @@ class Render:
                 glReadBuffer(GL_COLOR_ATTACHMENT0 + i)
                 glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self.intermediate_fbo)
                 glDrawBuffer(GL_COLOR_ATTACHMENT0 + i)
-                glBlitFramebuffer(0, 0, self.width, self.height, 0, 0,
-                                  self.width, self.height, GL_COLOR_BUFFER_BIT,
-                                  GL_NEAREST)
+                glBlitFramebuffer(
+                    0,
+                    0,
+                    self.width,
+                    self.height,
+                    0,
+                    0,
+                    self.width,
+                    self.height,
+                    GL_COLOR_BUFFER_BIT,
+                    GL_NEAREST,
+                )
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0)
         glDepthFunc(GL_LESS)
@@ -309,8 +392,10 @@ class Render:
 
     def get_color(self, color_id=0):
         glBindFramebuffer(
-            GL_FRAMEBUFFER, self.intermediate_fbo
-            if self.intermediate_fbo is not None else self.frame_buffer)
+            GL_FRAMEBUFFER,
+            self.intermediate_fbo
+            if self.intermediate_fbo is not None else self.frame_buffer,
+        )
         glReadBuffer(GL_COLOR_ATTACHMENT0 + color_id)
         data = glReadPixels(0,
                             0,
@@ -369,7 +454,7 @@ class Render:
         # properly assing color buffer texture
         glActiveTexture(GL_TEXTURE0)
         glBindTexture(GL_TEXTURE_2D, self.screen_texture[0])
-        glUniform1i(glGetUniformLocation(self.quad_program, 'screenTexture'),
+        glUniform1i(glGetUniformLocation(self.quad_program, "screenTexture"),
                     0)
 
         glDrawArrays(GL_TRIANGLES, 0, 6)

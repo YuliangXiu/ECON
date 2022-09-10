@@ -22,10 +22,11 @@ from ..backbone.resnet import conv1x1, conv3x3
 
 
 class CoAttention(nn.Module):
+
     def __init__(
             self,
             n_channel,
-            final_conv='simple',  # 'double_1', 'double_3', 'single_1', 'single_3', 'simple'
+            final_conv="simple",  # 'double_1', 'double_3', 'single_1', 'single_3', 'simple'
     ):
         super(CoAttention, self).__init__()
         self.linear_e = nn.Linear(n_channel, n_channel, bias=False)
@@ -35,7 +36,7 @@ class CoAttention(nn.Module):
         self.gate_s = nn.Sigmoid()
         self.softmax = nn.Sigmoid()
 
-        if final_conv.startswith('double'):
+        if final_conv.startswith("double"):
             kernel_size = int(final_conv[-1])
             conv = conv1x1 if kernel_size == 1 else conv3x3
             self.final_conv_1 = nn.Sequential(
@@ -54,7 +55,7 @@ class CoAttention(nn.Module):
                 nn.BatchNorm2d(n_channel),
                 nn.ReLU(inplace=True),
             )
-        elif final_conv.startswith('single'):
+        elif final_conv.startswith("single"):
             kernel_size = int(final_conv[-1])
             conv = conv1x1 if kernel_size == 1 else conv3x3
             self.final_conv_1 = nn.Sequential(
@@ -67,7 +68,7 @@ class CoAttention(nn.Module):
                 nn.BatchNorm2d(n_channel),
                 nn.ReLU(inplace=True),
             )
-        elif final_conv == 'simple':
+        elif final_conv == "simple":
             self.final_conv_1 = conv1x1(n_channel * 2, n_channel)
             self.final_conv_2 = conv1x1(n_channel * 2, n_channel)
 
@@ -83,10 +84,10 @@ class CoAttention(nn.Module):
                 m.bias.data.zero_()
 
     def forward(self, input_1, input_2):
-        '''
+        """
         input_1: [N, C, H, W]
         input_2: [N, C, H, W]
-        '''
+        """
 
         b, c, h, w = input_1.shape
         exemplar, query = input_1, input_2

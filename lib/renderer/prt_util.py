@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -71,19 +70,19 @@ def AssociatedLegendre(M, L, x):
 
 def SphericalHarmonic(M, L, theta, phi):
     if M > 0:
-        return math.sqrt(2.0) * KVal(M, L) * np.cos(
-            M * phi) * AssociatedLegendre(M, L, np.cos(theta))
+        return (math.sqrt(2.0) * KVal(M, L) * np.cos(M * phi) *
+                AssociatedLegendre(M, L, np.cos(theta)))
     elif M < 0:
-        return math.sqrt(2.0) * KVal(-M, L) * np.sin(
-            -M * phi) * AssociatedLegendre(-M, L, np.cos(theta))
+        return (math.sqrt(2.0) * KVal(-M, L) * np.sin(-M * phi) *
+                AssociatedLegendre(-M, L, np.cos(theta)))
     else:
         return KVal(0, L) * AssociatedLegendre(0, L, np.cos(theta))
 
 
 def save_obj(mesh_path, verts):
-    file = open(mesh_path, 'w')
+    file = open(mesh_path, "w")
     for v in verts:
-        file.write('v %.4f %.4f %.4f\n' % (v[0], v[1], v[2]))
+        file.write("v %.4f %.4f %.4f\n" % (v[0], v[1], v[2]))
     file.close()
 
 
@@ -156,7 +155,7 @@ def computePRT(mesh_path, scale, n, order):
                                 axis=0).reshape(-1, 3)
 
             dots = (vectors * normals).sum(1)
-            front = (dots > 0.0)
+            front = dots > 0.0
 
             delta = 1e-3 * min(mesh.bounding_box.extents)
 
@@ -166,9 +165,9 @@ def computePRT(mesh_path, scale, n, order):
             PRT = (nohits.astype(np.float) * dots)[:, None] * SH
 
             if PRT_all is not None:
-                PRT_all += (PRT.reshape(-1, n, SH.shape[1]).sum(1))
+                PRT_all += PRT.reshape(-1, n, SH.shape[1]).sum(1)
             else:
-                PRT_all = (PRT.reshape(-1, n, SH.shape[1]).sum(1))
+                PRT_all = PRT.reshape(-1, n, SH.shape[1]).sum(1)
 
         PRT = w * PRT_all
         F = mesh.faces
@@ -184,16 +183,26 @@ def computePRT(mesh_path, scale, n, order):
 
 def testPRT(obj_path, n=40):
 
-    os.makedirs(os.path.join(os.path.dirname(obj_path),
-                             f'../bounce/{os.path.basename(obj_path)[:-4]}'),
-                exist_ok=True)
+    os.makedirs(
+        os.path.join(os.path.dirname(obj_path),
+                     f"../bounce/{os.path.basename(obj_path)[:-4]}"),
+        exist_ok=True,
+    )
 
     PRT, F = computePRT(obj_path, n, 2)
     np.savetxt(
-        os.path.join(os.path.dirname(obj_path),
-                     f'../bounce/{os.path.basename(obj_path)[:-4]}',
-                     'bounce.npy'), PRT)
+        os.path.join(
+            os.path.dirname(obj_path),
+            f"../bounce/{os.path.basename(obj_path)[:-4]}",
+            "bounce.npy",
+        ),
+        PRT,
+    )
     np.save(
-        os.path.join(os.path.dirname(obj_path),
-                     f'../bounce/{os.path.basename(obj_path)[:-4]}',
-                     'face.npy'), F)
+        os.path.join(
+            os.path.dirname(obj_path),
+            f"../bounce/{os.path.basename(obj_path)[:-4]}",
+            "face.npy",
+        ),
+        F,
+    )

@@ -21,12 +21,15 @@ import torch.nn.functional as F
 
 
 class KeypointAttention(nn.Module):
-    def __init__(self,
-                 use_conv=False,
-                 in_channels=(256, 64),
-                 out_channels=(256, 64),
-                 act='softmax',
-                 use_scale=False):
+
+    def __init__(
+            self,
+            use_conv=False,
+            in_channels=(256, 64),
+            out_channels=(256, 64),
+            act="softmax",
+            use_scale=False,
+    ):
         super(KeypointAttention, self).__init__()
         self.use_conv = use_conv
         self.in_channels = in_channels
@@ -48,11 +51,11 @@ class KeypointAttention(nn.Module):
             scale = 1.0 / np.sqrt(height * width)
             heatmaps = heatmaps * scale
 
-        if self.act == 'softmax':
+        if self.act == "softmax":
             normalized_heatmap = F.softmax(heatmaps.reshape(
                 batch_size, num_joints, -1),
-                dim=-1)
-        elif self.act == 'sigmoid':
+                                           dim=-1)
+        elif self.act == "sigmoid":
             normalized_heatmap = torch.sigmoid(
                 heatmaps.reshape(batch_size, num_joints, -1))
         features = features.reshape(batch_size, -1, height * width)

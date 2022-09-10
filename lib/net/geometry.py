@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -19,11 +18,11 @@ import torch
 
 
 def index(feat, uv):
-    '''
+    """
     :param feat: [B, C, H, W] image features
     :param uv: [B, 2, N] uv coordinates in the image plane, range [0, 1]
     :return: [B, C, N] image features at the uv coordinates
-    '''
+    """
     uv = uv.transpose(1, 2)  # [B, N, 2]
 
     (B, N, _) = uv.shape
@@ -44,13 +43,13 @@ def index(feat, uv):
 
 
 def orthogonal(points, calibrations, transforms=None):
-    '''
+    """
     Compute the orthogonal projections of 3D points into the image plane by given projection matrix
     :param points: [B, 3, N] Tensor of 3D points
     :param calibrations: [B, 3, 4] Tensor of projection matrix
     :param transforms: [B, 2, 3] Tensor of image transform matrix
     :return: xyz: [B, 3, N] Tensor of xyz coordinates in the image plane
-    '''
+    """
     rot = calibrations[:, :3, :3]
     trans = calibrations[:, :3, 3:4]
     pts = torch.baddbmm(trans, rot, points)  # [B, 3, N]
@@ -62,13 +61,13 @@ def orthogonal(points, calibrations, transforms=None):
 
 
 def perspective(points, calibrations, transforms=None):
-    '''
+    """
     Compute the perspective projections of 3D points into the image plane by given projection matrix
     :param points: [Bx3xN] Tensor of 3D points
     :param calibrations: [Bx3x4] Tensor of projection matrix
     :param transforms: [Bx2x3] Tensor of image transform matrix
     :return: xy: [Bx2xN] Tensor of xy coordinates in the image plane
-    '''
+    """
     rot = calibrations[:, :3, :3]
     trans = calibrations[:, :3, 3:4]
     homo = torch.baddbmm(trans, rot, points)  # [B, 3, N]

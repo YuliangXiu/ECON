@@ -22,25 +22,28 @@ from .smpl_head import SMPL
 
 
 class SMPLCamHead(nn.Module):
+
     def __init__(self, img_res=224):
         super(SMPLCamHead, self).__init__()
         self.smpl = SMPL(config.SMPL_MODEL_DIR, create_transl=False)
-        self.add_module('smpl', self.smpl)
+        self.add_module("smpl", self.smpl)
 
         self.img_res = img_res
 
-    def forward(self,
-                rotmat,
-                shape,
-                cam,
-                cam_rotmat,
-                cam_intrinsics,
-                bbox_scale,
-                bbox_center,
-                img_w,
-                img_h,
-                normalize_joints2d=False):
-        '''
+    def forward(
+        self,
+        rotmat,
+        shape,
+        cam,
+        cam_rotmat,
+        cam_intrinsics,
+        bbox_scale,
+        bbox_center,
+        img_w,
+        img_h,
+        normalize_joints2d=False,
+    ):
+        """
         :param rotmat: rotation in euler angles format (N,J,3,3)
         :param shape: smpl betas
         :param cam: weak perspective camera
@@ -52,7 +55,7 @@ class SMPLCamHead(nn.Module):
         :param img_w (N,) original image width
         :param img_h (N,) original image height
         :return: dict with keys 'vertices', 'joints3d', 'joints2d' if cam is True
-        '''
+        """
         smpl_output = self.smpl(
             betas=shape,
             body_pose=rotmat[:, 1:].contiguous(),
@@ -61,15 +64,15 @@ class SMPLCamHead(nn.Module):
         )
 
         output = {
-            'smpl_vertices': smpl_output.vertices,
-            'smpl_joints3d': smpl_output.joints,
+            "smpl_vertices": smpl_output.vertices,
+            "smpl_joints3d": smpl_output.joints,
         }
 
         joints3d = smpl_output.joints
 
         cam_t = convert_pare_to_full_img_cam(
             pare_cam=cam,
-            bbox_height=bbox_scale * 200.,
+            bbox_height=bbox_scale * 200.0,
             bbox_center=bbox_center,
             img_w=img_w,
             img_h=img_h,
@@ -90,10 +93,10 @@ class SMPLCamHead(nn.Module):
 
         if normalize_joints2d:
             # Normalize keypoints to [-1,1]
-            joints2d = joints2d / (self.img_res / 2.)
+            joints2d = joints2d / (self.img_res / 2.0)
 
-        output['smpl_joints2d'] = joints2d
-        output['pred_cam_t'] = cam_t
+        output["smpl_joints2d"] = joints2d
+        output["pred_cam_t"] = cam_t
 
         return output
 
@@ -110,14 +113,14 @@ def perspective_projection(points, rotation, translation, cam_intrinsics):
     K = cam_intrinsics
 
     # Transform points
-    points = torch.einsum('bij,bkj->bki', rotation, points)
+    points = torch.einsum("bij,bkj->bki", rotation, points)
     points = points + translation.unsqueeze(1)
 
     # Apply perspective distortion
     projected_points = points / points[:, :, -1].unsqueeze(-1)
 
     # Apply camera intrinsics
-    projected_points = torch.einsum('bij,bkj->bki', K,
+    projected_points = torch.einsum("bij,bkj->bki", K,
                                     projected_points.float())
 
     return projected_points[:, :, :-1]
@@ -138,8 +141,8 @@ def convert_pare_to_full_img_cam(pare_cam,
     r = bbox_height / res
     tz = 2 * focal_length / (r * res * s)
 
-    cx = 2 * (bbox_center[:, 0] - (img_w / 2.)) / (s * bbox_height)
-    cy = 2 * (bbox_center[:, 1] - (img_h / 2.)) / (s * bbox_height)
+    cx = 2 * (bbox_center[:, 0] - (img_w / 2.0)) / (s * bbox_height)
+    cy = 2 * (bbox_center[:, 1] - (img_h / 2.0)) / (s * bbox_height)
 
     cam_t = torch.stack([tx + cx, ty + cy, tz], dim=-1)
 

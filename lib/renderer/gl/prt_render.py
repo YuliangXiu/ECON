@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -23,23 +22,28 @@ from .cam_render import CamRender
 
 
 class PRTRender(CamRender):
-    def __init__(self,
-                 width=1600,
-                 height=1200,
-                 name='PRT Renderer',
-                 uv_mode=False,
-                 ms_rate=1,
-                 egl=False):
-        program_files = ['prt.vs', 'prt.fs'
-                         ] if not uv_mode else ['prt_uv.vs', 'prt_uv.fs']
-        CamRender.__init__(self,
-                           width,
-                           height,
-                           name,
-                           program_files=program_files,
-                           color_size=8,
-                           ms_rate=ms_rate,
-                           egl=egl)
+
+    def __init__(
+        self,
+        width=1600,
+        height=1200,
+        name="PRT Renderer",
+        uv_mode=False,
+        ms_rate=1,
+        egl=False,
+    ):
+        program_files = (["prt.vs", "prt.fs"]
+                         if not uv_mode else ["prt_uv.vs", "prt_uv.fs"])
+        CamRender.__init__(
+            self,
+            width,
+            height,
+            name,
+            program_files=program_files,
+            color_size=8,
+            ms_rate=ms_rate,
+            egl=egl,
+        )
 
         # WARNING: this differs from vertex_buffer and vertex_data in Render
         self.vert_buffer = {}
@@ -75,21 +79,21 @@ class PRTRender(CamRender):
         self.n_vertices = {}
         self.label_dim = {}
 
-        self.norm_mat_unif = glGetUniformLocation(self.program, 'NormMat')
+        self.norm_mat_unif = glGetUniformLocation(self.program, "NormMat")
         self.normalize_matrix = np.eye(4)
 
-        self.shcoeff_unif = glGetUniformLocation(self.program, 'SHCoeffs')
+        self.shcoeff_unif = glGetUniformLocation(self.program, "SHCoeffs")
         self.shcoeffs = np.zeros((9, 3))
         self.shcoeffs[0, :] = 1.0
-        #self.shcoeffs[1:,:] = np.random.rand(8,3)
+        # self.shcoeffs[1:,:] = np.random.rand(8,3)
 
-        self.hasAlbedoUnif = glGetUniformLocation(self.program, 'hasAlbedoMap')
-        self.hasNormalUnif = glGetUniformLocation(self.program, 'hasNormalMap')
+        self.hasAlbedoUnif = glGetUniformLocation(self.program, "hasAlbedoMap")
+        self.hasNormalUnif = glGetUniformLocation(self.program, "hasNormalMap")
 
-        self.analyticUnif = glGetUniformLocation(self.program, 'analytic')
+        self.analyticUnif = glGetUniformLocation(self.program, "analytic")
         self.analytic = False
 
-        self.rot_mat_unif = glGetUniformLocation(self.program, 'RotMat')
+        self.rot_mat_unif = glGetUniformLocation(self.program, "RotMat")
         self.rot_matrix = np.eye(3)
 
     def set_texture(self, mat_name, smplr_name, texture):
@@ -112,8 +116,17 @@ class PRTRender(CamRender):
         glBindTexture(GL_TEXTURE_2D,
                       self.render_texture_mat[mat_name][smplr_name])
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
-                     GL_UNSIGNED_BYTE, img_data)
+        glTexImage2D(
+            GL_TEXTURE_2D,
+            0,
+            GL_RGB,
+            width,
+            height,
+            0,
+            GL_RGB,
+            GL_UNSIGNED_BYTE,
+            img_data,
+        )
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 3)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
@@ -124,25 +137,27 @@ class PRTRender(CamRender):
 
         glGenerateMipmap(GL_TEXTURE_2D)
 
-    def set_albedo(self, texture_image, mat_name='all'):
-        self.set_texture(mat_name, 'AlbedoMap', texture_image)
+    def set_albedo(self, texture_image, mat_name="all"):
+        self.set_texture(mat_name, "AlbedoMap", texture_image)
 
-    def set_normal_map(self, texture_image, mat_name='all'):
-        self.set_texture(mat_name, 'NormalMap', texture_image)
+    def set_normal_map(self, texture_image, mat_name="all"):
+        self.set_texture(mat_name, "NormalMap", texture_image)
 
-    def set_mesh(self,
-                 vertices,
-                 faces,
-                 norms,
-                 faces_nml,
-                 uvs,
-                 faces_uvs,
-                 prt,
-                 faces_prt,
-                 tans,
-                 bitans,
-                 verts_label=None,
-                 mat_name='all'):
+    def set_mesh(
+        self,
+        vertices,
+        faces,
+        norms,
+        faces_nml,
+        uvs,
+        faces_uvs,
+        prt,
+        faces_prt,
+        tans,
+        bitans,
+        verts_label=None,
+        mat_name="all",
+    ):
 
         self.vert_data[mat_name] = vertices[faces.reshape([-1])]
         self.vert_label_data[mat_name] = verts_label[faces.reshape([-1])]
@@ -204,17 +219,19 @@ class PRTRender(CamRender):
 
         glBindBuffer(GL_ARRAY_BUFFER, 0)
 
-    def set_mesh_mtl(self,
-                     vertices,
-                     faces,
-                     norms,
-                     faces_nml,
-                     uvs,
-                     faces_uvs,
-                     tans,
-                     bitans,
-                     prt,
-                     verts_label=None):
+    def set_mesh_mtl(
+        self,
+        vertices,
+        faces,
+        norms,
+        faces_nml,
+        uvs,
+        faces_uvs,
+        tans,
+        bitans,
+        prt,
+        verts_label=None,
+    ):
         for key in faces:
             self.vert_data[key] = vertices[faces[key].reshape([-1])]
             self.vert_label_data[key] = verts_label[faces[key].reshape([-1])]
@@ -347,7 +364,7 @@ class PRTRender(CamRender):
         self.draw_init()
 
         glDisable(GL_BLEND)
-        #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        # glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glEnable(GL_MULTISAMPLE)
 
         glUseProgram(self.program)
@@ -358,12 +375,12 @@ class PRTRender(CamRender):
         glUniformMatrix4fv(self.persp_mat_unif, 1, GL_FALSE,
                            self.projection_matrix.transpose())
 
-        if 'AlbedoMap' in self.render_texture_mat['all']:
+        if "AlbedoMap" in self.render_texture_mat["all"]:
             glUniform1ui(self.hasAlbedoUnif, GLuint(1))
         else:
             glUniform1ui(self.hasAlbedoUnif, GLuint(0))
 
-        if 'NormalMap' in self.render_texture_mat['all']:
+        if "NormalMap" in self.render_texture_mat["all"]:
             glUniform1ui(self.hasNormalUnif, GLuint(1))
         else:
             glUniform1ui(self.hasNormalUnif, GLuint(0))

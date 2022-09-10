@@ -2,7 +2,11 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from lib.pymaf.utils.geometry import rot6d_to_rotmat, projection, rotation_matrix_to_angle_axis
+from lib.pymaf.utils.geometry import (
+    rot6d_to_rotmat,
+    projection,
+    rotation_matrix_to_angle_axis,
+)
 from .maf_extractor import MAF_Extractor
 from .smpl import SMPL, SMPL_MODEL_DIR, SMPL_MEAN_PARAMS, H36M_TO_J14
 from .hmr import ResNet_Backbone
@@ -16,6 +20,7 @@ BN_MOMENTUM = 0.1
 
 
 class Regressor(nn.Module):
+
     def __init__(self, feat_dim, smpl_mean_params):
         super().__init__()
 
@@ -35,21 +40,23 @@ class Regressor(nn.Module):
         self.smpl = SMPL(SMPL_MODEL_DIR, batch_size=64, create_transl=False)
 
         mean_params = np.load(smpl_mean_params)
-        init_pose = torch.from_numpy(mean_params['pose'][:]).unsqueeze(0)
+        init_pose = torch.from_numpy(mean_params["pose"][:]).unsqueeze(0)
         init_shape = torch.from_numpy(
-            mean_params['shape'][:].astype('float32')).unsqueeze(0)
-        init_cam = torch.from_numpy(mean_params['cam']).unsqueeze(0)
-        self.register_buffer('init_pose', init_pose)
-        self.register_buffer('init_shape', init_shape)
-        self.register_buffer('init_cam', init_cam)
+            mean_params["shape"][:].astype("float32")).unsqueeze(0)
+        init_cam = torch.from_numpy(mean_params["cam"]).unsqueeze(0)
+        self.register_buffer("init_pose", init_pose)
+        self.register_buffer("init_shape", init_shape)
+        self.register_buffer("init_cam", init_cam)
 
-    def forward(self,
-                x,
-                init_pose=None,
-                init_shape=None,
-                init_cam=None,
-                n_iter=1,
-                J_regressor=None):
+    def forward(
+        self,
+        x,
+        init_pose=None,
+        init_shape=None,
+        init_cam=None,
+        n_iter=1,
+        J_regressor=None,
+    ):
         batch_size = x.shape[0]
 
         if init_pose is None:
@@ -74,10 +81,12 @@ class Regressor(nn.Module):
 
         pred_rotmat = rot6d_to_rotmat(pred_pose).view(batch_size, 24, 3, 3)
 
-        pred_output = self.smpl(betas=pred_shape,
-                                body_pose=pred_rotmat[:, 1:],
-                                global_orient=pred_rotmat[:, 0].unsqueeze(1),
-                                pose2rot=False)
+        pred_output = self.smpl(
+            betas=pred_shape,
+            body_pose=pred_rotmat[:, 1:],
+            global_orient=pred_rotmat[:, 0].unsqueeze(1),
+            pose2rot=False,
+        )
 
         pred_vertices = pred_output.vertices
         pred_joints = pred_output.joints
@@ -94,25 +103,27 @@ class Regressor(nn.Module):
             pred_joints = pred_joints - pred_pelvis
 
         output = {
-            'theta': torch.cat([pred_cam, pred_shape, pose], dim=1),
-            'verts': pred_vertices,
-            'kp_2d': pred_keypoints_2d,
-            'kp_3d': pred_joints,
-            'smpl_kp_3d': pred_smpl_joints,
-            'rotmat': pred_rotmat,
-            'pred_cam': pred_cam,
-            'pred_shape': pred_shape,
-            'pred_pose': pred_pose,
+            "theta": torch.cat([pred_cam, pred_shape, pose], dim=1),
+            "verts": pred_vertices,
+            "kp_2d": pred_keypoints_2d,
+            "kp_3d": pred_joints,
+            "smpl_kp_3d": pred_smpl_joints,
+            "rotmat": pred_rotmat,
+            "pred_cam": pred_cam,
+            "pred_shape": pred_shape,
+            "pred_pose": pred_pose,
         }
         return output
 
-    def forward_init(self,
-                     x,
-                     init_pose=None,
-                     init_shape=None,
-                     init_cam=None,
-                     n_iter=1,
-                     J_regressor=None):
+    def forward_init(
+        self,
+        x,
+        init_pose=None,
+        init_shape=None,
+        init_cam=None,
+        n_iter=1,
+        J_regressor=None,
+    ):
         batch_size = x.shape[0]
 
         if init_pose is None:
@@ -129,10 +140,12 @@ class Regressor(nn.Module):
         pred_rotmat = rot6d_to_rotmat(pred_pose.contiguous()).view(
             batch_size, 24, 3, 3)
 
-        pred_output = self.smpl(betas=pred_shape,
-                                body_pose=pred_rotmat[:, 1:],
-                                global_orient=pred_rotmat[:, 0].unsqueeze(1),
-                                pose2rot=False)
+        pred_output = self.smpl(
+            betas=pred_shape,
+            body_pose=pred_rotmat[:, 1:],
+            global_orient=pred_rotmat[:, 0].unsqueeze(1),
+            pose2rot=False,
+        )
 
         pred_vertices = pred_output.vertices
         pred_joints = pred_output.joints
@@ -149,21 +162,21 @@ class Regressor(nn.Module):
             pred_joints = pred_joints - pred_pelvis
 
         output = {
-            'theta': torch.cat([pred_cam, pred_shape, pose], dim=1),
-            'verts': pred_vertices,
-            'kp_2d': pred_keypoints_2d,
-            'kp_3d': pred_joints,
-            'smpl_kp_3d': pred_smpl_joints,
-            'rotmat': pred_rotmat,
-            'pred_cam': pred_cam,
-            'pred_shape': pred_shape,
-            'pred_pose': pred_pose,
+            "theta": torch.cat([pred_cam, pred_shape, pose], dim=1),
+            "verts": pred_vertices,
+            "kp_2d": pred_keypoints_2d,
+            "kp_3d": pred_joints,
+            "smpl_kp_3d": pred_smpl_joints,
+            "rotmat": pred_rotmat,
+            "pred_cam": pred_cam,
+            "pred_shape": pred_shape,
+            "pred_pose": pred_pose,
         }
         return output
 
 
 class PyMAF(nn.Module):
-    """ PyMAF based Deep Regressor for Human Mesh Recovery
+    """PyMAF based Deep Regressor for Human Mesh Recovery
     PyMAF: 3D Human Pose and Shape Regression with Pyramidal Mesh Alignment Feedback Loop, in ICCV, 2021
     """
 
@@ -188,13 +201,16 @@ class PyMAF(nn.Module):
             0] * cfg.MODEL.PyMAF.MLP_DIM[-1]
 
         grid_size = 21
-        xv, yv = torch.meshgrid([
-            torch.linspace(-1, 1, grid_size),
-            torch.linspace(-1, 1, grid_size)
-        ], indexing='ij')
+        xv, yv = torch.meshgrid(
+            [
+                torch.linspace(-1, 1, grid_size),
+                torch.linspace(-1, 1, grid_size)
+            ],
+            indexing="ij",
+        )
         points_grid = torch.stack([xv.reshape(-1),
                                    yv.reshape(-1)]).unsqueeze(0)
-        self.register_buffer('points_grid', points_grid)
+        self.register_buffer("points_grid", points_grid)
         grid_feat_len = grid_size * grid_size * cfg.MODEL.PyMAF.MLP_DIM[-1]
 
         self.regressor = nn.ModuleList()
@@ -216,11 +232,13 @@ class PyMAF(nn.Module):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes,
-                          planes * block.expansion,
-                          kernel_size=1,
-                          stride=stride,
-                          bias=False),
+                nn.Conv2d(
+                    self.inplanes,
+                    planes * block.expansion,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False,
+                ),
                 nn.BatchNorm2d(planes * block.expansion),
             )
 
@@ -238,10 +256,12 @@ class PyMAF(nn.Module):
         Xiao et al. Simple Baselines for Human Pose Estimation and Tracking
         https://github.com/microsoft/human-pose-estimation.pytorch
         """
-        assert num_layers == len(num_filters), \
-            'ERROR: num_deconv_layers is different len(num_deconv_filters)'
-        assert num_layers == len(num_kernels), \
-            'ERROR: num_deconv_layers is different len(num_deconv_filters)'
+        assert num_layers == len(
+            num_filters
+        ), "ERROR: num_deconv_layers is different len(num_deconv_filters)"
+        assert num_layers == len(
+            num_kernels
+        ), "ERROR: num_deconv_layers is different len(num_deconv_filters)"
 
         def _get_deconv_cfg(deconv_kernel, index):
             if deconv_kernel == 4:
@@ -263,13 +283,15 @@ class PyMAF(nn.Module):
 
             planes = num_filters[i]
             layers.append(
-                nn.ConvTranspose2d(in_channels=self.inplanes,
-                                   out_channels=planes,
-                                   kernel_size=kernel,
-                                   stride=2,
-                                   padding=padding,
-                                   output_padding=output_padding,
-                                   bias=self.deconv_with_bias))
+                nn.ConvTranspose2d(
+                    in_channels=self.inplanes,
+                    out_channels=planes,
+                    kernel_size=kernel,
+                    stride=2,
+                    padding=padding,
+                    output_padding=output_padding,
+                    bias=self.deconv_with_bias,
+                ))
             layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
             layers.append(nn.ReLU(inplace=True))
             self.inplanes = planes
@@ -290,8 +312,9 @@ class PyMAF(nn.Module):
             deconv_blocks = [self.deconv_layers[0:6], self.deconv_layers[6:9]]
         elif cfg.MODEL.PyMAF.N_ITER == 3:
             deconv_blocks = [
-                self.deconv_layers[0:3], self.deconv_layers[3:6],
-                self.deconv_layers[6:9]
+                self.deconv_layers[0:3],
+                self.deconv_layers[3:6],
+                self.deconv_layers[6:9],
             ]
 
         out_list = {}
@@ -302,17 +325,17 @@ class PyMAF(nn.Module):
         smpl_output = self.regressor[0].forward_init(g_feat,
                                                      J_regressor=J_regressor)
 
-        out_list['smpl_out'] = [smpl_output]
-        out_list['dp_out'] = []
+        out_list["smpl_out"] = [smpl_output]
+        out_list["dp_out"] = []
 
         # for visulization
         vis_feat_list = [s_feat.detach()]
 
         # parameter predictions
         for rf_i in range(cfg.MODEL.PyMAF.N_ITER):
-            pred_cam = smpl_output['pred_cam']
-            pred_shape = smpl_output['pred_shape']
-            pred_pose = smpl_output['pred_pose']
+            pred_cam = smpl_output["pred_cam"]
+            pred_shape = smpl_output["pred_shape"]
+            pred_pose = smpl_output["pred_pose"]
 
             pred_cam = pred_cam.detach()
             pred_shape = pred_shape.detach()
@@ -330,7 +353,7 @@ class PyMAF(nn.Module):
                     self.points_grid.expand(batch_size, -1, -1), 1, 2)
                 ref_feature = self.maf_extractor[rf_i].sampling(sample_points)
             else:
-                pred_smpl_verts = smpl_output['verts'].detach()
+                pred_smpl_verts = smpl_output["verts"].detach()
                 # TODO: use a more sparse SMPL implementation (with 431 vertices) for acceleration
                 pred_smpl_verts_ds = torch.matmul(
                     self.maf_extractor[rf_i].Dmap.unsqueeze(0),
@@ -338,23 +361,25 @@ class PyMAF(nn.Module):
                 ref_feature = self.maf_extractor[rf_i](
                     pred_smpl_verts_ds)  # [B, 431 * n_feat]
 
-            smpl_output = self.regressor[rf_i](ref_feature,
-                                               pred_pose,
-                                               pred_shape,
-                                               pred_cam,
-                                               n_iter=1,
-                                               J_regressor=J_regressor)
-            out_list['smpl_out'].append(smpl_output)
+            smpl_output = self.regressor[rf_i](
+                ref_feature,
+                pred_pose,
+                pred_shape,
+                pred_cam,
+                n_iter=1,
+                J_regressor=J_regressor,
+            )
+            out_list["smpl_out"].append(smpl_output)
 
         if self.training and cfg.MODEL.PyMAF.AUX_SUPV_ON:
             iuv_out_dict = self.dp_head(s_feat)
-            out_list['dp_out'].append(iuv_out_dict)
+            out_list["dp_out"].append(iuv_out_dict)
 
         return out_list
 
 
 def pymaf_net(smpl_mean_params, pretrained=True):
-    """ Constructs an PyMAF model with ResNet50 backbone.
+    """Constructs an PyMAF model with ResNet50 backbone.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """

@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -15,7 +14,12 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-from lib.renderer.mesh import load_scan, compute_tangent, compute_normal, load_obj_mesh_mtl
+from lib.renderer.mesh import (
+    load_scan,
+    compute_tangent,
+    compute_normal,
+    load_obj_mesh_mtl,
+)
 from lib.dataset.mesh_util import projection
 from lib.renderer.gl.prt_render import PRTRender
 from lib.renderer.camera import Camera
@@ -178,13 +182,13 @@ def rotateBand2(x, R):
 
 def load_calib(param, render_size=512):
     # pixel unit / world unit
-    ortho_ratio = param['ortho_ratio']
+    ortho_ratio = param["ortho_ratio"]
     # world unit / model unit
-    scale = param['scale']
+    scale = param["scale"]
     # camera center world coordinate
-    center = param['center']
+    center = param["center"]
     # model rotation
-    R = param['R']
+    R = param["R"]
 
     translate = -np.matmul(R, center).reshape(3, 1)
     extrinsic = np.concatenate([R, translate], axis=1)
@@ -206,16 +210,18 @@ def load_calib(param, render_size=512):
     return calib
 
 
-def render_prt_ortho(out_path,
-                     folder_name,
-                     subject_name,
-                     shs,
-                     rndr,
-                     rndr_uv,
-                     im_size,
-                     angl_step=4,
-                     n_light=1,
-                     pitch=[0]):
+def render_prt_ortho(
+    out_path,
+    folder_name,
+    subject_name,
+    shs,
+    rndr,
+    rndr_uv,
+    im_size,
+    angl_step=4,
+    n_light=1,
+    pitch=[0],
+):
     cam = Camera(width=im_size, height=im_size)
     cam.ortho_ratio = 0.4 * (512 / im_size)
     cam.near = -100
@@ -223,21 +229,21 @@ def render_prt_ortho(out_path,
     cam.sanity_check()
 
     # set path for obj, prt
-    mesh_file = os.path.join(folder_name, subject_name + '_100k.obj')
+    mesh_file = os.path.join(folder_name, subject_name + "_100k.obj")
     if not os.path.exists(mesh_file):
-        print('ERROR: obj file does not exist!!', mesh_file)
+        print("ERROR: obj file does not exist!!", mesh_file)
         return
-    prt_file = os.path.join(folder_name, 'bounce', 'bounce0.txt')
+    prt_file = os.path.join(folder_name, "bounce", "bounce0.txt")
     if not os.path.exists(prt_file):
-        print('ERROR: prt file does not exist!!!', prt_file)
+        print("ERROR: prt file does not exist!!!", prt_file)
         return
-    face_prt_file = os.path.join(folder_name, 'bounce', 'face.npy')
+    face_prt_file = os.path.join(folder_name, "bounce", "face.npy")
     if not os.path.exists(face_prt_file):
-        print('ERROR: face prt file does not exist!!!', prt_file)
+        print("ERROR: face prt file does not exist!!!", prt_file)
         return
-    text_file = os.path.join(folder_name, 'tex', subject_name + '_dif_2k.jpg')
+    text_file = os.path.join(folder_name, "tex", subject_name + "_dif_2k.jpg")
     if not os.path.exists(text_file):
-        print('ERROR: dif file does not exist!!', text_file)
+        print("ERROR: dif file does not exist!!", text_file)
         return
 
     texture_image = cv2.imread(text_file)
@@ -260,33 +266,53 @@ def render_prt_ortho(out_path,
                                  face_textures)
     prt = np.loadtxt(prt_file)
     face_prt = np.load(face_prt_file)
-    rndr.set_mesh(vertices, faces, normals, faces_normals, textures,
-                  face_textures, prt, face_prt, tan, bitan)
+    rndr.set_mesh(
+        vertices,
+        faces,
+        normals,
+        faces_normals,
+        textures,
+        face_textures,
+        prt,
+        face_prt,
+        tan,
+        bitan,
+    )
     rndr.set_albedo(texture_image)
 
-    rndr_uv.set_mesh(vertices, faces, normals, faces_normals, textures,
-                     face_textures, prt, face_prt, tan, bitan)
+    rndr_uv.set_mesh(
+        vertices,
+        faces,
+        normals,
+        faces_normals,
+        textures,
+        face_textures,
+        prt,
+        face_prt,
+        tan,
+        bitan,
+    )
     rndr_uv.set_albedo(texture_image)
 
-    os.makedirs(os.path.join(out_path, 'GEO', 'OBJ', subject_name),
+    os.makedirs(os.path.join(out_path, "GEO", "OBJ", subject_name),
                 exist_ok=True)
-    os.makedirs(os.path.join(out_path, 'PARAM', subject_name), exist_ok=True)
-    os.makedirs(os.path.join(out_path, 'RENDER', subject_name), exist_ok=True)
-    os.makedirs(os.path.join(out_path, 'MASK', subject_name), exist_ok=True)
-    os.makedirs(os.path.join(out_path, 'UV_RENDER', subject_name),
+    os.makedirs(os.path.join(out_path, "PARAM", subject_name), exist_ok=True)
+    os.makedirs(os.path.join(out_path, "RENDER", subject_name), exist_ok=True)
+    os.makedirs(os.path.join(out_path, "MASK", subject_name), exist_ok=True)
+    os.makedirs(os.path.join(out_path, "UV_RENDER", subject_name),
                 exist_ok=True)
-    os.makedirs(os.path.join(out_path, 'UV_MASK', subject_name), exist_ok=True)
-    os.makedirs(os.path.join(out_path, 'UV_POS', subject_name), exist_ok=True)
-    os.makedirs(os.path.join(out_path, 'UV_NORMAL', subject_name),
+    os.makedirs(os.path.join(out_path, "UV_MASK", subject_name), exist_ok=True)
+    os.makedirs(os.path.join(out_path, "UV_POS", subject_name), exist_ok=True)
+    os.makedirs(os.path.join(out_path, "UV_NORMAL", subject_name),
                 exist_ok=True)
 
-    if not os.path.exists(os.path.join(out_path, 'val.txt')):
-        f = open(os.path.join(out_path, 'val.txt'), 'w')
+    if not os.path.exists(os.path.join(out_path, "val.txt")):
+        f = open(os.path.join(out_path, "val.txt"), "w")
         f.close()
 
     # copy obj file
-    cmd = 'cp %s %s' % (mesh_file,
-                        os.path.join(out_path, 'GEO', 'OBJ', subject_name))
+    cmd = "cp %s %s" % (mesh_file,
+                        os.path.join(out_path, "GEO", "OBJ", subject_name))
     print(cmd)
     os.system(cmd)
 
@@ -309,11 +335,11 @@ def render_prt_ortho(out_path,
                 sh = rotateSH(sh, make_rotate(0, sh_angle, 0).T)
 
                 dic = {
-                    'sh': sh,
-                    'ortho_ratio': cam.ortho_ratio,
-                    'scale': y_scale,
-                    'center': vmed,
-                    'R': R
+                    "sh": sh,
+                    "ortho_ratio": cam.ortho_ratio,
+                    "scale": y_scale,
+                    "center": vmed,
+                    "R": R,
                 }
 
                 rndr.set_sh(sh)
@@ -326,16 +352,20 @@ def render_prt_ortho(out_path,
                 out_all_f = cv2.cvtColor(out_all_f, cv2.COLOR_RGBA2BGR)
 
                 np.save(
-                    os.path.join(out_path, 'PARAM', subject_name,
-                                 '%d_%d_%02d.npy' % (y, p, j)), dic)
+                    os.path.join(out_path, "PARAM", subject_name,
+                                 "%d_%d_%02d.npy" % (y, p, j)),
+                    dic,
+                )
                 cv2.imwrite(
-                    os.path.join(out_path, 'RENDER', subject_name,
-                                 '%d_%d_%02d.jpg' % (y, p, j)),
-                    255.0 * out_all_f)
+                    os.path.join(out_path, "RENDER", subject_name,
+                                 "%d_%d_%02d.jpg" % (y, p, j)),
+                    255.0 * out_all_f,
+                )
                 cv2.imwrite(
-                    os.path.join(out_path, 'MASK', subject_name,
-                                 '%d_%d_%02d.png' % (y, p, j)),
-                    255.0 * out_mask)
+                    os.path.join(out_path, "MASK", subject_name,
+                                 "%d_%d_%02d.png" % (y, p, j)),
+                    255.0 * out_mask,
+                )
 
                 rndr_uv.set_sh(sh)
                 rndr_uv.analytic = False
@@ -345,26 +375,35 @@ def render_prt_ortho(out_path,
                 uv_color = rndr_uv.get_color(0)
                 uv_color = cv2.cvtColor(uv_color, cv2.COLOR_RGBA2BGR)
                 cv2.imwrite(
-                    os.path.join(out_path, 'UV_RENDER', subject_name,
-                                 '%d_%d_%02d.jpg' % (y, p, j)),
-                    255.0 * uv_color)
+                    os.path.join(
+                        out_path,
+                        "UV_RENDER",
+                        subject_name,
+                        "%d_%d_%02d.jpg" % (y, p, j),
+                    ),
+                    255.0 * uv_color,
+                )
 
                 if y == 0 and j == 0 and p == pitch[0]:
                     uv_pos = rndr_uv.get_color(1)
                     uv_mask = uv_pos[:, :, 3]
                     cv2.imwrite(
-                        os.path.join(out_path, 'UV_MASK', subject_name,
-                                     '00.png'), 255.0 * uv_mask)
+                        os.path.join(out_path, "UV_MASK", subject_name,
+                                     "00.png"),
+                        255.0 * uv_mask,
+                    )
 
                     data = {
-                        'default': uv_pos[:, :, :3]
+                        "default": uv_pos[:, :, :3]
                     }  # default is a reserved name
                     pyexr.write(
-                        os.path.join(out_path, 'UV_POS', subject_name,
-                                     '00.exr'), data)
+                        os.path.join(out_path, "UV_POS", subject_name,
+                                     "00.exr"), data)
 
                     uv_nml = rndr_uv.get_color(2)
                     uv_nml = cv2.cvtColor(uv_nml, cv2.COLOR_RGBA2BGR)
                     cv2.imwrite(
-                        os.path.join(out_path, 'UV_NORMAL', subject_name,
-                                     '00.png'), 255.0 * uv_nml)
+                        os.path.join(out_path, "UV_NORMAL", subject_name,
+                                     "00.png"),
+                        255.0 * uv_nml,
+                    )

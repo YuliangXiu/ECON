@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -129,7 +128,8 @@ def create_grid3D(min, max, steps):
     arrangeX = torch.linspace(min[0], max[0], steps[0]).long()
     arrangeY = torch.linspace(min[1], max[1], steps[1]).long()
     arrangeZ = torch.linspace(min[2], max[2], steps[2]).long()
-    gridD, girdH, gridW = torch.meshgrid([arrangeZ, arrangeY, arrangeX], indexing='ij')
+    gridD, girdH, gridW = torch.meshgrid([arrangeZ, arrangeY, arrangeX],
+                                         indexing='ij')
     coords = torch.stack([gridW, girdH,
                           gridD])  # [2, steps[0], steps[1], steps[2]]
     coords = coords.view(3, -1).t()  # [N, 3]
@@ -152,6 +152,7 @@ def create_grid2D(min, max, steps):
 
 
 class SmoothConv2D(nn.Module):
+
     def __init__(self, in_channels, out_channels, kernel_size=3):
         super().__init__()
         assert kernel_size % 2 == 1, "kernel_size for smooth_conv must be odd: {3, 5, ...}"
@@ -167,6 +168,7 @@ class SmoothConv2D(nn.Module):
 
 
 class SmoothConv3D(nn.Module):
+
     def __init__(self, in_channels, out_channels, kernel_size=3):
         super().__init__()
         assert kernel_size % 2 == 1, "kernel_size for smooth_conv must be odd: {3, 5, ...}"
@@ -233,8 +235,8 @@ def get_uncertain_point_coords_on_grid3D(uncertainty_map, num_points,
     num_points = min(D * H * W, num_points)
     point_scores, point_indices = torch.topk(uncertainty_map.view(
         R, D * H * W),
-        k=num_points,
-        dim=1)
+                                             k=num_points,
+                                             dim=1)
     point_coords = torch.zeros(R,
                                num_points,
                                3,

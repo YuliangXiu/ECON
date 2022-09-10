@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -21,27 +20,33 @@ GLUT = None
 
 
 class CamRender(Render):
-    def __init__(self,
-                 width=1600,
-                 height=1200,
-                 name='Cam Renderer',
-                 program_files=['simple.fs', 'simple.vs'],
-                 color_size=1,
-                 ms_rate=1,
-                 egl=False):
-        Render.__init__(self,
-                        width,
-                        height,
-                        name,
-                        program_files,
-                        color_size,
-                        ms_rate=ms_rate,
-                        egl=egl)
+
+    def __init__(
+        self,
+        width=1600,
+        height=1200,
+        name="Cam Renderer",
+        program_files=["simple.fs", "simple.vs"],
+        color_size=1,
+        ms_rate=1,
+        egl=False,
+    ):
+        Render.__init__(
+            self,
+            width,
+            height,
+            name,
+            program_files,
+            color_size,
+            ms_rate=ms_rate,
+            egl=egl,
+        )
         self.camera = None
 
         if not egl:
             global GLUT
             import OpenGL.GLUT as GLUT
+
             GLUT.glutDisplayFunc(self.display)
             GLUT.glutKeyboardFunc(self.keyboard)
 
@@ -53,22 +58,22 @@ class CamRender(Render):
         # up
         eps = 1
         # print(key)
-        if key == b'w':
+        if key == b"w":
             self.camera.center += eps * self.camera.direction
-        elif key == b's':
+        elif key == b"s":
             self.camera.center -= eps * self.camera.direction
-        if key == b'a':
+        if key == b"a":
             self.camera.center -= eps * self.camera.right
-        elif key == b'd':
+        elif key == b"d":
             self.camera.center += eps * self.camera.right
-        if key == b' ':
+        if key == b" ":
             self.camera.center += eps * self.camera.up
-        elif key == b'x':
+        elif key == b"x":
             self.camera.center -= eps * self.camera.up
-        elif key == b'i':
+        elif key == b"i":
             self.camera.near += 0.1 * eps
             self.camera.far += 0.1 * eps
-        elif key == b'o':
+        elif key == b"o":
             self.camera.near -= 0.1 * eps
             self.camera.far -= 0.1 * eps
 

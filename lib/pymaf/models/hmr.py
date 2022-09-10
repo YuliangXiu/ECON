@@ -17,9 +17,10 @@ BN_MOMENTUM = 0.1
 
 
 class Bottleneck(nn.Module):
-    """ Redefinition of Bottleneck residual block
-        Adapted from the official PyTorch implementation
+    """Redefinition of Bottleneck residual block
+    Adapted from the official PyTorch implementation
     """
+
     expansion = 4
 
     def __init__(self, inplanes, planes, stride=1, downsample=None):
@@ -63,11 +64,10 @@ class Bottleneck(nn.Module):
 
 
 class ResNet_Backbone(nn.Module):
-    """ Feature Extrator with ResNet backbone
-    """
+    """Feature Extrator with ResNet backbone"""
 
-    def __init__(self, model='res50', pretrained=True):
-        if model == 'res50':
+    def __init__(self, model="res50", pretrained=True):
+        if model == "res50":
             block, layers = Bottleneck, [3, 4, 6, 3]
         else:
             pass  # TODO
@@ -91,19 +91,22 @@ class ResNet_Backbone(nn.Module):
         self.avgpool = nn.AvgPool2d(7, stride=1)
 
         if pretrained:
-            resnet_imagenet = resnet.resnet50(weights=models.ResNet50_Weights.DEFAULT)
+            resnet_imagenet = resnet.resnet50(
+                weights=models.ResNet50_Weights.DEFAULT)
             self.load_state_dict(resnet_imagenet.state_dict(), strict=False)
-            logger.info('loaded resnet50 imagenet pretrained model')
+            logger.info("loaded resnet50 imagenet pretrained model")
 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes,
-                          planes * block.expansion,
-                          kernel_size=1,
-                          stride=stride,
-                          bias=False),
+                nn.Conv2d(
+                    self.inplanes,
+                    planes * block.expansion,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False,
+                ),
                 nn.BatchNorm2d(planes * block.expansion),
             )
 
@@ -116,10 +119,12 @@ class ResNet_Backbone(nn.Module):
         return nn.Sequential(*layers)
 
     def _make_deconv_layer(self, num_layers, num_filters, num_kernels):
-        assert num_layers == len(num_filters), \
-            'ERROR: num_deconv_layers is different len(num_deconv_filters)'
-        assert num_layers == len(num_kernels), \
-            'ERROR: num_deconv_layers is different len(num_deconv_filters)'
+        assert num_layers == len(
+            num_filters
+        ), "ERROR: num_deconv_layers is different len(num_deconv_filters)"
+        assert num_layers == len(
+            num_kernels
+        ), "ERROR: num_deconv_layers is different len(num_deconv_filters)"
 
         def _get_deconv_cfg(deconv_kernel, index):
             if deconv_kernel == 4:
@@ -141,13 +146,15 @@ class ResNet_Backbone(nn.Module):
 
             planes = num_filters[i]
             layers.append(
-                nn.ConvTranspose2d(in_channels=self.inplanes,
-                                   out_channels=planes,
-                                   kernel_size=kernel,
-                                   stride=2,
-                                   padding=padding,
-                                   output_padding=output_padding,
-                                   bias=self.deconv_with_bias))
+                nn.ConvTranspose2d(
+                    in_channels=self.inplanes,
+                    out_channels=planes,
+                    kernel_size=kernel,
+                    stride=2,
+                    padding=padding,
+                    output_padding=output_padding,
+                    bias=self.deconv_with_bias,
+                ))
             layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
             layers.append(nn.ReLU(inplace=True))
             self.inplanes = planes
@@ -177,8 +184,7 @@ class ResNet_Backbone(nn.Module):
 
 
 class HMR(nn.Module):
-    """ SMPL Iterative Regressor with ResNet50 backbone
-    """
+    """SMPL Iterative Regressor with ResNet50 backbone"""
 
     def __init__(self, block, layers, smpl_mean_params):
         self.inplanes = 64
@@ -212,29 +218,31 @@ class HMR(nn.Module):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
+                m.weight.data.normal_(0, math.sqrt(2.0 / n))
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
         mean_params = np.load(smpl_mean_params)
-        init_pose = torch.from_numpy(mean_params['pose'][:]).unsqueeze(0)
+        init_pose = torch.from_numpy(mean_params["pose"][:]).unsqueeze(0)
         init_shape = torch.from_numpy(
-            mean_params['shape'][:].astype('float32')).unsqueeze(0)
-        init_cam = torch.from_numpy(mean_params['cam']).unsqueeze(0)
-        self.register_buffer('init_pose', init_pose)
-        self.register_buffer('init_shape', init_shape)
-        self.register_buffer('init_cam', init_cam)
+            mean_params["shape"][:].astype("float32")).unsqueeze(0)
+        init_cam = torch.from_numpy(mean_params["cam"]).unsqueeze(0)
+        self.register_buffer("init_pose", init_pose)
+        self.register_buffer("init_shape", init_shape)
+        self.register_buffer("init_cam", init_cam)
 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes,
-                          planes * block.expansion,
-                          kernel_size=1,
-                          stride=stride,
-                          bias=False),
+                nn.Conv2d(
+                    self.inplanes,
+                    planes * block.expansion,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=False,
+                ),
                 nn.BatchNorm2d(planes * block.expansion),
             )
 
@@ -294,12 +302,13 @@ class HMR(nn.Module):
 
 
 def hmr(smpl_mean_params, pretrained=True, **kwargs):
-    """ Constructs an HMR model with ResNet50 backbone.
+    """Constructs an HMR model with ResNet50 backbone.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
     model = HMR(Bottleneck, [3, 4, 6, 3], smpl_mean_params, **kwargs)
     if pretrained:
-        resnet_imagenet = resnet.resnet50(weights=models.ResNet50_Weights.DEFAULT)
+        resnet_imagenet = resnet.resnet50(
+            weights=models.ResNet50_Weights.DEFAULT)
         model.load_state_dict(resnet_imagenet.state_dict(), strict=False)
     return model

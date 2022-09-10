@@ -19,6 +19,7 @@ cfg_test_mode = [
 
 
 class PIFuDataModule(pl.LightningDataModule):
+
     def __init__(self, cfg):
         super(PIFuDataModule, self).__init__()
         self.cfg = cfg
@@ -37,13 +38,15 @@ class PIFuDataModule(pl.LightningDataModule):
 
     def setup(self, stage):
 
-        if stage == 'fit':
+        if stage == "fit":
             self.train_dataset = PIFuDataset(cfg=self.cfg, split="train")
             self.val_dataset = PIFuDataset(cfg=self.cfg, split="val")
-            self.data_size = {'train': len(self.train_dataset),
-                              'val': len(self.val_dataset)}
+            self.data_size = {
+                "train": len(self.train_dataset),
+                "val": len(self.val_dataset),
+            }
 
-        if stage == 'test':
+        if stage == "test":
             self.cfg.merge_from_list(cfg_test_mode)
             self.test_dataset = PIFuDataset(cfg=self.cfg, split="test")
 
@@ -51,8 +54,11 @@ class PIFuDataModule(pl.LightningDataModule):
 
         train_data_loader = DataLoader(
             self.train_dataset,
-            batch_size=self.batch_size, shuffle=True,
-            num_workers=self.cfg.num_threads, pin_memory=True)
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.cfg.num_threads,
+            pin_memory=True,
+        )
 
         return train_data_loader
 
@@ -65,8 +71,11 @@ class PIFuDataModule(pl.LightningDataModule):
 
         val_data_loader = DataLoader(
             current_dataset,
-            batch_size=1, shuffle=False,
-            num_workers=self.cfg.num_threads, pin_memory=True)
+            batch_size=1,
+            shuffle=False,
+            num_workers=self.cfg.num_threads,
+            pin_memory=True,
+        )
 
         return val_data_loader
 
@@ -74,7 +83,10 @@ class PIFuDataModule(pl.LightningDataModule):
 
         test_data_loader = DataLoader(
             self.test_dataset,
-            batch_size=1, shuffle=False,
-            num_workers=self.cfg.num_threads, pin_memory=True)
+            batch_size=1,
+            shuffle=False,
+            num_workers=self.cfg.num_threads,
+            pin_memory=True,
+        )
 
         return test_data_loader

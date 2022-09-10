@@ -1,6 +1,6 @@
-'''
+"""
 This script is borrowed and extended from https://github.com/nkolot/SPIN/blob/master/train/fits_dict.py
-'''
+"""
 import os
 import cv2
 import torch
@@ -14,7 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class FitsDict():
+class FitsDict:
     """ Dictionary keeping track of the best fit per image in the training set """
 
     def __init__(self, options, train_dataset):
@@ -27,20 +27,20 @@ class FitsDict():
                                           dtype=torch.int64)
         # Load dictionary state
         for ds_name, ds in train_dataset.dataset_dict.items():
-            if ds_name in ['h36m']:
+            if ds_name in ["h36m"]:
                 dict_file = os.path.join(path_config.FINAL_FITS_DIR,
-                                         ds_name + '.npy')
+                                         ds_name + ".npy")
                 self.fits_dict[ds_name] = torch.from_numpy(np.load(dict_file))
                 self.valid_fit_state[ds_name] = torch.ones(len(
                     self.fits_dict[ds_name]),
-                    dtype=torch.uint8)
+                                                           dtype=torch.uint8)
             else:
                 dict_file = os.path.join(path_config.FINAL_FITS_DIR,
-                                         ds_name + '.npz')
+                                         ds_name + ".npz")
                 fits_dict = np.load(dict_file)
-                opt_pose = torch.from_numpy(fits_dict['pose'])
-                opt_betas = torch.from_numpy(fits_dict['betas'])
-                opt_valid_fit = torch.from_numpy(fits_dict['valid_fit']).to(
+                opt_pose = torch.from_numpy(fits_dict["pose"])
+                opt_betas = torch.from_numpy(fits_dict["betas"])
+                opt_valid_fit = torch.from_numpy(fits_dict["valid_fit"]).to(
                     torch.uint8)
                 self.fits_dict[ds_name] = torch.cat([opt_pose, opt_betas],
                                                     dim=1)
@@ -48,7 +48,7 @@ class FitsDict():
 
         if not options.single_dataset:
             for ds in train_dataset.datasets:
-                if ds.dataset not in ['h36m']:
+                if ds.dataset not in ["h36m"]:
                     ds.pose = self.fits_dict[ds.dataset][:, :72].numpy()
                     ds.betas = self.fits_dict[ds.dataset][:, 72:].numpy()
                     ds.has_smpl = self.valid_fit_state[ds.dataset].numpy()
@@ -57,7 +57,7 @@ class FitsDict():
         """ Save dictionary state to disk """
         for ds_name in self.train_dataset.dataset_dict.keys():
             dict_file = os.path.join(self.options.checkpoint_dir,
-                                     ds_name + '_fits.npy')
+                                     ds_name + "_fits.npy")
             np.save(dict_file, self.fits_dict[ds_name].cpu().numpy())
 
     def __getitem__(self, x):
@@ -109,16 +109,19 @@ class FitsDict():
     def rotate_pose(self, pose, rot):
         """Rotate SMPL pose parameters by rot degrees"""
         pose = pose.clone()
-        cos = torch.cos(-np.pi * rot / 180.)
-        sin = torch.sin(-np.pi * rot / 180.)
+        cos = torch.cos(-np.pi * rot / 180.0)
+        sin = torch.sin(-np.pi * rot / 180.0)
         zeros = torch.zeros_like(cos)
         r3 = torch.zeros(cos.shape[0], 1, 3, device=cos.device)
         r3[:, 0, -1] = 1
-        R = torch.cat([
-            torch.stack([cos, -sin, zeros], dim=-1).unsqueeze(1),
-            torch.stack([sin, cos, zeros], dim=-1).unsqueeze(1), r3
-        ],
-            dim=1)
+        R = torch.cat(
+            [
+                torch.stack([cos, -sin, zeros], dim=-1).unsqueeze(1),
+                torch.stack([sin, cos, zeros], dim=-1).unsqueeze(1),
+                r3,
+            ],
+            dim=1,
+        )
         global_pose = pose[:, :3]
         global_pose_rotmat = angle_axis_to_rotation_matrix(global_pose)
         global_pose_rotmat_3b3 = global_pose_rotmat[:, :3, :3]

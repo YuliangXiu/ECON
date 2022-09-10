@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -31,7 +30,7 @@ import torch
 
 
 class HGPIFuNet(BasePIFuNet):
-    '''
+    """
     HG PIFu network uses Hourglass stacks as the image filter.
     It does the following:
         1. Compute image feature stacks and store it in self.im_feat_list
@@ -41,11 +40,11 @@ class HGPIFuNet(BasePIFuNet):
             If testing, it index on the last stack.
         4. Classification.
         5. During training, error is calculated on all stacks.
-    '''
+    """
 
     def __init__(self,
                  cfg,
-                 projection_mode='orthogonal',
+                 projection_mode="orthogonal",
                  error_term=nn.MSELoss()):
 
         super(HGPIFuNet, self).__init__(projection_mode=projection_mode,
@@ -78,41 +77,48 @@ class HGPIFuNet(BasePIFuNet):
         self.smplx_data = SMPLX()
 
         image_lst = [0, 1, 2]
-        normal_F_lst = [0, 1, 2] if 'image' not in self.in_geo else [3, 4, 5]
-        normal_B_lst = [3, 4, 5] if 'image' not in self.in_geo else [6, 7, 8]
+        normal_F_lst = [0, 1, 2] if "image" not in self.in_geo else [3, 4, 5]
+        normal_B_lst = [3, 4, 5] if "image" not in self.in_geo else [6, 7, 8]
 
         # only ICON or ICON-Keypoint use visibility
 
-        if self.prior_type in ['icon', 'keypoint']:
-            if 'image' in self.in_geo:
-                self.channels_filter = [image_lst +
-                                        normal_F_lst, image_lst + normal_B_lst]
+        if self.prior_type in ["icon", "keypoint"]:
+            if "image" in self.in_geo:
+                self.channels_filter = [
+                    image_lst + normal_F_lst,
+                    image_lst + normal_B_lst,
+                ]
             else:
                 self.channels_filter = [normal_F_lst, normal_B_lst]
 
         else:
-            if 'image' in self.in_geo:
+            if "image" in self.in_geo:
                 self.channels_filter = [
-                    image_lst + normal_F_lst + normal_B_lst]
+                    image_lst + normal_F_lst + normal_B_lst
+                ]
             else:
                 self.channels_filter = [normal_F_lst + normal_B_lst]
 
-        use_vis = (self.prior_type in ['icon', 'keypoint']) and (
-            'vis' in self.smpl_feats)
-        if self.prior_type in ['pamir', 'pifu']:
+        use_vis = (self.prior_type in ["icon", "keypoint"
+                                       ]) and ("vis" in self.smpl_feats)
+        if self.prior_type in ["pamir", "pifu"]:
             use_vis = 1
 
         if self.use_filter:
-            channels_IF[0] = (self.hourglass_dim) * (2-use_vis)
+            channels_IF[0] = (self.hourglass_dim) * (2 - use_vis)
         else:
-            channels_IF[0] = len(self.channels_filter[0]) * (2-use_vis)
+            channels_IF[0] = len(self.channels_filter[0]) * (2 - use_vis)
 
-        if self.prior_type in ['icon', 'keypoint']:
+        if self.prior_type in ["icon", "keypoint"]:
             channels_IF[0] += self.smpl_dim
-        elif self.prior_type == 'pamir':
+        elif self.prior_type == "pamir":
             channels_IF[0] += self.voxel_dim
-            smpl_vertex_code, smpl_face_code, smpl_faces, smpl_tetras = read_smpl_constants(
-                self.smplx_data.tedra_dir)
+            (
+                smpl_vertex_code,
+                smpl_face_code,
+                smpl_faces,
+                smpl_tetras,
+            ) = read_smpl_constants(self.smplx_data.tedra_dir)
             self.voxelization = Voxelization(
                 smpl_vertex_code,
                 smpl_face_code,
@@ -122,20 +128,23 @@ class HGPIFuNet(BasePIFuNet):
                 sigma=0.05,
                 smooth_kernel_size=7,
                 batch_size=cfg.batch_size,
-                device=torch.device(f"cuda:{cfg.gpus[0]}"))
+                device=torch.device(f"cuda:{cfg.gpus[0]}"),
+            )
             self.ve = VolumeEncoder(3, self.voxel_dim, self.opt.num_stack)
 
-        elif self.prior_type == 'pifu':
+        elif self.prior_type == "pifu":
             channels_IF[0] += 1
         else:
             print(f"don't support {self.prior_type}!")
 
         self.base_keys = ["smpl_verts", "smpl_faces"]
 
-        self.icon_keys = self.base_keys + \
-            [f"smpl_{feat_name}" for feat_name in self.smpl_feats]
-        self.keypoint_keys = self.base_keys + \
-            [f"smpl_{feat_name}" for feat_name in self.smpl_feats]
+        self.icon_keys = self.base_keys + [
+            f"smpl_{feat_name}" for feat_name in self.smpl_feats
+        ]
+        self.keypoint_keys = self.base_keys + [
+            f"smpl_{feat_name}" for feat_name in self.smpl_feats
+        ]
 
         self.pamir_keys = [
             "voxel_verts", "voxel_faces", "pad_v_num", "pad_f_num"
@@ -144,10 +153,11 @@ class HGPIFuNet(BasePIFuNet):
 
         self.if_regressor = MLP(
             filter_channels=channels_IF,
-            name='if',
+            name="if",
             res_layers=self.opt.res_layers,
             norm=self.opt.norm_mlp,
-            last_op=nn.Sigmoid() if not cfg.test_mode else None)
+            last_op=nn.Sigmoid() if not cfg.test_mode else None,
+        )
 
         self.sp_encoder = SpatialEncoder()
 
@@ -159,11 +169,11 @@ class HGPIFuNet(BasePIFuNet):
             else:
                 print(
                     colored(f"Backbone {self.opt.gtype} is unimplemented",
-                            'green'))
+                            "green"))
 
-        summary_log = f"{self.prior_type.upper()}:\n" + \
-            f"w/ Global Image Encoder: {self.use_filter}\n" + \
-            f"Image Features used by MLP: {self.in_geo}\n"
+        summary_log = (f"{self.prior_type.upper()}:\n" +
+                       f"w/ Global Image Encoder: {self.use_filter}\n" +
+                       f"Image Features used by MLP: {self.in_geo}\n")
 
         if self.prior_type == "icon":
             summary_log += f"Geometry Features used by MLP: {self.smpl_feats}\n"
@@ -197,14 +207,14 @@ class HGPIFuNet(BasePIFuNet):
                 feat_lst = []
                 if "image" in self.in_geo:
                     feat_lst.append(
-                        in_tensor_dict['image'])  # [1, 3, 512, 512]
-                if 'normal_F' in self.in_geo and 'normal_B' in self.in_geo:
-                    if 'normal_F' not in in_tensor_dict.keys(
-                    ) or 'normal_B' not in in_tensor_dict.keys():
+                        in_tensor_dict["image"])  # [1, 3, 512, 512]
+                if "normal_F" in self.in_geo and "normal_B" in self.in_geo:
+                    if ("normal_F" not in in_tensor_dict.keys()
+                            or "normal_B" not in in_tensor_dict.keys()):
                         (nmlF, nmlB) = self.normal_filter(in_tensor_dict)
                     else:
-                        nmlF = in_tensor_dict['normal_F']
-                        nmlB = in_tensor_dict['normal_B']
+                        nmlF = in_tensor_dict["normal_F"]
+                        nmlB = in_tensor_dict["normal_B"]
                     feat_lst.append(nmlF)  # [1, 3, 512, 512]
                     feat_lst.append(nmlB)  # [1, 3, 512, 512]
             in_filter = torch.cat(feat_lst, dim=1)
@@ -217,26 +227,27 @@ class HGPIFuNet(BasePIFuNet):
 
     def get_mask(self, in_filter, size=128):
 
-        mask = F.interpolate(in_filter[:, self.channels_filter[0]],
-                             size=(size, size),
-                             mode="bilinear",
-                             align_corners=True).abs().sum(dim=1,
-                                                           keepdim=True) != 0.0
+        mask = (F.interpolate(
+            in_filter[:, self.channels_filter[0]],
+            size=(size, size),
+            mode="bilinear",
+            align_corners=True,
+        ).abs().sum(dim=1, keepdim=True) != 0.0)
 
         return mask
 
     def filter(self, in_tensor_dict, return_inter=False):
-        '''
+        """
         Filter the input images
         store all intermediate features.
         :param images: [B, C, H, W] input images
-        '''
+        """
 
         in_filter = self.get_normal(in_tensor_dict)
 
         features_G = []
 
-        if self.prior_type in ['icon', 'keypoint']:
+        if self.prior_type in ["icon", "keypoint"]:
             if self.use_filter:
                 features_F = self.F_filter(in_filter[:,
                                                      self.channels_filter[0]]
@@ -285,36 +296,41 @@ class HGPIFuNet(BasePIFuNet):
         preds_list = []
         vol_feats = features
 
-        if self.prior_type in ['icon', 'keypoint']:
+        if self.prior_type in ["icon", "keypoint"]:
 
             # smpl_verts [B, N_vert, 3]
             # smpl_faces [B, N_face, 3]
             # xyz [B, 3, N]  --> points [B, N, 3]
 
-            point_feat_extractor = PointFeat(self.smpl_feat_dict['smpl_verts'],
-                                             self.smpl_feat_dict['smpl_faces'])
+            point_feat_extractor = PointFeat(self.smpl_feat_dict["smpl_verts"],
+                                             self.smpl_feat_dict["smpl_faces"])
 
             point_feat_out = point_feat_extractor.query(
                 xyz.permute(0, 2, 1).contiguous(), self.smpl_feat_dict)
 
-            feat_lst = [point_feat_out[key]
-                        for key in self.smpl_feats if key in point_feat_out.keys()]
+            feat_lst = [
+                point_feat_out[key] for key in self.smpl_feats
+                if key in point_feat_out.keys()
+            ]
             smpl_feat = torch.cat(feat_lst, dim=2).permute(0, 2, 1)
 
-            if self.prior_type == 'keypoint':
-                kpt_feat = self.sp_encoder.forward(cxyz=xyz.permute(
-                    0, 2, 1).contiguous(), kptxyz=self.smpl_feat_dict["smpl_joint"])
+            if self.prior_type == "keypoint":
+                kpt_feat = self.sp_encoder.forward(
+                    cxyz=xyz.permute(0, 2, 1).contiguous(),
+                    kptxyz=self.smpl_feat_dict["smpl_joint"],
+                )
 
         elif self.prior_type == "pamir":
 
             voxel_verts = self.smpl_feat_dict[
-                'voxel_verts'][:, :-self.smpl_feat_dict['pad_v_num'][0], :]
+                "voxel_verts"][:, :-self.smpl_feat_dict["pad_v_num"][0], :]
             voxel_faces = self.smpl_feat_dict[
-                'voxel_faces'][:, :-self.smpl_feat_dict['pad_f_num'][0], :]
+                "voxel_faces"][:, :-self.smpl_feat_dict["pad_f_num"][0], :]
 
             self.voxelization.update_param(
                 batch_size=voxel_faces.shape[0],
-                smpl_tetra=voxel_faces[0].detach().cpu().numpy())
+                smpl_tetra=voxel_faces[0].detach().cpu().numpy(),
+            )
             vol = self.voxelization(voxel_verts)  # vol ~ [0,1]
             vol_feats = self.ve(vol, intermediate_output=self.training)
 
@@ -322,8 +338,8 @@ class HGPIFuNet(BasePIFuNet):
 
             # normal feature choice by smpl_vis
 
-            if self.prior_type == 'icon':
-                if 'vis' in self.smpl_feats:
+            if self.prior_type == "icon":
+                if "vis" in self.smpl_feats:
                     point_local_feat = feat_select(self.index(im_feat, xy),
                                                    smpl_feat[:, [-1], :])
                     point_feat_list = [point_local_feat, smpl_feat[:, :-1, :]]
@@ -331,19 +347,21 @@ class HGPIFuNet(BasePIFuNet):
                     point_local_feat = self.index(im_feat, xy)
                     point_feat_list = [point_local_feat, smpl_feat[:, :, :]]
 
-            if self.prior_type == 'keypoint':
+            if self.prior_type == "keypoint":
 
-                if 'vis' in self.smpl_feats:
+                if "vis" in self.smpl_feats:
                     point_local_feat = feat_select(self.index(im_feat, xy),
                                                    smpl_feat[:, [-1], :])
-                    point_feat_list = [point_local_feat,
-                                       kpt_feat, smpl_feat[:, :-1, :]]
+                    point_feat_list = [
+                        point_local_feat, kpt_feat, smpl_feat[:, :-1, :]
+                    ]
                 else:
                     point_local_feat = self.index(im_feat, xy)
-                    point_feat_list = [point_local_feat,
-                                       kpt_feat, smpl_feat[:, :, :]]
+                    point_feat_list = [
+                        point_local_feat, kpt_feat, smpl_feat[:, :, :]
+                    ]
 
-            elif self.prior_type == 'pamir':
+            elif self.prior_type == "pamir":
 
                 # im_feat [B, hg_dim, 128, 128]
                 # vol_feat [B, vol_dim, 32, 32, 32]
@@ -353,7 +371,7 @@ class HGPIFuNet(BasePIFuNet):
                     self.index(vol_feat, xyz)
                 ]
 
-            elif self.prior_type == 'pifu':
+            elif self.prior_type == "pifu":
                 point_feat_list = [self.index(im_feat, xy), z]
 
             point_feat = torch.cat(point_feat_list, 1)
@@ -394,9 +412,9 @@ class HGPIFuNet(BasePIFuNet):
         smpl_feat_tensor [B, 59, N]
         """
 
-        sample_tensor = in_tensor_dict['sample']
-        calib_tensor = in_tensor_dict['calib']
-        label_tensor = in_tensor_dict['label']
+        sample_tensor = in_tensor_dict["sample"]
+        calib_tensor = in_tensor_dict["calib"]
+        label_tensor = in_tensor_dict["label"]
 
         in_feat = self.filter(in_tensor_dict)
 

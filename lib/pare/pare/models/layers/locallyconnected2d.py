@@ -20,6 +20,7 @@ from torch.nn.modules.utils import _pair
 
 
 class LocallyConnected2d(nn.Module):
+
     def __init__(self,
                  in_channels,
                  out_channels,
@@ -30,17 +31,23 @@ class LocallyConnected2d(nn.Module):
         super(LocallyConnected2d, self).__init__()
         output_size = _pair(output_size)
         self.weight = nn.Parameter(
-            torch.randn(1, out_channels, in_channels, output_size[0],
-                        output_size[1], kernel_size**2),
+            torch.randn(
+                1,
+                out_channels,
+                in_channels,
+                output_size[0],
+                output_size[1],
+                kernel_size**2,
+            ),
             requires_grad=True,
         )
         if bias:
-            self.bias = nn.Parameter(torch.randn(1, out_channels,
-                                                 output_size[0],
-                                                 output_size[1]),
-                                     requires_grad=True)
+            self.bias = nn.Parameter(
+                torch.randn(1, out_channels, output_size[0], output_size[1]),
+                requires_grad=True,
+            )
         else:
-            self.register_parameter('bias', None)
+            self.register_parameter("bias", None)
         self.kernel_size = _pair(kernel_size)
         self.stride = _pair(stride)
 

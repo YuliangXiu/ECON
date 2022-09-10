@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -22,6 +21,7 @@ from .glm import ortho
 
 
 class Camera:
+
     def __init__(self, width=1600, height=1200):
         # Focal Length
         # equivalent 50mm
@@ -160,18 +160,21 @@ class Camera:
         projective[:2, :2] = int_mat[:2, :2]
         projective[:2, 2:3] = -int_mat[:2, 2:3]
         projective[3, 2] = -1
-        projective[2, 2] = (z_near + z_far)
-        projective[2, 3] = (z_near * z_far)
+        projective[2, 2] = z_near + z_far
+        projective[2, 3] = z_near * z_far
 
         if self.ortho_ratio is None:
             ndc = ortho(0, self.width, 0, self.height, z_near, z_far)
             perspective = np.matmul(ndc, projective)
         else:
-            perspective = ortho(-self.width * self.ortho_ratio / 2,
-                                self.width * self.ortho_ratio / 2,
-                                -self.height * self.ortho_ratio / 2,
-                                self.height * self.ortho_ratio / 2, z_near,
-                                z_far)
+            perspective = ortho(
+                -self.width * self.ortho_ratio / 2,
+                self.width * self.ortho_ratio / 2,
+                -self.height * self.ortho_ratio / 2,
+                self.height * self.ortho_ratio / 2,
+                z_near,
+                z_far,
+            )
 
         return perspective, model_view
 
@@ -187,7 +190,7 @@ def KRT_from_P(proj_mat, normalize_K=True):
 
 
 def MVP_from_P(proj_mat, width, height, near=0.1, far=10000):
-    '''
+    """
     Convert OpenCV camera calibration matrix to OpenGL projection and model view matrix
     :param proj_mat: OpenCV camera projeciton matrix
     :param width: Image width
@@ -195,7 +198,7 @@ def MVP_from_P(proj_mat, width, height, near=0.1, far=10000):
     :param near: Z near value
     :param far: Z far value
     :return: OpenGL projection matrix and model view matrix
-    '''
+    """
     res = cv2.decomposeProjectionMatrix(proj_mat)
     K, Rot, camera_center_homog = res[0], res[1], res[2]
     camera_center = camera_center_homog[0:3] / camera_center_homog[3]
@@ -216,8 +219,8 @@ def MVP_from_P(proj_mat, width, height, near=0.1, far=10000):
     projective[:2, :2] = K[:2, :2]
     projective[:2, 2:3] = -K[:2, 2:3]
     projective[3, 2] = -1
-    projective[2, 2] = (zNear + zFar)
-    projective[2, 3] = (zNear * zFar)
+    projective[2, 2] = zNear + zFar
+    projective[2, 3] = zNear * zFar
 
     ndc = ortho(0, width, 0, height, zNear, zFar)
 

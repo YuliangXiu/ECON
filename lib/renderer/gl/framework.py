@@ -17,7 +17,7 @@ def loadShader(shaderType, shaderFile):
     # check if file exists, get full path name
     strFilename = findFileOrThrow(shaderFile)
     shaderData = None
-    with open(strFilename, 'r') as f:
+    with open(strFilename, "r") as f:
         shaderData = f.read()
 
     shader = glCreateShader(shaderType)
@@ -81,8 +81,8 @@ def findFileOrThrow(strBasename):
         return strBasename
 
     LOCAL_FILE_DIR = "data" + os.sep
-    GLOBAL_FILE_DIR = os.path.dirname(
-        os.path.abspath(__file__)) + os.sep + "data" + os.sep
+    GLOBAL_FILE_DIR = (os.path.dirname(os.path.abspath(__file__)) + os.sep +
+                       "data" + os.sep)
 
     strFilename = LOCAL_FILE_DIR + strBasename
     if os.path.isfile(strFilename):
@@ -92,4 +92,4 @@ def findFileOrThrow(strBasename):
     if os.path.isfile(strFilename):
         return strFilename
 
-    raise IOError('Could not find target file ' + strBasename)
+    raise IOError("Could not find target file " + strBasename)

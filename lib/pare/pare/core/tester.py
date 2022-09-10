@@ -14,7 +14,6 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-
 import torch
 from loguru import logger
 
@@ -26,10 +25,11 @@ MIN_NUM_FRAMES = 0
 
 
 class PARETester:
+
     def __init__(self, cfg, ckpt):
         self.model_cfg = update_hparams(cfg)
-        self.device = torch.device(
-            'cuda') if torch.cuda.is_available() else torch.device('cpu')
+        self.device = (torch.device("cuda")
+                       if torch.cuda.is_available() else torch.device("cpu"))
         self.model = self._build_model()
         self._load_pretrained_model(ckpt)
         self.model.eval()
@@ -38,7 +38,7 @@ class PARETester:
         # ========= Define PARE model ========= #
         model_cfg = self.model_cfg
 
-        if model_cfg.METHOD == 'pare':
+        if model_cfg.METHOD == "pare":
             model = PARE(
                 backbone=model_cfg.PARE.BACKBONE,
                 num_joints=model_cfg.PARE.NUM_JOINTS,
@@ -85,17 +85,17 @@ class PARETester:
                 init_xavier=model_cfg.PARE.INIT_XAVIER,
             ).to(self.device)
         else:
-            logger.error(f'{model_cfg.METHOD} is undefined!')
+            logger.error(f"{model_cfg.METHOD} is undefined!")
             exit()
 
         return model
 
     def _load_pretrained_model(self, ckpt_path):
         # ========= Load pretrained weights ========= #
-        logger.info(f'Loading pretrained model from {ckpt_path}')
-        ckpt = torch.load(ckpt_path)['state_dict']
+        logger.info(f"Loading pretrained model from {ckpt_path}")
+        ckpt = torch.load(ckpt_path)["state_dict"]
         load_pretrained_model(self.model,
                               ckpt,
                               overwrite_shape_mismatch=True,
                               remove_lightning=True)
-        logger.info(f'Loaded pretrained weights from \"{ckpt_path}\"')
+        logger.info(f'Loaded pretrained weights from "{ckpt_path}"')

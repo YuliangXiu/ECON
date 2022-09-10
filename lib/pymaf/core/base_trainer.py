@@ -9,7 +9,6 @@ from tqdm import tqdm
 
 tqdm.monitor_interval = 0
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -21,10 +20,10 @@ class BaseTrainer(object):
     def __init__(self, options):
         self.options = options
         if options.multiprocessing_distributed:
-            self.device = torch.device('cuda', options.gpu)
+            self.device = torch.device("cuda", options.gpu)
         else:
             self.device = torch.device(
-                'cuda' if torch.cuda.is_available() else 'cpu')
+                "cuda" if torch.cuda.is_available() else "cpu")
         # override this function to define your model, optimizers etc.
         self.saver = CheckpointSaver(save_dir=options.checkpoint_dir,
                                      overwrite=options.overwrite)
@@ -41,15 +40,15 @@ class BaseTrainer(object):
             self.epoch_count = 0
             self.step_count = 0
         else:
-            self.epoch_count = self.checkpoint['epoch']
-            self.step_count = self.checkpoint['total_step_count']
+            self.epoch_count = self.checkpoint["epoch"]
+            self.step_count = self.checkpoint["total_step_count"]
 
         if self.checkpoint is not None:
-            self.checkpoint_batch_idx = self.checkpoint['batch_idx']
+            self.checkpoint_batch_idx = self.checkpoint["batch_idx"]
         else:
             self.checkpoint_batch_idx = 0
 
-        self.best_performance = float('inf')
+        self.best_performance = float("inf")
 
     def load_pretrained(self, checkpoint_file=None):
         """Load a pretrained checkpoint.
@@ -61,7 +60,7 @@ class BaseTrainer(object):
                 if model in checkpoint:
                     self.models_dict[model].load_state_dict(checkpoint[model],
                                                             strict=True)
-                    print(f'Checkpoint {model} loaded')
+                    print(f"Checkpoint {model} loaded")
 
     def move_dict_to_device(self, dict, device, tensor2float=False):
         for k, v in dict.items():
@@ -73,20 +72,20 @@ class BaseTrainer(object):
 
     # The following methods (with the possible exception of test) have to be implemented in the derived classes
     def train(self, epoch):
-        raise NotImplementedError('You need to provide an train method')
+        raise NotImplementedError("You need to provide an train method")
 
     def init_fn(self):
-        raise NotImplementedError('You need to provide an _init_fn method')
+        raise NotImplementedError("You need to provide an _init_fn method")
 
     def train_step(self, input_batch):
-        raise NotImplementedError('You need to provide a _train_step method')
+        raise NotImplementedError("You need to provide a _train_step method")
 
     def train_summaries(self, input_batch):
         raise NotImplementedError(
-            'You need to provide a _train_summaries method')
+            "You need to provide a _train_summaries method")
 
     def visualize(self, input_batch):
-        raise NotImplementedError('You need to provide a visualize method')
+        raise NotImplementedError("You need to provide a visualize method")
 
     def validate(self):
         pass
@@ -99,9 +98,11 @@ class BaseTrainer(object):
 
     def fit(self):
         # Run training for num_epochs epochs
-        for epoch in tqdm(range(self.epoch_count, self.options.num_epochs),
-                          total=self.options.num_epochs,
-                          initial=self.epoch_count):
+        for epoch in tqdm(
+                range(self.epoch_count, self.options.num_epochs),
+                total=self.options.num_epochs,
+                initial=self.epoch_count,
+        ):
             self.epoch_count = epoch
             self.train(epoch)
         return

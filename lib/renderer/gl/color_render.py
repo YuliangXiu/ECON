@@ -1,4 +1,4 @@
-'''
+"""
 MIT License
 
 Copyright (c) 2019 Shunsuke Saito, Zeng Huang, and Ryota Natsume
@@ -20,7 +20,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-'''
+"""
 import numpy as np
 import random
 
@@ -29,14 +29,22 @@ from .cam_render import CamRender
 
 
 class ColorRender(CamRender):
-    def __init__(self, width=1600, height=1200, name='Color Renderer', egl=False):
-        program_files = ['color.vs', 'color.fs']
-        CamRender.__init__(self,
-                           width,
-                           height,
-                           name,
-                           program_files=program_files,
-                           color_size=3, egl=egl)
+
+    def __init__(self,
+                 width=1600,
+                 height=1200,
+                 name="Color Renderer",
+                 egl=False):
+        program_files = ["color.vs", "color.fs"]
+        CamRender.__init__(
+            self,
+            width,
+            height,
+            name,
+            program_files=program_files,
+            color_size=3,
+            egl=egl,
+        )
 
         # WARNING: this differs from vertex_buffer and vertex_data in Render
         self.vert_buffer = {}
@@ -52,10 +60,10 @@ class ColorRender(CamRender):
         self.vertex_dim = {}
         self.n_vertices = {}
 
-        self.rot_mat_unif = glGetUniformLocation(self.program, 'RotMat')
+        self.rot_mat_unif = glGetUniformLocation(self.program, "RotMat")
         self.rot_matrix = np.eye(3)
 
-        self.norm_mat_unif = glGetUniformLocation(self.program, 'NormMat')
+        self.norm_mat_unif = glGetUniformLocation(self.program, "NormMat")
         self.normalize_matrix = np.eye(4)
 
     def set_norm_mat(self, scale, center):
@@ -65,7 +73,7 @@ class ColorRender(CamRender):
 
         self.normalize_matrix = N
 
-    def set_mesh(self, vertices, faces, color, normals, mat_name='all'):
+    def set_mesh(self, vertices, faces, color, normals, mat_name="all"):
 
         self.vert_data[mat_name] = vertices[faces.reshape([-1])]
         self.n_vertices[mat_name] = self.vert_data[mat_name].shape[0]

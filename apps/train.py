@@ -1,11 +1,11 @@
 # ignore all the warnings
 import warnings
 import logging
-warnings.filterwarnings('ignore')
+
+warnings.filterwarnings("ignore")
 logging.getLogger("wandb").setLevel(logging.ERROR)
 logging.getLogger("lightning").setLevel(logging.ERROR)
 logging.getLogger("trimesh").setLevel(logging.ERROR)
-
 
 import argparse
 import os.path as osp
@@ -21,14 +21,13 @@ from pytorch_lightning.callbacks import RichProgressBar
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import LearningRateMonitor
 
-
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-cfg", "--config_file", type=str, help="path of the yaml config file"
-    )
+    parser.add_argument("-cfg",
+                        "--config_file",
+                        type=str,
+                        help="path of the yaml config file")
     parser.add_argument("-test", "--test_mode", action="store_true")
     args = parser.parse_args()
     cfg = get_cfg_defaults()
@@ -41,14 +40,23 @@ if __name__ == "__main__":
 
     os.environ["WANDB_NOTEBOOK_NAME"] = osp.join(cfg.results_path, f"wandb")
     wandb_logger = pl_loggers.WandbLogger(
-        offline=True if (cfg.test_mode or args.test_mode) else False, 
-        project="ICON", 
-        save_dir=cfg.results_path, 
-        name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}"
+        offline=True if (cfg.test_mode or args.test_mode) else False,
+        project="ICON",
+        save_dir=cfg.results_path,
+        name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}",
     )
 
     if cfg.overfit:
-        cfg_overfit_list = ["batch_size", 1, "num_threads", 1, "mcube_res", 128, "freq_plot", 0.0001]
+        cfg_overfit_list = [
+            "batch_size",
+            1,
+            "num_threads",
+            1,
+            "mcube_res",
+            128,
+            "freq_plot",
+            0.0001,
+        ]
         cfg.merge_from_list(cfg_overfit_list)
 
     checkpoint = ModelCheckpoint(
@@ -76,20 +84,37 @@ if __name__ == "__main__":
                                 filename="perf_logs")
 
     trainer_kwargs = {
-        "accelerator": 'gpu',
-        "devices": 1,
-        "reload_dataloaders_every_n_epochs": 1,
-        "sync_batchnorm": True,
-        "benchmark": True,
-        "profiler": profiler,
-        "logger": wandb_logger,
-        "num_sanity_val_steps": cfg.num_sanity_val_steps,
-        "limit_train_batches": cfg.dataset.train_bsize,
-        "limit_val_batches": cfg.dataset.val_bsize if not cfg.overfit else 0.001,
-        "limit_test_batches": cfg.dataset.test_bsize if not cfg.overfit else 0.0,
-        "fast_dev_run": cfg.fast_dev,
-        "max_epochs": cfg.num_epoch,
-        "callbacks": [LearningRateMonitor(logging_interval="step"), checkpoint, progress_bar],
+        "accelerator":
+        "gpu",
+        "devices":
+        1,
+        "reload_dataloaders_every_n_epochs":
+        1,
+        "sync_batchnorm":
+        True,
+        "benchmark":
+        True,
+        "profiler":
+        profiler,
+        "logger":
+        wandb_logger,
+        "num_sanity_val_steps":
+        cfg.num_sanity_val_steps,
+        "limit_train_batches":
+        cfg.dataset.train_bsize,
+        "limit_val_batches":
+        cfg.dataset.val_bsize if not cfg.overfit else 0.001,
+        "limit_test_batches":
+        cfg.dataset.test_bsize if not cfg.overfit else 0.0,
+        "fast_dev_run":
+        cfg.fast_dev,
+        "max_epochs":
+        cfg.num_epoch,
+        "callbacks": [
+            LearningRateMonitor(logging_interval="step"),
+            checkpoint,
+            progress_bar,
+        ],
     }
 
     datamodule = PIFuDataModule(cfg)
@@ -98,19 +123,21 @@ if __name__ == "__main__":
         datamodule.setup(stage="fit")
         train_len = datamodule.data_size["train"]
         val_len = datamodule.data_size["val"]
-        trainer_kwargs.update(
-            {
-                "log_every_n_steps": int(cfg.freq_plot * train_len // cfg.batch_size),
-                "val_check_interval": int(cfg.freq_eval * train_len / cfg.batch_size)
-            }
-        )
+        trainer_kwargs.update({
+            "log_every_n_steps":
+            int(cfg.freq_plot * train_len // cfg.batch_size),
+            "val_check_interval":
+            int(cfg.freq_eval * train_len / cfg.batch_size),
+        })
 
         if cfg.overfit:
             cfg_show_list = ["freq_show_train", 100.0, "freq_show_val", 10.0]
         else:
             cfg_show_list = [
-                "freq_show_train", cfg.freq_show_train * train_len // cfg.batch_size,
-                "freq_show_val", max(cfg.freq_show_val * val_len, 1.0),
+                "freq_show_train",
+                cfg.freq_show_train * train_len // cfg.batch_size,
+                "freq_show_val",
+                max(cfg.freq_show_val * val_len, 1.0),
             ]
 
         cfg.merge_from_list(cfg_show_list)
@@ -120,7 +147,8 @@ if __name__ == "__main__":
     trainer = SubTrainer(**trainer_kwargs)
 
     # load checkpoints
-    load_networks(cfg, model,
+    load_networks(cfg,
+                  model,
                   mlp_path=cfg.resume_path,
                   normal_path=cfg.normal_path)
 

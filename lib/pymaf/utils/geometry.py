@@ -43,12 +43,20 @@ def quat_to_rotmat(quat):
     wx, wy, wz = w * x, w * y, w * z
     xy, xz, yz = x * y, x * z, y * z
 
-    rotMat = torch.stack([
-        w2 + x2 - y2 - z2, 2 * xy - 2 * wz, 2 * wy + 2 * xz, 2 * wz + 2 * xy,
-        w2 - x2 + y2 - z2, 2 * yz - 2 * wx, 2 * xz - 2 * wy, 2 * wx + 2 * yz,
-        w2 - x2 - y2 + z2
-    ],
-        dim=1).view(B, 3, 3)
+    rotMat = torch.stack(
+        [
+            w2 + x2 - y2 - z2,
+            2 * xy - 2 * wz,
+            2 * wy + 2 * xz,
+            2 * wz + 2 * xy,
+            w2 - x2 + y2 - z2,
+            2 * yz - 2 * wx,
+            2 * xz - 2 * wy,
+            2 * wx + 2 * yz,
+            w2 - x2 - y2 + z2,
+        ],
+        dim=1,
+    ).view(B, 3, 3)
     return rotMat
 
 
@@ -74,10 +82,10 @@ def rotation_matrix_to_angle_axis(rotation_matrix):
     """
     if rotation_matrix.shape[1:] == (3, 3):
         rot_mat = rotation_matrix.reshape(-1, 3, 3)
-        hom = torch.tensor([0, 0, 1],
-                           dtype=torch.float32,
-                           device=rotation_matrix.device).reshape(
-                               1, 3, 1).expand(rot_mat.shape[0], -1, -1)
+        hom = (torch.tensor([0, 0, 1],
+                            dtype=torch.float32,
+                            device=rotation_matrix.device).reshape(
+                                1, 3, 1).expand(rot_mat.shape[0], -1, -1))
         rotation_matrix = torch.cat([rot_mat, hom], dim=-1)
 
     quaternion = rotation_matrix_to_quaternion(rotation_matrix)
@@ -125,8 +133,10 @@ def quaternion_to_angle_axis(quaternion: torch.Tensor) -> torch.Tensor:
     sin_theta: torch.Tensor = torch.sqrt(sin_squared_theta)
     cos_theta: torch.Tensor = quaternion[..., 0]
     two_theta: torch.Tensor = 2.0 * torch.where(
-        cos_theta < 0.0, torch.atan2(-sin_theta, -cos_theta),
-        torch.atan2(sin_theta, cos_theta))
+        cos_theta < 0.0,
+        torch.atan2(-sin_theta, -cos_theta),
+        torch.atan2(sin_theta, cos_theta),
+    )
 
     k_pos: torch.Tensor = two_theta / sin_theta
     k_neg: torch.Tensor = 2.0 * torch.ones_like(sin_theta)
@@ -183,31 +193,51 @@ def rotation_matrix_to_quaternion(rotation_matrix, eps=1e-6):
     mask_d0_nd1 = rmat_t[:, 0, 0] < -rmat_t[:, 1, 1]
 
     t0 = 1 + rmat_t[:, 0, 0] - rmat_t[:, 1, 1] - rmat_t[:, 2, 2]
-    q0 = torch.stack([
-        rmat_t[:, 1, 2] - rmat_t[:, 2, 1], t0,
-        rmat_t[:, 0, 1] + rmat_t[:, 1, 0], rmat_t[:, 2, 0] + rmat_t[:, 0, 2]
-    ], -1)
+    q0 = torch.stack(
+        [
+            rmat_t[:, 1, 2] - rmat_t[:, 2, 1],
+            t0,
+            rmat_t[:, 0, 1] + rmat_t[:, 1, 0],
+            rmat_t[:, 2, 0] + rmat_t[:, 0, 2],
+        ],
+        -1,
+    )
     t0_rep = t0.repeat(4, 1).t()
 
     t1 = 1 - rmat_t[:, 0, 0] + rmat_t[:, 1, 1] - rmat_t[:, 2, 2]
-    q1 = torch.stack([
-        rmat_t[:, 2, 0] - rmat_t[:, 0, 2], rmat_t[:, 0, 1] + rmat_t[:, 1, 0],
-        t1, rmat_t[:, 1, 2] + rmat_t[:, 2, 1]
-    ], -1)
+    q1 = torch.stack(
+        [
+            rmat_t[:, 2, 0] - rmat_t[:, 0, 2],
+            rmat_t[:, 0, 1] + rmat_t[:, 1, 0],
+            t1,
+            rmat_t[:, 1, 2] + rmat_t[:, 2, 1],
+        ],
+        -1,
+    )
     t1_rep = t1.repeat(4, 1).t()
 
     t2 = 1 - rmat_t[:, 0, 0] - rmat_t[:, 1, 1] + rmat_t[:, 2, 2]
-    q2 = torch.stack([
-        rmat_t[:, 0, 1] - rmat_t[:, 1, 0], rmat_t[:, 2, 0] + rmat_t[:, 0, 2],
-        rmat_t[:, 1, 2] + rmat_t[:, 2, 1], t2
-    ], -1)
+    q2 = torch.stack(
+        [
+            rmat_t[:, 0, 1] - rmat_t[:, 1, 0],
+            rmat_t[:, 2, 0] + rmat_t[:, 0, 2],
+            rmat_t[:, 1, 2] + rmat_t[:, 2, 1],
+            t2,
+        ],
+        -1,
+    )
     t2_rep = t2.repeat(4, 1).t()
 
     t3 = 1 + rmat_t[:, 0, 0] + rmat_t[:, 1, 1] + rmat_t[:, 2, 2]
-    q3 = torch.stack([
-        t3, rmat_t[:, 1, 2] - rmat_t[:, 2, 1],
-        rmat_t[:, 2, 0] - rmat_t[:, 0, 2], rmat_t[:, 0, 1] - rmat_t[:, 1, 0]
-    ], -1)
+    q3 = torch.stack(
+        [
+            t3,
+            rmat_t[:, 1, 2] - rmat_t[:, 2, 1],
+            rmat_t[:, 2, 0] - rmat_t[:, 0, 2],
+            rmat_t[:, 0, 1] - rmat_t[:, 1, 0],
+        ],
+        -1,
+    )
     t3_rep = t3.repeat(4, 1).t()
 
     mask_c0 = mask_d2 * mask_d0_d1
@@ -220,8 +250,9 @@ def rotation_matrix_to_quaternion(rotation_matrix, eps=1e-6):
     mask_c3 = mask_c3.view(-1, 1).type_as(q3)
 
     q = q0 * mask_c0 + q1 * mask_c1 + q2 * mask_c2 + q3 * mask_c3
-    q /= torch.sqrt(t0_rep * mask_c0 + t1_rep * mask_c1 +  # noqa
-                    t2_rep * mask_c2 + t3_rep * mask_c3)  # noqa
+    q /= torch.sqrt(t0_rep * mask_c0 + t1_rep * mask_c1 +
+                    t2_rep * mask_c2  # noqa
+                    + t3_rep * mask_c3)  # noqa
     q *= 0.5
     return q
 
@@ -238,17 +269,20 @@ def rot6d_to_rotmat(x):
     a1 = x[:, :, 0]
     a2 = x[:, :, 1]
     b1 = F.normalize(a1)
-    b2 = F.normalize(a2 - torch.einsum('bi,bi->b', b1, a2).unsqueeze(-1) * b1)
+    b2 = F.normalize(a2 - torch.einsum("bi,bi->b", b1, a2).unsqueeze(-1) * b1)
     b3 = torch.cross(b1, b2)
     return torch.stack((b1, b2, b3), dim=-1)
 
 
 def projection(pred_joints, pred_camera, retain_z=False):
-    pred_cam_t = torch.stack([
-        pred_camera[:, 1], pred_camera[:, 2], 2 * 5000. /
-        (224. * pred_camera[:, 0] + 1e-9)
-    ],
-        dim=-1)
+    pred_cam_t = torch.stack(
+        [
+            pred_camera[:, 1],
+            pred_camera[:, 2],
+            2 * 5000.0 / (224.0 * pred_camera[:, 0] + 1e-9),
+        ],
+        dim=-1,
+    )
     batch_size = pred_joints.shape[0]
     camera_center = torch.zeros(batch_size, 2)
     pred_keypoints_2d = perspective_projection(
@@ -256,11 +290,12 @@ def projection(pred_joints, pred_camera, retain_z=False):
         rotation=torch.eye(3).unsqueeze(0).expand(batch_size, -1,
                                                   -1).to(pred_joints.device),
         translation=pred_cam_t,
-        focal_length=5000.,
+        focal_length=5000.0,
         camera_center=camera_center,
-        retain_z=retain_z)
+        retain_z=retain_z,
+    )
     # Normalize keypoints to [-1,1]
-    pred_keypoints_2d = pred_keypoints_2d / (224. / 2.)
+    pred_keypoints_2d = pred_keypoints_2d / (224.0 / 2.0)
     return pred_keypoints_2d
 
 
@@ -283,18 +318,18 @@ def perspective_projection(points,
     K = torch.zeros([batch_size, 3, 3], device=points.device)
     K[:, 0, 0] = focal_length
     K[:, 1, 1] = focal_length
-    K[:, 2, 2] = 1.
+    K[:, 2, 2] = 1.0
     K[:, :-1, -1] = camera_center
 
     # Transform points
-    points = torch.einsum('bij,bkj->bki', rotation, points)
+    points = torch.einsum("bij,bkj->bki", rotation, points)
     points = points + translation.unsqueeze(1)
 
     # Apply perspective distortion
     projected_points = points / points[:, :, -1].unsqueeze(-1)
 
     # Apply camera intrinsics
-    projected_points = torch.einsum('bij,bkj->bki', K, projected_points)
+    projected_points = torch.einsum("bij,bkj->bki", K, projected_points)
 
     if retain_z:
         return projected_points
@@ -319,7 +354,7 @@ def estimate_translation_np(S,
     # focal length
     f = np.array([focal_length, focal_length])
     # optical center
-    center = np.array([img_size / 2., img_size / 2.])
+    center = np.array([img_size / 2.0, img_size / 2.0])
 
     # transformations
     Z = np.reshape(np.tile(S[:, 2], (2, 1)).T, -1)
@@ -332,7 +367,7 @@ def estimate_translation_np(S,
     Q = np.array([
         F * np.tile(np.array([1, 0]), num_joints),
         F * np.tile(np.array([0, 1]), num_joints),
-        O - np.reshape(joints_2d, -1)
+        O - np.reshape(joints_2d, -1),
     ]).T
     c = (np.reshape(joints_2d, -1) - O) * Z - F * XY
 
@@ -351,7 +386,7 @@ def estimate_translation_np(S,
     return trans
 
 
-def estimate_translation(S, joints_2d, focal_length=5000., img_size=224.):
+def estimate_translation(S, joints_2d, focal_length=5000.0, img_size=224.0):
     """Find camera translation that brings 3D joints S closest to 2D the corresponding joints_2d.
     Input:
         S: (B, 49, 3) 3D joint locations
@@ -380,22 +415,25 @@ def estimate_translation(S, joints_2d, focal_length=5000., img_size=224.):
     return torch.from_numpy(trans).to(device)
 
 
-def Rot_y(angle, category='torch', prepend_dim=True, device=None):
-    '''Rotate around y-axis by angle
-        Args:
-                category: 'torch' or 'numpy'
-                prepend_dim: prepend an extra dimension
-        Return: Rotation matrix with shape [1, 3, 3] (prepend_dim=True)
-        '''
-    m = np.array([[np.cos(angle), 0., np.sin(angle)], [0., 1., 0.],
-                  [-np.sin(angle), 0., np.cos(angle)]])
-    if category == 'torch':
+def Rot_y(angle, category="torch", prepend_dim=True, device=None):
+    """Rotate around y-axis by angle
+    Args:
+            category: 'torch' or 'numpy'
+            prepend_dim: prepend an extra dimension
+    Return: Rotation matrix with shape [1, 3, 3] (prepend_dim=True)
+    """
+    m = np.array([
+        [np.cos(angle), 0.0, np.sin(angle)],
+        [0.0, 1.0, 0.0],
+        [-np.sin(angle), 0.0, np.cos(angle)],
+    ])
+    if category == "torch":
         if prepend_dim:
             return torch.tensor(m, dtype=torch.float,
                                 device=device).unsqueeze(0)
         else:
             return torch.tensor(m, dtype=torch.float, device=device)
-    elif category == 'numpy':
+    elif category == "numpy":
         if prepend_dim:
             return np.expand_dims(m, 0)
         else:
@@ -404,22 +442,25 @@ def Rot_y(angle, category='torch', prepend_dim=True, device=None):
         raise ValueError("category must be 'torch' or 'numpy'")
 
 
-def Rot_x(angle, category='torch', prepend_dim=True, device=None):
-    '''Rotate around x-axis by angle
-        Args:
-                category: 'torch' or 'numpy'
-                prepend_dim: prepend an extra dimension
-        Return: Rotation matrix with shape [1, 3, 3] (prepend_dim=True)
-        '''
-    m = np.array([[1., 0., 0.], [0., np.cos(angle), -np.sin(angle)],
-                  [0., np.sin(angle), np.cos(angle)]])
-    if category == 'torch':
+def Rot_x(angle, category="torch", prepend_dim=True, device=None):
+    """Rotate around x-axis by angle
+    Args:
+            category: 'torch' or 'numpy'
+            prepend_dim: prepend an extra dimension
+    Return: Rotation matrix with shape [1, 3, 3] (prepend_dim=True)
+    """
+    m = np.array([
+        [1.0, 0.0, 0.0],
+        [0.0, np.cos(angle), -np.sin(angle)],
+        [0.0, np.sin(angle), np.cos(angle)],
+    ])
+    if category == "torch":
         if prepend_dim:
             return torch.tensor(m, dtype=torch.float,
                                 device=device).unsqueeze(0)
         else:
             return torch.tensor(m, dtype=torch.float, device=device)
-    elif category == 'numpy':
+    elif category == "numpy":
         if prepend_dim:
             return np.expand_dims(m, 0)
         else:
@@ -428,22 +469,25 @@ def Rot_x(angle, category='torch', prepend_dim=True, device=None):
         raise ValueError("category must be 'torch' or 'numpy'")
 
 
-def Rot_z(angle, category='torch', prepend_dim=True, device=None):
-    '''Rotate around z-axis by angle
-        Args:
-                category: 'torch' or 'numpy'
-                prepend_dim: prepend an extra dimension
-        Return: Rotation matrix with shape [1, 3, 3] (prepend_dim=True)
-        '''
-    m = np.array([[np.cos(angle), -np.sin(angle), 0.],
-                  [np.sin(angle), np.cos(angle), 0.], [0., 0., 1.]])
-    if category == 'torch':
+def Rot_z(angle, category="torch", prepend_dim=True, device=None):
+    """Rotate around z-axis by angle
+    Args:
+            category: 'torch' or 'numpy'
+            prepend_dim: prepend an extra dimension
+    Return: Rotation matrix with shape [1, 3, 3] (prepend_dim=True)
+    """
+    m = np.array([
+        [np.cos(angle), -np.sin(angle), 0.0],
+        [np.sin(angle), np.cos(angle), 0.0],
+        [0.0, 0.0, 1.0],
+    ])
+    if category == "torch":
         if prepend_dim:
             return torch.tensor(m, dtype=torch.float,
                                 device=device).unsqueeze(0)
         else:
             return torch.tensor(m, dtype=torch.float, device=device)
-    elif category == 'numpy':
+    elif category == "numpy":
         if prepend_dim:
             return np.expand_dims(m, 0)
         else:

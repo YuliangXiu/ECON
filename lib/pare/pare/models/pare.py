@@ -26,29 +26,30 @@ from ..utils.train_utils import load_pretrained_model
 
 
 class PARE(nn.Module):
+
     def __init__(
         self,
         num_joints=24,
         softmax_temp=1.0,
         num_features_smpl=64,
-        backbone='resnet50',
-        focal_length=5000.,
+        backbone="resnet50",
+        focal_length=5000.0,
         img_res=224,
         pretrained=None,
         iterative_regression=False,
         iter_residual=False,
         num_iterations=3,
-        shape_input_type='feats',  # 'feats.all_pose.shape.cam',
+        shape_input_type="feats",  # 'feats.all_pose.shape.cam',
         # 'feats.neighbor_pose_feats.all_pose.self_pose.neighbor_pose.shape.cam'
-        pose_input_type='feats',
+        pose_input_type="feats",
         pose_mlp_num_layers=1,
         shape_mlp_num_layers=1,
         pose_mlp_hidden_size=256,
         shape_mlp_hidden_size=256,
         use_keypoint_features_for_smpl_regression=False,
-        use_heatmaps='',
+        use_heatmaps="",
         use_keypoint_attention=False,
-        keypoint_attention_act='softmax',
+        keypoint_attention_act="softmax",
         use_postconv_keypoint_attention=False,
         use_scale_keypoint_attention=False,
         use_final_nonlocal=None,
@@ -56,7 +57,7 @@ class PARE(nn.Module):
         use_hmr_regression=False,
         use_coattention=False,
         num_coattention_iter=1,
-        coattention_conv='simple',
+        coattention_conv="simple",
         deconv_conv_kernel_size=4,
         use_upsampling=False,
         use_soft_attention=False,
@@ -72,12 +73,12 @@ class PARE(nn.Module):
         use_cam=False,
     ):
         super(PARE, self).__init__()
-        if backbone.startswith('hrnet'):
-            backbone, use_conv = backbone.split('-')
+        if backbone.startswith("hrnet"):
+            backbone, use_conv = backbone.split("-")
             # hrnet_w32-conv, hrnet_w32-interp
             self.backbone = eval(backbone)(pretrained=True,
                                            downsample=False,
-                                           use_conv=(use_conv == 'conv'))
+                                           use_conv=(use_conv == "conv"))
         else:
             self.backbone = eval(backbone)(pretrained=True)
 
@@ -85,7 +86,7 @@ class PARE(nn.Module):
         self.head = PareHead(
             num_joints=num_joints,
             num_input_features=get_backbone_info(
-                backbone)['n_output_channels'],
+                backbone)["n_output_channels"],
             softmax_temp=softmax_temp,
             num_deconv_layers=num_deconv_layers,
             num_deconv_filters=[num_deconv_filters] * num_deconv_layers,
@@ -101,7 +102,8 @@ class PARE(nn.Module):
             shape_mlp_num_layers=shape_mlp_num_layers,
             pose_mlp_hidden_size=pose_mlp_hidden_size,
             shape_mlp_hidden_size=shape_mlp_hidden_size,
-            use_keypoint_features_for_smpl_regression=use_keypoint_features_for_smpl_regression,
+            use_keypoint_features_for_smpl_regression=
+            use_keypoint_features_for_smpl_regression,
             use_heatmaps=use_heatmaps,
             use_keypoint_attention=use_keypoint_attention,
             use_postconv_keypoint_attention=use_postconv_keypoint_attention,
@@ -152,9 +154,9 @@ class PARE(nn.Module):
 
         if self.use_cam:
             smpl_output = self.smpl(
-                rotmat=hmr_output['pred_pose'],
-                shape=hmr_output['pred_shape'],
-                cam=hmr_output['pred_cam'],
+                rotmat=hmr_output["pred_pose"],
+                shape=hmr_output["pred_shape"],
+                cam=hmr_output["pred_cam"],
                 cam_rotmat=cam_rotmat,
                 cam_intrinsics=cam_intrinsics,
                 bbox_scale=bbox_scale,
@@ -165,42 +167,44 @@ class PARE(nn.Module):
             )
             smpl_output.update(hmr_output)
         else:
-            if isinstance(hmr_output['pred_pose'], list):
+            if isinstance(hmr_output["pred_pose"], list):
                 # if we have multiple smpl params prediction
                 # create a dictionary of lists per prediction
                 smpl_output = {
-                    'smpl_vertices': [],
-                    'smpl_joints3d': [],
-                    'smpl_joints2d': [],
-                    'pred_cam_t': [],
+                    "smpl_vertices": [],
+                    "smpl_joints3d": [],
+                    "smpl_joints2d": [],
+                    "pred_cam_t": [],
                 }
-                for idx in range(len(hmr_output['pred_pose'])):
+                for idx in range(len(hmr_output["pred_pose"])):
                     smpl_out = self.smpl(
-                        rotmat=hmr_output['pred_pose'][idx],
-                        shape=hmr_output['pred_shape'][idx],
-                        cam=hmr_output['pred_cam'][idx],
+                        rotmat=hmr_output["pred_pose"][idx],
+                        shape=hmr_output["pred_shape"][idx],
+                        cam=hmr_output["pred_cam"][idx],
                         normalize_joints2d=True,
                     )
                     for k, v in smpl_out.items():
                         smpl_output[k].append(v)
             else:
                 smpl_output = self.smpl(
-                    rotmat=hmr_output['pred_pose'],
-                    shape=hmr_output['pred_shape'],
-                    cam=hmr_output['pred_cam'],
+                    rotmat=hmr_output["pred_pose"],
+                    shape=hmr_output["pred_shape"],
+                    cam=hmr_output["pred_cam"],
                     normalize_joints2d=True,
                 )
                 smpl_output.update(hmr_output)
         return smpl_output
 
     def load_pretrained(self, file):
-        logger.warning(f'Loading pretrained weights from {file}')
+        logger.warning(f"Loading pretrained weights from {file}")
         state_dict = torch.load(file)
         self.backbone.load_state_dict(state_dict, strict=False)
-        load_pretrained_model(self.head,
-                              state_dict=state_dict,
-                              strict=False,
-                              overwrite_shape_mismatch=True)
+        load_pretrained_model(
+            self.head,
+            state_dict=state_dict,
+            strict=False,
+            overwrite_shape_mismatch=True,
+        )
 
     # def load_backbone_pretrained(self, file):
     #     # This is usually used to load pretrained 2d keypoint detector weights
@@ -210,11 +214,12 @@ class PARE(nn.Module):
 
 
 def get_pare_model(device):
-    PARE_CKPT = '/ps/scratch/ps_shared/mkocabas/pare_results/pare_pretrained_ckpt_for_smplify/epoch=14.ckpt.backup'
-    PARE_CFG = '/ps/scratch/ps_shared/mkocabas/pare_results/pare_pretrained_ckpt_for_smplify/config_to_run.yaml'
+    PARE_CKPT = "/ps/scratch/ps_shared/mkocabas/pare_results/pare_pretrained_ckpt_for_smplify/epoch=14.ckpt.backup"
+    PARE_CFG = "/ps/scratch/ps_shared/mkocabas/pare_results/pare_pretrained_ckpt_for_smplify/config_to_run.yaml"
 
     from ..core.config import get_hparams_defaults, update_hparams
     from ..utils.train_utils import load_pretrained_model
+
     # cfg = get_hparams_defaults()
     cfg = update_hparams(PARE_CFG)
 
@@ -256,8 +261,8 @@ def get_pare_model(device):
     ).to(device)
     model.eval()
 
-    logger.info(f'Loading pretrained model from {PARE_CKPT}')
-    ckpt = torch.load(PARE_CKPT)['state_dict']
+    logger.info(f"Loading pretrained model from {PARE_CKPT}")
+    ckpt = torch.load(PARE_CKPT)["state_dict"]
     load_pretrained_model(model,
                           ckpt,
                           overwrite_shape_mismatch=True,

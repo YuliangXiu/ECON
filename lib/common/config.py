@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -21,16 +20,16 @@ import os
 _C = CN(new_allowed=True)
 
 # needed by trainer
-_C.name = 'default'
+_C.name = "default"
 _C.gpus = [0]
 _C.test_gpus = [1]
 _C.root = "./data/"
-_C.ckpt_dir = './data/ckpt/'
-_C.resume_path = ''
-_C.normal_path = ''
-_C.corr_path = ''
-_C.results_path = './data/results/'
-_C.projection_mode = 'orthogonal'
+_C.ckpt_dir = "./data/ckpt/"
+_C.resume_path = ""
+_C.normal_path = ""
+_C.corr_path = ""
+_C.results_path = "./data/results/"
+_C.projection_mode = "orthogonal"
 _C.num_views = 1
 _C.sdf = False
 _C.sdf_clip = 5.0
@@ -40,7 +39,7 @@ _C.lr_C = 1e-3
 _C.lr_N = 2e-4
 _C.weight_decay = 0.0
 _C.momentum = 0.0
-_C.optim = 'RMSprop'
+_C.optim = "RMSprop"
 _C.schedule = [5, 10, 15]
 _C.gamma = 0.1
 
@@ -69,17 +68,17 @@ _C.freq_show_val = 0.2
 _C.freq_eval = 0.5
 _C.accu_grad_batch = 4
 
-_C.test_items = ['sv', 'mv', 'mv-fusion', 'hybrid', 'dc-pred', 'gt']
+_C.test_items = ["sv", "mv", "mv-fusion", "hybrid", "dc-pred", "gt"]
 
 _C.net = CN()
-_C.net.gtype = 'HGPIFuNet'
-_C.net.ctype = 'resnet18'
-_C.net.classifierIMF = 'MultiSegClassifier'
-_C.net.netIMF = 'resnet18'
-_C.net.norm = 'group'
-_C.net.norm_mlp = 'group'
-_C.net.norm_color = 'group'
-_C.net.hg_down = 'ave_pool'
+_C.net.gtype = "HGPIFuNet"
+_C.net.ctype = "resnet18"
+_C.net.classifierIMF = "MultiSegClassifier"
+_C.net.netIMF = "resnet18"
+_C.net.norm = "group"
+_C.net.norm_mlp = "group"
+_C.net.norm_color = "group"
+_C.net.hg_down = "ave_pool"
 _C.net.num_views = 1
 
 # kernel_size, stride, dilation, padding
@@ -116,7 +115,7 @@ _C.net.no_residual = True
 _C.net.use_attention = False
 
 _C.net.prior_type = "sdf"
-_C.net.smpl_feats = ['sdf', 'cmap', 'norm', 'vis']
+_C.net.smpl_feats = ["sdf", "cmap", "norm", "vis"]
 _C.net.use_filter = True
 _C.net.use_cc = False
 _C.net.use_PE = False
@@ -125,14 +124,18 @@ _C.net.in_geo = ()
 _C.net.in_nml = ()
 
 _C.dataset = CN()
-_C.dataset.root = ''
+_C.dataset.root = ""
 _C.dataset.set_splits = [0.95, 0.04]
 _C.dataset.types = [
-    "3dpeople", "axyz", "renderpeople", "renderpeople_p27", "humanalloy"
+    "3dpeople",
+    "axyz",
+    "renderpeople",
+    "renderpeople_p27",
+    "humanalloy",
 ]
 _C.dataset.scales = [1.0, 100.0, 1.0, 1.0, 100.0 / 39.37]
 _C.dataset.rp_type = "pifu900"
-_C.dataset.th_type = 'train'
+_C.dataset.th_type = "train"
 _C.dataset.input_size = 512
 _C.dataset.rotation_num = 3
 _C.dataset.num_precomp = 10  # Number of segmentation classifiers
@@ -142,7 +145,7 @@ _C.dataset.num_knn_dis = 20  # for accuracy
 _C.dataset.num_verts_max = 20000
 _C.dataset.zray_type = False
 _C.dataset.online_smpl = False
-_C.dataset.noise_type = ['z-trans', 'pose', 'beta']
+_C.dataset.noise_type = ["z-trans", "pose", "beta"]
 _C.dataset.noise_scale = [0.0, 0.0, 0.0]
 _C.dataset.num_sample_geo = 10000
 _C.dataset.num_sample_color = 0
@@ -206,11 +209,11 @@ def parse_args_extend(args):
     if args.resume:
         if not os.path.exists(args.log_dir):
             raise ValueError(
-                'Experiment are set to resume mode, but log directory does not exist.'
+                "Experiment are set to resume mode, but log directory does not exist."
             )
 
         # load log's cfg
-        cfg_file = os.path.join(args.log_dir, 'cfg.yaml')
+        cfg_file = os.path.join(args.log_dir, "cfg.yaml")
         cfg = update_cfg(cfg_file)
 
         if args.misc is not None:

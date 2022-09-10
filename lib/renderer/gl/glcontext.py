@@ -32,16 +32,16 @@ from __future__ import print_function
 try:
     import OpenGL
 except:
-    print('This module depends on PyOpenGL.')
+    print("This module depends on PyOpenGL.")
     print('Please run "\033[1m!pip install -q pyopengl\033[0m" '
-          'prior importing this module.')
+          "prior importing this module.")
     raise
 
 import ctypes
 from ctypes import pointer, util
 import os
 
-os.environ['PYOPENGL_PLATFORM'] = 'egl'
+os.environ["PYOPENGL_PLATFORM"] = "egl"
 
 # OpenGL loading workaround.
 #
@@ -60,16 +60,16 @@ try:
 
     def _find_library_new(name):
         return {
-            'GL': 'libOpenGL.so',
-            'EGL': 'libEGL.so',
+            "GL": "libOpenGL.so",
+            "EGL": "libEGL.so",
         }.get(name, _find_library_old(name))
 
     util.find_library = _find_library_new
     import OpenGL.GL as gl
     import OpenGL.EGL as egl
 except:
-    print('Unable to load OpenGL libraries. '
-          'Make sure you use GPU-enabled backend.')
+    print("Unable to load OpenGL libraries. "
+          "Make sure you use GPU-enabled backend.")
     print('Press "Runtime->Change runtime type" and set '
           '"Hardware accelerator" to GPU.')
     raise
@@ -80,21 +80,31 @@ finally:
 def create_opengl_context(surface_size=(640, 480)):
     """Create offscreen OpenGL context and make it current.
 
-  Users are expected to directly use EGL API in case more advanced
-  context management is required.
+    Users are expected to directly use EGL API in case more advanced
+    context management is required.
 
-  Args:
-    surface_size: (width, height), size of the offscreen rendering surface.
-  """
+    Args:
+      surface_size: (width, height), size of the offscreen rendering surface.
+    """
     egl_display = egl.eglGetDisplay(egl.EGL_DEFAULT_DISPLAY)
 
     major, minor = egl.EGLint(), egl.EGLint()
     egl.eglInitialize(egl_display, pointer(major), pointer(minor))
 
     config_attribs = [
-        egl.EGL_SURFACE_TYPE, egl.EGL_PBUFFER_BIT, egl.EGL_BLUE_SIZE, 8,
-        egl.EGL_GREEN_SIZE, 8, egl.EGL_RED_SIZE, 8, egl.EGL_DEPTH_SIZE, 24,
-        egl.EGL_RENDERABLE_TYPE, egl.EGL_OPENGL_BIT, egl.EGL_NONE
+        egl.EGL_SURFACE_TYPE,
+        egl.EGL_PBUFFER_BIT,
+        egl.EGL_BLUE_SIZE,
+        8,
+        egl.EGL_GREEN_SIZE,
+        8,
+        egl.EGL_RED_SIZE,
+        8,
+        egl.EGL_DEPTH_SIZE,
+        24,
+        egl.EGL_RENDERABLE_TYPE,
+        egl.EGL_OPENGL_BIT,
+        egl.EGL_NONE,
     ]
     config_attribs = (egl.EGLint * len(config_attribs))(*config_attribs)
 

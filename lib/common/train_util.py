@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Max-Planck-Gesellschaft zur Förderung der Wissenschaften e.V. (MPG) is
@@ -28,14 +27,80 @@ import cv2, PIL
 from tqdm import tqdm
 import os
 from termcolor import colored
-
 import pytorch_lightning as pl
-from pytorch_lightning.core.lightning import LightningModule
-from pytorch_lightning.utilities.cloud_io import atomic_save
-from pytorch_lightning.utilities import rank_zero_warn
+
+def rot6d_to_rotmat(x):
+    """Convert 6D rotation representation to 3x3 rotation matrix.
+    Based on Zhou et al., "On the Continuity of Rotation Representations in Neural Networks", CVPR 2019
+    Input:
+        (B,6) Batch of 6-D rotation representations
+    Output:
+        (B,3,3) Batch of corresponding rotation matrices
+    """
+    x = x.view(-1, 3, 2)
+    a1 = x[:, :, 0]
+    a2 = x[:, :, 1]
+    b1 = F.normalize(a1)
+    b2 = F.normalize(a2 - torch.einsum("bi,bi->b", b1, a2).unsqueeze(-1) * b1)
+    b3 = torch.cross(b1, b2)
+    return torch.stack((b1, b2, b3), dim=-1)
+
+
+def init_loss():
+
+    losses = {
+        # Cloth: Normal_recon - Normal_pred
+        "cloth": {
+            "weight": 1e1,
+            "value": 0.0
+        },
+        # Cloth: [RT]_v1 - [RT]_v2 (v1-edge-v2)
+        "stiffness": {
+            "weight": 1e5,
+            "value": 0.0
+        },
+        # Cloth: det(R) = 1
+        "rigid": {
+            "weight": 1e5,
+            "value": 0.0
+        },
+        # Cloth: edge length
+        "edge": {
+            "weight": 0,
+            "value": 0.0
+        },
+        # Cloth: normal consistency
+        "nc": {
+            "weight": 0,
+            "value": 0.0
+        },
+        # Cloth: laplacian smoonth
+        "laplacian": {
+            "weight": 1e2,
+            "value": 0.0
+        },
+        # Body: Normal_pred - Normal_smpl
+        "normal": {
+            "weight": 1e0,
+            "value": 0.0
+        },
+        # Body: Silhouette_pred - Silhouette_smpl
+        "silhouette": {
+            "weight": 1e0,
+            "value": 0.0
+        },
+        # Joint: reprojected joints difference
+        "joint": {
+            "weight": 5e0,
+            "value": 0.0
+        },
+    }
+
+    return losses
 
 
 class SubTrainer(pl.Trainer):
+
     def save_checkpoint(self, filepath, weights_only=False):
         """Save model/training states as a checkpoint file through state-dump and file-write.
         Args:
@@ -51,7 +116,7 @@ class SubTrainer(pl.Trainer):
                     del_keys.append(key)
         for key in del_keys:
             del _checkpoint["state_dict"][key]
-            
+
         pl.utilities.cloud_io.atomic_save(_checkpoint, filepath)
 
 
@@ -62,8 +127,9 @@ def rename(old_dict, old_name, new_name):
         new_dict[new_key] = old_dict[key]
     return new_dict
 
+
 def load_networks(cfg, model, mlp_path, normal_path):
-    
+
     model_dict = model.state_dict()
     main_dict = {}
     normal_dict = {}
@@ -71,41 +137,34 @@ def load_networks(cfg, model, mlp_path, normal_path):
     # MLP part loading
     if os.path.exists(mlp_path) and mlp_path.endswith("ckpt"):
         main_dict = torch.load(
-            mlp_path, map_location=torch.device(
-                f"cuda:{cfg.gpus[0]}")
-        )["state_dict"]
+            mlp_path,
+            map_location=torch.device(f"cuda:{cfg.gpus[0]}"))["state_dict"]
 
         main_dict = {
             k: v
             for k, v in main_dict.items()
-            if k in model_dict
-            and v.shape == model_dict[k].shape
-            and ("reconEngine" not in k)
-            and ("normal_filter" not in k)
-            and ("voxelization" not in k)
+            if k in model_dict and v.shape == model_dict[k].shape and (
+                "reconEngine" not in k) and ("normal_filter" not in k) and (
+                    "voxelization" not in k)
         }
-        print(
-            colored(f"Resume MLP weights from {mlp_path}", "green"))
+        print(colored(f"Resume MLP weights from {mlp_path}", "green"))
 
     # normal network part loading
     if os.path.exists(normal_path) and normal_path.endswith("ckpt"):
         normal_dict = torch.load(
-            normal_path, map_location=torch.device(
-                f"cuda:{cfg.gpus[0]}")
-        )["state_dict"]
+            normal_path,
+            map_location=torch.device(f"cuda:{cfg.gpus[0]}"))["state_dict"]
 
         for key in normal_dict.keys():
-            normal_dict = rename(
-                normal_dict, key, key.replace("netG", "netG.normal_filter")
-            )
+            normal_dict = rename(normal_dict, key,
+                                 key.replace("netG", "netG.normal_filter"))
 
         normal_dict = {
             k: v
             for k, v in normal_dict.items()
             if k in model_dict and v.shape == model_dict[k].shape
         }
-        print(
-            colored(f"Resume normal model from {normal_path}", "green"))
+        print(colored(f"Resume normal model from {normal_path}", "green"))
 
     model_dict.update(main_dict)
     model_dict.update(normal_dict)
@@ -126,19 +185,21 @@ def reshape_sample_tensor(sample_tensor, num_views):
     sample_tensor = sample_tensor.repeat(1, num_views, 1, 1)
     sample_tensor = sample_tensor.view(
         sample_tensor.shape[0] * sample_tensor.shape[1],
-        sample_tensor.shape[2], sample_tensor.shape[3])
+        sample_tensor.shape[2],
+        sample_tensor.shape[3],
+    )
     return sample_tensor
 
 
 def gen_mesh_eval(opt, net, cuda, data, resolution=None):
     resolution = opt.resolution if resolution is None else resolution
-    image_tensor = data['img'].to(device=cuda)
-    calib_tensor = data['calib'].to(device=cuda)
+    image_tensor = data["img"].to(device=cuda)
+    calib_tensor = data["calib"].to(device=cuda)
 
     net.filter(image_tensor)
 
-    b_min = data['b_min']
-    b_max = data['b_max']
+    b_min = data["b_min"]
+    b_max = data["b_max"]
     try:
         verts, faces, _, _ = reconstruction_faster(net,
                                                    cuda,
@@ -150,22 +211,22 @@ def gen_mesh_eval(opt, net, cuda, data, resolution=None):
 
     except Exception as e:
         print(e)
-        print('Can not create marching cubes at this time.')
+        print("Can not create marching cubes at this time.")
         verts, faces = None, None
     return verts, faces
 
 
 def gen_mesh(opt, net, cuda, data, save_path, resolution=None):
     resolution = opt.resolution if resolution is None else resolution
-    image_tensor = data['img'].to(device=cuda)
-    calib_tensor = data['calib'].to(device=cuda)
+    image_tensor = data["img"].to(device=cuda)
+    calib_tensor = data["calib"].to(device=cuda)
 
     net.filter(image_tensor)
 
-    b_min = data['b_min']
-    b_max = data['b_max']
+    b_min = data["b_min"]
+    b_max = data["b_max"]
     try:
-        save_img_path = save_path[:-4] + '.png'
+        save_img_path = save_path[:-4] + ".png"
         save_img_list = []
         for v in range(image_tensor.shape[0]):
             save_img = (np.transpose(image_tensor[v].detach().cpu().numpy(),
@@ -186,23 +247,23 @@ def gen_mesh(opt, net, cuda, data, save_path, resolution=None):
         save_obj_mesh_with_color(save_path, verts, faces, color)
     except Exception as e:
         print(e)
-        print('Can not create marching cubes at this time.')
+        print("Can not create marching cubes at this time.")
         verts, faces, color = None, None, None
     return verts, faces, color
 
 
 def gen_mesh_color(opt, netG, netC, cuda, data, save_path, use_octree=True):
-    image_tensor = data['img'].to(device=cuda)
-    calib_tensor = data['calib'].to(device=cuda)
+    image_tensor = data["img"].to(device=cuda)
+    calib_tensor = data["calib"].to(device=cuda)
 
     netG.filter(image_tensor)
     netC.filter(image_tensor)
     netC.attach(netG.get_im_feat())
 
-    b_min = data['b_min']
-    b_max = data['b_max']
+    b_min = data["b_min"]
+    b_max = data["b_max"]
     try:
-        save_img_path = save_path[:-4] + '.png'
+        save_img_path = save_path[:-4] + ".png"
         save_img_list = []
         for v in range(image_tensor.shape[0]):
             save_img = (np.transpose(image_tensor[v].detach().cpu().numpy(),
@@ -212,13 +273,15 @@ def gen_mesh_color(opt, netG, netC, cuda, data, save_path, use_octree=True):
         save_img = np.concatenate(save_img_list, axis=1)
         PIL.Image.fromarray(np.uint8(save_img[:, :, ::-1])).save(save_img_path)
 
-        verts, faces, _, _ = reconstruction_faster(netG,
-                                                   cuda,
-                                                   calib_tensor,
-                                                   opt.resolution,
-                                                   b_min,
-                                                   b_max,
-                                                   use_octree=use_octree)
+        verts, faces, _, _ = reconstruction_faster(
+            netG,
+            cuda,
+            calib_tensor,
+            opt.resolution,
+            b_min,
+            b_max,
+            use_octree=use_octree,
+        )
 
         # Now Getting colors
         verts_tensor = torch.from_numpy(
@@ -238,7 +301,7 @@ def gen_mesh_color(opt, netG, netC, cuda, data, save_path, use_octree=True):
         save_obj_mesh_with_color(save_path, verts, faces, color)
     except Exception as e:
         print(e)
-        print('Can not create marching cubes at this time.')
+        print("Can not create marching cubes at this time.")
         verts, faces, color = None, None, None
     return verts, faces, color
 
@@ -248,15 +311,15 @@ def adjust_learning_rate(optimizer, epoch, lr, schedule, gamma):
     if epoch in schedule:
         lr *= gamma
         for param_group in optimizer.param_groups:
-            param_group['lr'] = lr
+            param_group["lr"] = lr
     return lr
 
 
 def compute_acc(pred, gt, thresh=0.5):
-    '''
+    """
     return:
         IOU, precision, and recall
-    '''
+    """
     with torch.no_grad():
         vol_pred = pred > thresh
         vol_gt = gt > thresh
@@ -343,13 +406,13 @@ def calc_error(opt, net, cuda, dataset, num_tests):
         for idx in tqdm(range(num_tests)):
             data = dataset[idx * len(dataset) // num_tests]
             # retrieve the data
-            image_tensor = data['img'].to(device=cuda)
-            calib_tensor = data['calib'].to(device=cuda)
-            sample_tensor = data['samples'].to(device=cuda).unsqueeze(0)
+            image_tensor = data["img"].to(device=cuda)
+            calib_tensor = data["calib"].to(device=cuda)
+            sample_tensor = data["samples"].to(device=cuda).unsqueeze(0)
             if opt.num_views > 1:
                 sample_tensor = reshape_sample_tensor(sample_tensor,
                                                       opt.num_views)
-            label_tensor = data['labels'].to(device=cuda).unsqueeze(0)
+            label_tensor = data["labels"].to(device=cuda).unsqueeze(0)
 
             res, error = net.forward(image_tensor,
                                      sample_tensor,
@@ -366,8 +429,12 @@ def calc_error(opt, net, cuda, dataset, num_tests):
             prec_arr.append(prec.item())
             recall_arr.append(recall.item())
 
-    return np.average(erorr_arr), np.average(IOU_arr), np.average(
-        prec_arr), np.average(recall_arr)
+    return (
+        np.average(erorr_arr),
+        np.average(IOU_arr),
+        np.average(prec_arr),
+        np.average(recall_arr),
+    )
 
 
 def calc_error_color(opt, netG, netC, cuda, dataset, num_tests):
@@ -379,23 +446,25 @@ def calc_error_color(opt, netG, netC, cuda, dataset, num_tests):
         for idx in tqdm(range(num_tests)):
             data = dataset[idx * len(dataset) // num_tests]
             # retrieve the data
-            image_tensor = data['img'].to(device=cuda)
-            calib_tensor = data['calib'].to(device=cuda)
-            color_sample_tensor = data['color_samples'].to(
+            image_tensor = data["img"].to(device=cuda)
+            calib_tensor = data["calib"].to(device=cuda)
+            color_sample_tensor = data["color_samples"].to(
                 device=cuda).unsqueeze(0)
 
             if opt.num_views > 1:
                 color_sample_tensor = reshape_sample_tensor(
                     color_sample_tensor, opt.num_views)
 
-            rgb_tensor = data['rgbs'].to(device=cuda).unsqueeze(0)
+            rgb_tensor = data["rgbs"].to(device=cuda).unsqueeze(0)
 
             netG.filter(image_tensor)
-            _, errorC = netC.forward(image_tensor,
-                                     netG.get_im_feat(),
-                                     color_sample_tensor,
-                                     calib_tensor,
-                                     labels=rgb_tensor)
+            _, errorC = netC.forward(
+                image_tensor,
+                netG.get_im_feat(),
+                color_sample_tensor,
+                calib_tensor,
+                labels=rgb_tensor,
+            )
 
             # print('{0}/{1} | Error inout: {2:06f} | Error color: {3:06f}'
             #       .format(idx, num_tests, errorG.item(), errorC.item()))
@@ -408,11 +477,11 @@ def calc_error_color(opt, netG, netC, cuda, dataset, num_tests):
 
 
 def query_func(opt, netG, features, points, proj_matrix=None):
-    '''
+    """
         - points: size of (bz, N, 3)
         - proj_matrix: size of (bz, 4, 4)
     return: size of (bz, 1, N)
-    '''
+    """
     assert len(points) == 1
     samples = points.repeat(opt.num_views, 1, 1)
     samples = samples.permute(0, 2, 1)  # [bz, 3, N]
@@ -423,10 +492,12 @@ def query_func(opt, netG, features, points, proj_matrix=None):
 
     calib_tensor = torch.stack([torch.eye(4).float()], dim=0).type_as(samples)
 
-    preds = netG.query(features=features,
-                       points=samples,
-                       calibs=calib_tensor,
-                       regressor=netG.if_regressor)
+    preds = netG.query(
+        features=features,
+        points=samples,
+        calibs=calib_tensor,
+        regressor=netG.if_regressor,
+    )
 
     if type(preds) is list:
         preds = preds[0]
@@ -484,7 +555,10 @@ def get_visibility(xy, z, faces):
 
 
 def batch_mean(res, key):
-    return torch.stack([x[key] if torch.is_tensor(x[key]) else torch.as_tensor(x[key]) for x in res]).mean()
+    return torch.stack([
+        x[key] if torch.is_tensor(x[key]) else torch.as_tensor(x[key])
+        for x in res
+    ]).mean()
 
 
 def tf_log_convert(log_dict):
@@ -502,29 +576,29 @@ def bar_log_convert(log_dict, name=None, rot=None):
     new_log_dict = {}
 
     if name is not None:
-        new_log_dict['name'] = name[0]
+        new_log_dict["name"] = name[0]
     if rot is not None:
-        new_log_dict['rot'] = rot[0]
+        new_log_dict["rot"] = rot[0]
 
     for k, v in log_dict.items():
         color = "yellow"
-        if 'loss' in k:
+        if "loss" in k:
             color = "red"
             k = k.replace("loss", "L")
-        elif 'acc' in k:
+        elif "acc" in k:
             color = "green"
             k = k.replace("acc", "A")
-        elif 'iou' in k:
+        elif "iou" in k:
             color = "green"
             k = k.replace("iou", "I")
-        elif 'prec' in k:
+        elif "prec" in k:
             color = "green"
             k = k.replace("prec", "P")
-        elif 'recall' in k:
+        elif "recall" in k:
             color = "green"
             k = k.replace("recall", "R")
 
-        if 'lr' not in k:
+        if "lr" not in k:
             new_log_dict[colored(k.split("_")[1],
                                  color)] = colored(f"{v:.3f}", color)
         else:
@@ -532,8 +606,8 @@ def bar_log_convert(log_dict, name=None, rot=None):
                                  color)] = colored(f"{Decimal(str(v)):.1E}",
                                                    color)
 
-    if 'loss' in new_log_dict.keys():
-        del new_log_dict['loss']
+    if "loss" in new_log_dict.keys():
+        del new_log_dict["loss"]
 
     return new_log_dict
 
@@ -614,6 +688,7 @@ def calc_knn_acc(preds, carn_verts, labels, pick_num):
 
 def calc_acc_seg(output, target, num_multiseg):
     from pytorch_lightning.metrics import Accuracy
+
     return Accuracy()(output.reshape(-1, num_multiseg).cpu(),
                       target.flatten().cpu())
 
@@ -636,8 +711,15 @@ def add_watermark(imgs, titles):
                     fontColor, lineType)
 
         if i == 0:
-            cv2.putText(imgs[i], str(titles[i][0]), bottomRightCornerOfText,
-                        font, fontScale, fontColor, lineType)
+            cv2.putText(
+                imgs[i],
+                str(titles[i][0]),
+                bottomRightCornerOfText,
+                font,
+                fontScale,
+                fontColor,
+                lineType,
+            )
 
     result = np.concatenate(imgs, axis=0).transpose(2, 0, 1)
 
@@ -653,7 +735,7 @@ def make_test_gif(img_dir):
                 im1 = None
                 for file in sorted(
                         os.listdir(osp.join(img_dir, dataset, subject))):
-                    if file[-3:] not in ['obj', 'gif']:
+                    if file[-3:] not in ["obj", "gif"]:
                         img_path = os.path.join(img_dir, dataset, subject,
                                                 file)
                         if im1 == None:
@@ -662,11 +744,13 @@ def make_test_gif(img_dir):
                             img_lst.append(PIL.Image.open(img_path))
 
                 print(os.path.join(img_dir, dataset, subject, "out.gif"))
-                im1.save(os.path.join(img_dir, dataset, subject, "out.gif"),
-                         save_all=True,
-                         append_images=img_lst,
-                         duration=500,
-                         loop=0)
+                im1.save(
+                    os.path.join(img_dir, dataset, subject, "out.gif"),
+                    save_all=True,
+                    append_images=img_lst,
+                    duration=500,
+                    loop=0,
+                )
 
 
 def export_cfg(logger, dir, cfg):
@@ -678,19 +762,22 @@ def export_cfg(logger, dir, cfg):
         with open(cfg_export_file, "w+") as file:
             _ = yaml.dump(cfg, file)
 
+
 from yacs.config import CfgNode
+
 _VALID_TYPES = {tuple, list, str, int, float, bool}
-         
+
+
 def convert_to_dict(cfg_node, key_list=[]):
     """ Convert a config node to dictionary """
     if not isinstance(cfg_node, CfgNode):
         if type(cfg_node) not in _VALID_TYPES:
-            print("Key {} with value {} is not a valid type; valid types: {}".format(
-                ".".join(key_list), type(cfg_node), _VALID_TYPES), )
+            print(
+                "Key {} with value {} is not a valid type; valid types: {}".
+                format(".".join(key_list), type(cfg_node), _VALID_TYPES), )
         return cfg_node
     else:
         cfg_dict = dict(cfg_node)
         for k, v in cfg_dict.items():
             cfg_dict[k] = convert_to_dict(v, key_list + [k])
         return cfg_dict
-            

@@ -26,14 +26,15 @@ BN_MOMENTUM = 0.1
 
 
 class HMRHead(nn.Module):
+
     def __init__(
         self,
         num_input_features,
         smpl_mean_params=SMPL_MEAN_PARAMS,
         estimate_var=False,
         use_separate_var_branch=False,
-        uncertainty_activation='',
-        backbone='resnet50',
+        uncertainty_activation="",
+        backbone="resnet50",
         use_cam_feats=False,
     ):
         super(HMRHead, self).__init__()
@@ -81,25 +82,25 @@ class HMRHead(nn.Module):
         nn.init.xavier_uniform_(self.decshape.weight, gain=0.01)
         nn.init.xavier_uniform_(self.deccam.weight, gain=0.01)
 
-        if self.backbone.startswith('hrnet'):
+        if self.backbone.startswith("hrnet"):
             self.downsample_module = self._make_head()
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
+                m.weight.data.normal_(0, math.sqrt(2.0 / n))
             elif isinstance(m, nn.BatchNorm2d):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
         mean_params = np.load(smpl_mean_params)
-        init_pose = torch.from_numpy(mean_params['pose'][:]).unsqueeze(0)
+        init_pose = torch.from_numpy(mean_params["pose"][:]).unsqueeze(0)
         init_shape = torch.from_numpy(
-            mean_params['shape'][:].astype('float32')).unsqueeze(0)
-        init_cam = torch.from_numpy(mean_params['cam']).unsqueeze(0)
-        self.register_buffer('init_pose', init_pose)
-        self.register_buffer('init_shape', init_shape)
-        self.register_buffer('init_cam', init_cam)
+            mean_params["shape"][:].astype("float32")).unsqueeze(0)
+        init_cam = torch.from_numpy(mean_params["cam"]).unsqueeze(0)
+        self.register_buffer("init_pose", init_pose)
+        self.register_buffer("init_shape", init_shape)
+        self.register_buffer("init_cam", init_cam)
 
     def _make_head(self):
         # downsampling modules
@@ -109,13 +110,16 @@ class HMRHead(nn.Module):
             out_channels = self.num_input_features
 
             downsamp_module = nn.Sequential(
-                nn.Conv2d(in_channels=in_channels,
-                          out_channels=out_channels,
-                          kernel_size=3,
-                          stride=2,
-                          padding=1),
+                nn.Conv2d(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    kernel_size=3,
+                    stride=2,
+                    padding=1,
+                ),
                 nn.BatchNorm2d(out_channels, momentum=BN_MOMENTUM),
-                nn.ReLU(inplace=True))
+                nn.ReLU(inplace=True),
+            )
 
             downsamp_modules.append(downsamp_module)
 
@@ -123,14 +127,16 @@ class HMRHead(nn.Module):
 
         return downsamp_modules
 
-    def forward(self,
-                features,
-                init_pose=None,
-                init_shape=None,
-                init_cam=None,
-                cam_rotmat=None,
-                cam_vfov=None,
-                n_iter=3):
+    def forward(
+        self,
+        features,
+        init_pose=None,
+        init_shape=None,
+        init_cam=None,
+        cam_rotmat=None,
+        cam_vfov=None,
+        n_iter=3,
+    ):
         # if self.backbone.startswith('hrnet'):
         #     features = self.downsample_module(features)
 
@@ -151,11 +157,17 @@ class HMRHead(nn.Module):
         pred_cam = init_cam
         for i in range(n_iter):
             if self.use_cam_feats:
-                xc = torch.cat([
-                    xf, pred_pose, pred_shape, pred_cam,
-                    rotmat_to_rot6d(cam_rotmat),
-                    cam_vfov.unsqueeze(-1)
-                ], 1)
+                xc = torch.cat(
+                    [
+                        xf,
+                        pred_pose,
+                        pred_shape,
+                        pred_cam,
+                        rotmat_to_rot6d(cam_rotmat),
+                        cam_vfov.unsqueeze(-1),
+                    ],
+                    1,
+                )
             else:
                 xc = torch.cat([xf, pred_pose, pred_shape, pred_cam], 1)
             xc = self.fc1(xc)
@@ -174,11 +186,11 @@ class HMRHead(nn.Module):
                     pred_pose_var = self.decpose(xc)[:, self.npose:]
                     pred_shape_var = self.decshape(xc)[:, 10:]
 
-                if self.uncertainty_activation != '':
+                if self.uncertainty_activation != "":
                     # Use an activation layer to output uncertainty
-                    pred_pose_var = eval(f'F.{self.uncertainty_activation}')(
+                    pred_pose_var = eval(f"F.{self.uncertainty_activation}")(
                         pred_pose_var)
-                    pred_shape_var = eval(f'F.{self.uncertainty_activation}')(
+                    pred_shape_var = eval(f"F.{self.uncertainty_activation}")(
                         pred_shape_var)
             else:
                 pred_pose = self.decpose(xc) + pred_pose
@@ -188,17 +200,17 @@ class HMRHead(nn.Module):
         pred_rotmat = rot6d_to_rotmat(pred_pose).view(batch_size, 24, 3, 3)
 
         output = {
-            'pred_pose': pred_rotmat,
-            'pred_cam': pred_cam,
-            'pred_shape': pred_shape,
-            'pred_pose_6d': pred_pose,
+            "pred_pose": pred_rotmat,
+            "pred_cam": pred_cam,
+            "pred_shape": pred_shape,
+            "pred_pose_6d": pred_pose,
         }
 
         if self.estimate_var:
             output.update({
-                'pred_pose_var':
+                "pred_pose_var":
                 torch.cat([pred_pose, pred_pose_var], dim=1),
-                'pred_shape_var':
+                "pred_shape_var":
                 torch.cat([pred_shape, pred_shape_var], dim=1),
             })
 

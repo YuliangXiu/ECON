@@ -1,4 +1,4 @@
-'''
+"""
 MIT License
 
 Copyright (c) 2019 Shunsuke Saito, Zeng Huang, and Ryota Natsume
@@ -20,7 +20,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-'''
+"""
 import numpy as np
 import math
 
@@ -29,12 +29,13 @@ from .norm_render import NormRender
 
 
 class NormalRender(NormRender):
-    def __init__(self, width=1600, height=1200, name='Normal Renderer'):
+
+    def __init__(self, width=1600, height=1200, name="Normal Renderer"):
         NormRender.__init__(self,
                             width,
                             height,
                             name,
-                            program_files=['normal.vs', 'normal.fs'])
+                            program_files=["normal.vs", "normal.fs"])
 
         self.norm_buffer = glGenBuffers(1)
 
@@ -51,14 +52,23 @@ class NormalRender(NormRender):
         glBindBuffer(GL_ARRAY_BUFFER, 0)
 
     def euler_to_rot_mat(self, r_x, r_y, r_z):
-        R_x = np.array([[1, 0, 0], [0, math.cos(r_x), -math.sin(r_x)],
-                        [0, math.sin(r_x), math.cos(r_x)]])
+        R_x = np.array([
+            [1, 0, 0],
+            [0, math.cos(r_x), -math.sin(r_x)],
+            [0, math.sin(r_x), math.cos(r_x)],
+        ])
 
-        R_y = np.array([[math.cos(r_y), 0, math.sin(r_y)], [0, 1, 0],
-                        [-math.sin(r_y), 0, math.cos(r_y)]])
+        R_y = np.array([
+            [math.cos(r_y), 0, math.sin(r_y)],
+            [0, 1, 0],
+            [-math.sin(r_y), 0, math.cos(r_y)],
+        ])
 
-        R_z = np.array([[math.cos(r_z), -math.sin(r_z), 0],
-                        [math.sin(r_z), math.cos(r_z), 0], [0, 0, 1]])
+        R_z = np.array([
+            [math.cos(r_z), -math.sin(r_z), 0],
+            [math.sin(r_z), math.cos(r_z), 0],
+            [0, 0, 1],
+        ])
 
         R = np.dot(R_z, np.dot(R_y, R_x))
 

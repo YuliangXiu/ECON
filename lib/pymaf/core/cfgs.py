@@ -21,10 +21,10 @@ from yacs.config import CfgNode as CN
 # Configuration variables
 cfg = CN(new_allowed=True)
 
-cfg.OUTPUT_DIR = 'results'
-cfg.DEVICE = 'cuda'
+cfg.OUTPUT_DIR = "results"
+cfg.DEVICE = "cuda"
 cfg.DEBUG = False
-cfg.LOGDIR = ''
+cfg.LOGDIR = ""
 cfg.VAL_VIS_BATCH_FREQ = 200
 cfg.TRAIN_VIS_ITER_FERQ = 1000
 cfg.SEED_VALUE = -1
@@ -87,11 +87,11 @@ def parse_args_extend(args):
     if args.resume:
         if not os.path.exists(args.log_dir):
             raise ValueError(
-                'Experiment are set to resume mode, but log directory does not exist.'
+                "Experiment are set to resume mode, but log directory does not exist."
             )
 
         # load log's cfg
-        cfg_file = os.path.join(args.log_dir, 'cfg.yaml')
+        cfg_file = os.path.join(args.log_dir, "cfg.yaml")
         cfg = update_cfg(cfg_file)
 
         if args.misc is not None:
