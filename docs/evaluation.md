@@ -29,6 +29,23 @@ python -m apps.train -cfg ./configs/train/icon-filter.yaml -test
 
 The qualitative results are located at `./results/icon-filter`
 
+<br>
+
+## Benchmark (train on THuman2.0, test on CAPE)
+
+|Method|PIFu|PaMIR|ICON|ICON-filter|ICON-keypoint[1]|
+|:---:|:---:|:---:|:---:|:---:|:---:|
+|Easy-Chamfer|2.396|-|1.522|1.297|**1.291**|
+|Easy-P2S|1.098|-|1.424|1.26|**1.088**|
+|Easy-NC|0.137|-|**0.092**|0.094|0.104|
+|Hard-Chamfer|4.162|-|1.538|**1.487**|1.663|
+|Hard-P2S|1.675|-|1.434|**1.396**|1.493|
+|Hard-NC|0.210|-|**0.089**|0.104|0.112|
+
+[1] Mihajlovic, Marko, et al. "KeypointNeRF: Generalizing image-based volumetric avatars using relative spatial encoding of keypoints." ECCV 2022.
+
+<br>
+
 ## Citation
 
 :+1: Please cite these CAPE-related papers
