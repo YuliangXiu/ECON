@@ -229,7 +229,7 @@ class TestDataset():
             preds_dict = self.hps.forward(img_hps)
 
         data_dict['smpl_faces'] = torch.Tensor(self.faces.astype(
-            np.int16)).long().unsqueeze(0).to(self.device)
+            np.int64)).long().unsqueeze(0).to(self.device)
 
         if self.hps_type == 'pymaf':
             output = preds_dict['smpl_out'][-1]
