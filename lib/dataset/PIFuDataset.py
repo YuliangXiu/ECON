@@ -448,8 +448,8 @@ class PIFuDataset:
                             noise_type=None,
                             noise_scale=None):
 
-        smpl_param = np.load(data_dict["smpl_path"], allow_pickle=True)
-        smplx_param = np.load(data_dict["smplx_path"], allow_pickle=True)
+        smpl_param = np.load(data_dict["smpl_param"], allow_pickle=True)
+        smplx_param = np.load(data_dict["smplx_param"], allow_pickle=True)
 
         smpl_pose = rotation_matrix_to_angle_axis(
             torch.as_tensor(smpl_param["full_pose"][0])).numpy()
