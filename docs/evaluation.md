@@ -33,16 +33,13 @@ The qualitative results are located at `./results/icon-filter`
 
 ## Benchmark (train on THuman2.0, test on CAPE)
 
-|Method|PIFu|PaMIR|ICON|ICON-filter|ICON-keypoint[1]|
+|Method|PIFu|PaMIR|ICON|ICON-filter|ICON-keypoint|
 |:---:|:---:|:---:|:---:|:---:|:---:|
-|Easy-Chamfer|2.396|-|1.522|1.297|**1.291**|
-|Easy-P2S|1.098|-|1.424|1.26|**1.088**|
-|Easy-NC|0.137|-|**0.092**|0.094|0.104|
-|Hard-Chamfer|4.162|-|1.538|**1.487**|1.663|
-|Hard-P2S|1.675|-|1.434|**1.396**|1.493|
-|Hard-NC|0.210|-|**0.089**|0.104|0.112|
+|Chamfer(cm)|3.573|1.682|1.533|**1.424**|1.539|
+|P2S(cm)|1.483|1.438|1.431|**1.351**|1.358|
+|NC|0.186|0.119|**0.090**|0.101|0.109|
 
-[1] Mihajlovic, Marko, et al. "KeypointNeRF: Generalizing image-based volumetric avatars using relative spatial encoding of keypoints." ECCV 2022.
+:boom: ICON-keypoint leverages the core insight **Relative Spatial Encoder** from [KeypointNeRF[1]](https://markomih.github.io/KeypointNeRF/), and replace it with the SMPL-based SDF. This leads to comparable reconstruction quality, but much faster and convenient. 
 
 <br>
 

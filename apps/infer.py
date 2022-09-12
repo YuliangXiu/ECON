@@ -82,6 +82,10 @@ if __name__ == "__main__":
         256,
         "clean_mesh",
         True,
+        "test_mode",
+        True,
+        "batch_size",
+        1
     ]
 
     cfg.merge_from_list(cfg_show_list)
