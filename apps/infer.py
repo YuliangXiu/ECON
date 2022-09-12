@@ -83,6 +83,7 @@ if __name__ == "__main__":
     cfg.merge_from_file("./lib/pymaf/configs/pymaf_config.yaml")
     device = torch.device(f"cuda:{args.gpu_device}")
 
+    # setting for testing on in-the-wild images
     cfg_show_list = [
         "test_gpus",
         [args.gpu_device],
@@ -90,6 +91,10 @@ if __name__ == "__main__":
         256,
         "clean_mesh",
         True,
+        "test_mode",
+        True,
+        "batch_size",
+        1
     ]
 
     cfg.merge_from_list(cfg_show_list)
@@ -221,14 +226,18 @@ if __name__ == "__main__":
             # landmark errors
             if data["type"] == "smpl":
                 smpl_joints_3d = (smpl_joints[0, :, :] + 1.0) * 0.5
+                in_tensor["smpl_joint"] = smpl_joints[:, :24, :]
             elif data["type"] == "smplx" and dataset_param[
                     "hps_type"] != "pixie":
                 smpl_joints_3d = (
                     smpl_joints[0, dataset.smpl_joint_ids_45, :] + 1.0) * 0.5
+                in_tensor["smpl_joint"] = smpl_joints[:, dataset.smpl_joint_ids_24, :]
             else:
                 smpl_joints_3d = (
                     smpl_joints[0, dataset.smpl_joint_ids_45_pixie, :] +
                     1.0) * 0.5
+                in_tensor["smpl_joint"] = smpl_joints[:, dataset.smpl_joint_ids_24_pixie, :]
+                
 
             ghum_lmks = torch.tensor(data["landmark_dict"]["pose_landmarks"])[
                 SMPLX_object.ghum_smpl_pairs[:, 0], :2].to(device)
@@ -237,7 +246,7 @@ if __name__ == "__main__":
             smpl_lmks = smpl_joints_3d[SMPLX_object.ghum_smpl_pairs[:, 1], :2]
             losses["joint"]["value"] = (
                 torch.norm(ghum_lmks - smpl_lmks, dim=1) * ghum_conf).mean()
-
+            
             # render optimized mesh as normal [-1,1]
             in_tensor["T_normal_F"], in_tensor[
                 "T_normal_B"] = dataset.render_normal(

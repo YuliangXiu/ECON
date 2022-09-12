@@ -1,6 +1,6 @@
 name: icon-mvp
 ckpt_dir: "./data/ckpt/"
-resume_path: "./data/ckpt/icon-mvp/final.ckpt"
+resume_path: "./data/ckpt/icon-mvp/last.ckpt"
 normal_path: "./data/ckpt/normal.ckpt"
 results_path: "./results"
 

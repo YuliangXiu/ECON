@@ -75,6 +75,7 @@ class TestDataset:
 
         # smpl-smplx correspondence
         self.smpl_joint_ids_24 = np.arange(22).tolist() + [68, 73]
+        self.smpl_joint_ids_24_pixie = np.arange(22).tolist() + [68+61, 72+68]
         self.smpl_joint_ids_45 = (np.arange(22).tolist() + [68, 73] +
                                   np.arange(55, 76).tolist())
 
