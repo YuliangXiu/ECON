@@ -31,14 +31,20 @@ from termcolor import colored
 import os.path as osp
 import numpy as np
 from PIL import Image
-import random
 import os
 import cv2
 import trimesh
 import torch
 import vedo
-from kaolin.ops.mesh import check_sign
 import torchvision.transforms as transforms
+
+cape_gender = {
+    "male": [
+        '00032', '00096', '00122', '00127', '00145', '00215', '02474', '03284',
+        '03375', '03394'
+    ],
+    "female": ['00134', '00159', '03223', '03331', '03383']
+}
 
 
 class PIFuDataset:
@@ -283,6 +289,11 @@ class PIFuDataset:
                 "joint_path":
                 osp.join(self.datasets_dict[dataset]["smpl_dir"],
                          f"{subject}.npy"),
+                "smpl_param":
+                osp.join(
+                    self.datasets_dict[dataset]["param_dir"],
+                    f"{subject}.npz",
+                ),
             })
 
         # load training data
@@ -448,16 +459,23 @@ class PIFuDataset:
                             noise_type=None,
                             noise_scale=None):
 
+        
         smpl_param = np.load(data_dict["smpl_param"], allow_pickle=True)
-        smplx_param = np.load(data_dict["smplx_param"], allow_pickle=True)
+        
+        if data_dict['dataset'] == 'cape':
+            pid = data_dict['subject'].split("-")[0]
+            gender = "male" if pid in cape_gender["male"] else "female"
+            smpl_pose = smpl_param['pose'].flatten()
+            smpl_betas = np.zeros((1, 10))
+        else:
+            gender = 'male'
+            smpl_pose = rotation_matrix_to_angle_axis(
+                torch.as_tensor(smpl_param["full_pose"][0])).numpy()
+            smpl_betas = smpl_param["betas"]
 
-        smpl_pose = rotation_matrix_to_angle_axis(
-            torch.as_tensor(smpl_param["full_pose"][0])).numpy()
-        smpl_betas = smpl_param["betas"]
-
-        smpl_path = osp.join(self.smplx.model_dir, "smpl/SMPL_MALE.pkl")
+        smpl_path = osp.join(self.smplx.model_dir, f"smpl/SMPL_{gender.upper()}.pkl")
         tetra_path = osp.join(self.smplx.tedra_dir,
-                              "tetra_male_adult_smpl.npz")
+                              f"tetra_{gender}_adult_smpl.npz")
 
         smpl_model = TetraSMPLModel(smpl_path, tetra_path, "adult")
 
@@ -475,11 +493,15 @@ class PIFuDataset:
         smpl_model.set_params(pose=smpl_pose.reshape(-1, 3),
                               beta=smpl_betas,
                               trans=smpl_param["transl"])
-
-        verts = (np.concatenate([smpl_model.verts, smpl_model.verts_added],
-                                axis=0) * smplx_param["scale"] +
-                 smplx_param["translation"]
-                 ) * self.datasets_dict[data_dict["dataset"]]["scale"]
+        if data_dict['dataset'] == 'cape':
+            verts = np.concatenate([smpl_model.verts, smpl_model.verts_added],
+                                   axis=0) * 100.0
+        else:
+            verts = (np.concatenate([smpl_model.verts, smpl_model.verts_added],
+                                    axis=0) * smpl_param["scale"] +
+                    smpl_param["translation"]
+                    ) * self.datasets_dict[data_dict["dataset"]]["scale"]
+        
         faces = (np.loadtxt(
             osp.join(self.smplx.tedra_dir, "tetrahedrons_male_adult.txt"),
             dtype=np.int32,

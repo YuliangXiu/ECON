@@ -2,7 +2,7 @@ from torch.utils.data import DataLoader
 from .PIFuDataset import PIFuDataset
 import pytorch_lightning as pl
 
-cfg_test_mode = [
+cfg_test_list = [
     "test_mode",
     True,
     "dataset.types",
@@ -15,6 +15,19 @@ cfg_test_mode = [
     256,
     "clean_mesh",
     True,
+    "batch_size",
+    1,
+]
+
+cfg_overfit_list = [
+    "batch_size",
+    1,
+    "num_threads",
+    1,
+    "mcube_res",
+    128,
+    "freq_plot",
+    0.0001,
 ]
 
 
@@ -47,7 +60,7 @@ class PIFuDataModule(pl.LightningDataModule):
             }
 
         if stage == "test":
-            self.cfg.merge_from_list(cfg_test_mode)
+            self.cfg.merge_from_list(cfg_test_list)
             self.test_dataset = PIFuDataset(cfg=self.cfg, split="test")
 
     def train_dataloader(self):

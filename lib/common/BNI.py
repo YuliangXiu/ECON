@@ -16,7 +16,7 @@ from pytorch3d.loss.point_mesh_distance import _PointFaceDistance
 
 class BNI:
 
-    def __init__(self, dir_path, name, in_tensor, device):
+    def __init__(self, dir_path, name, in_tensor, device, mvc=True):
 
         self.scale = 256.0
 
@@ -28,6 +28,8 @@ class BNI:
         self.depth_back = (100.0 -
                            depth2arr(in_tensor["depth_B"])) * self.scale
         self.depth_mask = depth2arr(in_tensor["depth_F"]) > -1.0
+        
+        
 
         # hparam
         self.k = 2
@@ -39,6 +41,9 @@ class BNI:
         self.F_B_trimesh = None
         self.device = device
         self.export_dir = dir_path
+        
+    # @staticmethod
+    # def mvp_expand()
 
     @staticmethod
     def load_all(export_dir, name):

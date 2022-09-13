@@ -12,7 +12,7 @@ import os.path as osp
 import os
 from lib.common.train_util import SubTrainer, load_networks
 from lib.common.config import get_cfg_defaults
-from lib.dataset.PIFuDataModule import PIFuDataModule, cfg_test_mode
+from lib.dataset.PIFuDataModule import PIFuDataModule, cfg_test_list, cfg_overfit_list
 from apps.ICON import ICON
 from pytorch_lightning.profilers import AdvancedProfiler
 from pytorch_lightning import loggers as pl_loggers
@@ -33,9 +33,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     cfg = get_cfg_defaults()
     cfg.merge_from_file(args.config_file)
-    
-    cfg.overfit = args.overfit_mode if args.overfit_mode else False
-    cfg.test_mode = args.test_mode if args.test_mode else False
+
+    cfg.overfit = args.overfit_mode
+    cfg.test_mode = args.test_mode
     cfg.freeze()
 
     os.makedirs(osp.join(cfg.results_path, cfg.name), exist_ok=True)
@@ -49,21 +49,12 @@ if __name__ == "__main__":
         save_dir=cfg.results_path,
         name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}",
     )
-    
 
     if cfg.overfit:
-        
-        cfg_overfit_list = [
-            "batch_size",
-            1,
-            "num_threads",
-            1,
-            "mcube_res",
-            128,
-            "freq_plot",
-            0.0001,
-        ]
         cfg.merge_from_list(cfg_overfit_list)
+
+    if cfg.test_mode:
+        cfg.merge_from_list(cfg_test_list)
 
     checkpoint = ModelCheckpoint(
         dirpath=osp.join(cfg.ckpt_dir, cfg.name),
@@ -76,9 +67,6 @@ if __name__ == "__main__":
         mode="min",
         filename="epoch={epoch:02d}-val_avgloss={val/avgloss:.2f}",
     )
-
-    if cfg.test_mode:
-        cfg.merge_from_list(cfg_test_mode)
 
     # customized progress_bar
     theme = RichProgressBarTheme(description="green_yellow",
@@ -160,6 +148,5 @@ if __name__ == "__main__":
 
     if not cfg.test_mode:
         trainer.fit(model=model, datamodule=datamodule)
-        trainer.test(model=model, datamodule=datamodule)
-    else:
-        trainer.test(model=model, datamodule=datamodule)
+    
+    trainer.test(model=model, datamodule=datamodule)

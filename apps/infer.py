@@ -222,11 +222,13 @@ if __name__ == "__main__":
 
                 smpl_verts = (smpl_verts + optimed_trans) * data["scale"]
                 smpl_joints = (smpl_joints + optimed_trans) * data["scale"]
+                
+            smpl_joints *= torch.tensor([1.0, 1.0, -1.0]).to(device)
 
             # landmark errors
             if data["type"] == "smpl":
                 smpl_joints_3d = (smpl_joints[0, :, :] + 1.0) * 0.5
-                in_tensor["smpl_joint"] = smpl_joints[:, :24, :]
+                in_tensor["smpl_joint"] = smpl_joints[:, :24, :] 
             elif data["type"] == "smplx" and dataset_param[
                     "hps_type"] != "pixie":
                 smpl_joints_3d = (
@@ -237,7 +239,6 @@ if __name__ == "__main__":
                     smpl_joints[0, dataset.smpl_joint_ids_45_pixie, :] +
                     1.0) * 0.5
                 in_tensor["smpl_joint"] = smpl_joints[:, dataset.smpl_joint_ids_24_pixie, :]
-                
 
             ghum_lmks = torch.tensor(data["landmark_dict"]["pose_landmarks"])[
                 SMPLX_object.ghum_smpl_pairs[:, 0], :2].to(device)
@@ -441,6 +442,9 @@ if __name__ == "__main__":
                 # # replace ICON by SMPL to provide depth-prior and side surfaces
                 # verts_remesh = in_tensor["smpl_verts"].detach() * torch.tensor([1.0, -1.0, 1.0], device=device)
                 # faces_remesh = in_tensor["smpl_faces"].detach()
+                # remeshed_mesh = trimesh.Trimesh(verts_remesh.cpu()[0], 
+                #                                 faces_remesh.cpu()[0], 
+                #                                 process=False, maintains_order=True)
 
                 # rendering depth map for BNI
                 in_tensor["verts_pr"] = verts_remesh
