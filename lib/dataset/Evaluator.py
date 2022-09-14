@@ -14,24 +14,132 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
+import math
 from lib.dataset.mesh_util import projection
 from lib.common.render import Render
 import numpy as np
 import torch
 import os.path as osp
 from torchvision.utils import make_grid
-from pytorch3d.io import IO
-from pytorch3d.ops import sample_points_from_meshes, cot_laplacian
+import pytorch3d.io as IO
+from pytorch3d.ops import cot_laplacian, norm_laplacian
 from pytorch3d.loss.point_mesh_distance import _PointFaceDistance
 from pytorch3d.structures import Pointclouds
 from PIL import Image
+
+from typing import Tuple
+from pytorch3d.ops.mesh_face_areas_normals import mesh_face_areas_normals
+from pytorch3d.ops.packed_to_padded import packed_to_padded
+
+
+def _rand_barycentric_coords(
+        size1, size2, dtype: torch.dtype, device: torch.device
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Helper function to generate random barycentric coordinates which are uniformly
+    distributed over a triangle.
+
+    Args:
+        size1, size2: The number of coordinates generated will be size1*size2.
+                      Output tensors will each be of shape (size1, size2).
+        dtype: Datatype to generate.
+        device: A torch.device object on which the outputs will be allocated.
+
+    Returns:
+        w0, w1, w2: Tensors of shape (size1, size2) giving random barycentric
+            coordinates
+    """
+    uv = torch.rand(2, size1, size2, dtype=dtype, device=device)
+    u, v = uv[0], uv[1]
+    u_sqrt = u.sqrt()
+    w0 = 1.0 - u_sqrt
+    w1 = u_sqrt * (1.0 - v)
+    w2 = u_sqrt * v
+    w = torch.cat([w0[..., None], w1[..., None], w2[..., None]], dim=2)
+
+    return w
+
+
+def sample_points_from_meshes(meshes, num_samples: int = 10000):
+    """
+    Convert a batch of meshes to a batch of pointclouds by uniformly sampling
+    points on the surface of the mesh with probability proportional to the
+    face area.
+
+    Args:
+        meshes: A Meshes object with a batch of N meshes.
+        num_samples: Integer giving the number of point samples per mesh.
+        return_normals: If True, return normals for the sampled points.
+        return_textures: If True, return textures for the sampled points.
+
+    Returns:
+        3-element tuple containing
+
+        - **samples**: FloatTensor of shape (N, num_samples, 3) giving the
+          coordinates of sampled points for each mesh in the batch. For empty
+          meshes the corresponding row in the samples array will be filled with 0.
+        - **normals**: FloatTensor of shape (N, num_samples, 3) giving a normal vector
+          to each sampled point. Only returned if return_normals is True.
+          For empty meshes the corresponding row in the normals array will
+          be filled with 0.
+        - **textures**: FloatTensor of shape (N, num_samples, C) giving a C-dimensional
+          texture vector to each sampled point. Only returned if return_textures is True.
+          For empty meshes the corresponding row in the textures array will
+          be filled with 0.
+
+        Note that in a future releases, we will replace the 3-element tuple output
+        with a `Pointclouds` datastructure, as follows
+
+        .. code-block:: python
+
+            Pointclouds(samples, normals=normals, features=textures)
+    """
+    if meshes.isempty():
+        raise ValueError("Meshes are empty.")
+
+    verts = meshes.verts_packed()
+    if not torch.isfinite(verts).all():
+        raise ValueError("Meshes contain nan or inf.")
+
+    faces = meshes.faces_packed()
+    mesh_to_face = meshes.mesh_to_faces_packed_first_idx()
+    num_meshes = len(meshes)
+    num_valid_meshes = torch.sum(meshes.valid)  # Non empty meshes.
+
+    # Initialize samples tensor with fill value 0 for empty meshes.
+    samples = torch.zeros((num_meshes, num_samples, 3), device=meshes.device)
+
+    # Only compute samples for non empty meshes
+    with torch.no_grad():
+        areas, _ = mesh_face_areas_normals(verts,
+                                           faces)  # Face areas can be zero.
+        max_faces = meshes.num_faces_per_mesh().max().item()
+        areas_padded = packed_to_padded(areas, mesh_to_face[meshes.valid],
+                                        max_faces)  # (N, F)
+
+        # TODO (gkioxari) Confirm multinomial bug is not present with real data.
+        samples_face_idxs = areas_padded.multinomial(
+            num_samples, replacement=True)  # (N, num_samples)
+        samples_face_idxs += mesh_to_face[meshes.valid].view(
+            num_valid_meshes, 1)
+
+    # Randomly generate barycentric coords.
+    # w                 (N, num_samples, 3)
+    # sample_face_idxs  (N, num_samples)
+    # samples_verts     (N, num_samples, 3, 3)
+
+    samples_bw = _rand_barycentric_coords(num_valid_meshes, num_samples,
+                                          verts.dtype, verts.device)
+    sample_verts = verts[faces][samples_face_idxs]
+    samples[meshes.valid] = (sample_verts * samples_bw[..., None]).sum(dim=-2)
+
+    return samples, samples_face_idxs, samples_bw
 
 
 def point_mesh_distance(meshes, pcls):
 
     if len(meshes) != len(pcls):
         raise ValueError("meshes and pointclouds must be equal sized batches")
-    N = len(meshes)
 
     # packed representation for pointclouds
     points = pcls.points_packed()  # (P, 3)
@@ -54,9 +162,8 @@ def point_mesh_distance(meshes, pcls):
     weights_p = num_points_per_cloud.gather(0, point_to_cloud_idx)
     weights_p = 1.0 / weights_p.float()
     point_to_face = torch.sqrt(point_to_face) * weights_p
-    point_dist = point_to_face.sum() / N
 
-    return point_dist
+    return point_to_face
 
 
 class Evaluator:
@@ -88,51 +195,102 @@ class Evaluator:
         tgt_normal_imgs = self.render.get_image(cam_ids=[0, 1, 2, 3],
                                                 bg="black")
 
-        src_normal_arr = (
-            make_grid(torch.cat(src_normal_imgs, dim=0), nrow=4, padding=0) +
-            1.0) * 0.5  # [0,1]
-        tgt_normal_arr = (
-            make_grid(torch.cat(tgt_normal_imgs, dim=0), nrow=4, padding=0) +
-            1.0) * 0.5  # [0,1]
+        src_normal_arr = make_grid(torch.cat(src_normal_imgs, dim=0),
+                                   nrow=4,
+                                   padding=0)  # [-1,1]
+        tgt_normal_arr = make_grid(torch.cat(tgt_normal_imgs, dim=0),
+                                   nrow=4,
+                                   padding=0)  # [-1,1]
+        src_norm = torch.norm(src_normal_arr, dim=0, keepdim=True)
+        tgt_norm = torch.norm(tgt_normal_arr, dim=0, keepdim=True)
+
+        src_normal_arr /= src_norm
+        tgt_normal_arr /= tgt_norm
+
+        sim_mask = self.get_laplacian_2d(tgt_normal_arr).to(self.device)
+
+        src_normal_arr = (src_normal_arr + 1.0) * 0.5
+        tgt_normal_arr = (tgt_normal_arr + 1.0) * 0.5
 
         error = ((
             (src_normal_arr - tgt_normal_arr)**2).sum(dim=0).mean()) * 4.0
+
+        error_hf = ((((src_normal_arr - tgt_normal_arr) * sim_mask)**
+                     2).sum(dim=0).mean()) * 4.0
 
         normal_img = Image.fromarray(
             (torch.cat([src_normal_arr, tgt_normal_arr], dim=1).permute(
                 1, 2, 0).detach().cpu().numpy() * 255.0).astype(np.uint8))
         normal_img.save(normal_path)
 
-        return error
-
-    def export_mesh(self, dir, name):
-
-        IO().save_mesh(self.src_mesh, osp.join(dir, f"{name}_src.obj"))
-        IO().save_mesh(self.tgt_mesh, osp.join(dir, f"{name}_tgt.obj"))
+        return error, error_hf
 
     def calculate_chamfer_p2s(self, num_samples=1000):
 
-        tgt_points = Pointclouds(
-            sample_points_from_meshes(self.tgt_mesh, num_samples))
-        src_points = Pointclouds(
-            sample_points_from_meshes(self.src_mesh, num_samples))
-        p2s_dist = point_mesh_distance(self.src_mesh, tgt_points) * 100.0
-        chamfer_dist = (point_mesh_distance(self.tgt_mesh, src_points) * 100.0
-                        + p2s_dist) * 0.5
+        samples_tgt, samples_fid_tgt, samples_bw_tgt = sample_points_from_meshes(
+            self.tgt_mesh, num_samples)
+        samples_src, _, _ = sample_points_from_meshes(self.src_mesh,
+                                                      num_samples)
 
-        return chamfer_dist, p2s_dist
+        tgt_points = Pointclouds(samples_tgt)
+        src_points = Pointclouds(samples_src)
+
+        # 3d laplacian matrix
+        tgt_pts_lapmat = self.get_laplacian_3d(self.tgt_mesh)
+
+        samples_hf_tgt = (tgt_pts_lapmat[self.faces_gt[samples_fid_tgt[0]]] *
+                          samples_bw_tgt[0]).sum(dim=1)
+
+        p2s_dist_all = point_mesh_distance(self.src_mesh, tgt_points) * 100.0
+        p2s_dist = p2s_dist_all.sum()
+        p2s_dist_hf = (p2s_dist_all * samples_hf_tgt).sum()
+
+        chamfer_dist = (point_mesh_distance(self.tgt_mesh, src_points).sum() *
+                        100.0 + p2s_dist) * 0.5
+
+        return chamfer_dist, p2s_dist, p2s_dist_hf
 
     @staticmethod
-    def get_laplacian(verts, faces):
+    def get_laplacian_3d(meshes):
 
-        L, inv_areas = cot_laplacian(verts, faces)
+        L, inv_areas = cot_laplacian(meshes.verts_packed(),
+                                     meshes.faces_packed())
         L_sum = torch.sparse.sum(L, dim=1).to_dense().view(-1, 1)
-        norm_w = 0.25 * inv_areas
-        lap_cot_mat = L_sum * norm_w
-        lap_cot_w = (2.0 / (torch.exp(-lap_cot_mat / (10**5)) + 1.0) - 1.0
-                     )  # range (0~1)
+        
+        # norm_w = 0.25 * inv_areas
+        # lap_cot_mat = (L_sum * norm_w).flatten()
+        # lap_cot_w = 1. / (1. + torch.exp(-lap_cot_mat / (10**4)))
+        
+        lap_cot_w = 1. / (1. + torch.exp(-L_sum.flatten()/10.))
 
         return lap_cot_w
+
+    @staticmethod
+    def get_laplacian_2d(img):
+
+        # img: torch.Tensor [C,H,W]
+        # stacked_shifts: torch.Tensor [9,C,H,W]
+
+        corner_pad = torch.tensor([0, -1, 1])
+        corner_pad_permutations = torch.cartesian_prod(corner_pad, corner_pad)
+        stacked_num = corner_pad_permutations.shape[0]
+        stacked_shifts = torch.zeros(size=(stacked_num, *img.shape))
+
+        for idx, corner_shift in enumerate(corner_pad_permutations):
+            stacked_shifts[idx] = torch.roll(img,
+                                             shifts=(corner_shift[0],
+                                                     corner_shift[1]),
+                                             dims=(1, 2))
+        similarity_mask = torch.min(
+            (stacked_shifts[0:1].repeat(stacked_num - 1, 1, 1, 1) *
+             stacked_shifts[1:]).sum(dim=1),
+            dim=0)[0]
+
+        similarity_mask = (-similarity_mask + 1.0) * 0.5
+        similarity_mask = 1. / (1. + torch.exp(-100 * similarity_mask))
+        similarity_mask[similarity_mask == similarity_mask[0, 0]] = 0.
+
+        return similarity_mask
 
     def calc_acc(self, output, target, thres=0.5, use_sdf=False):
 

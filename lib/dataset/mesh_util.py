@@ -254,7 +254,7 @@ def save_normal_tensor(in_tensor, png_path):
 
 
 def possion(mesh, obj_path):
-
+    
     mesh.export(obj_path)
     ms = pymeshlab.MeshSet(verbose=False)
     ms.load_new_mesh(obj_path)
