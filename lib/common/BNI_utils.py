@@ -1,10 +1,123 @@
 import torch
 import trimesh
+import cv2
+import os.path as osp
 import cupy as cp
 import numpy as np
 from cupyx.scipy.sparse import diags, coo_matrix, vstack
 from cupyx.scipy.sparse.linalg import cg
 from tqdm.auto import tqdm
+
+
+def find_max_list(lst):
+    list_len = [len(i) for i in lst]
+    max_id = np.argmax(np.array(list_len))
+    return lst[max_id]
+
+
+def interpolate_pts(pts, diff_ids):
+
+    pts_extend = np.around(
+        (pts[diff_ids] + pts[diff_ids - 1]) * 0.5).astype(np.int32)
+    pts = np.insert(pts, diff_ids, pts_extend, axis=0)
+
+    return pts
+
+
+def align_pts(pts1, pts2):
+
+    diff_num = abs(len(pts1) - len(pts2))
+    diff_ids = np.sort(
+        np.random.choice(min(len(pts2), len(pts1)), diff_num, replace=True))
+
+    if len(pts1) > len(pts2):
+        pts2 = interpolate_pts(pts2, diff_ids)
+    elif len(pts2) > len(pts1):
+        pts1 = interpolate_pts(pts1, diff_ids)
+    else:
+        pass
+
+    return pts1, pts2
+
+
+def repeat_pts(pts1, pts2):
+
+    coverage_mask = ((pts1[:, None, :] == pts2[None, :, :]).sum(
+        axis=2) == 2.).any(axis=1)
+
+    return coverage_mask
+
+
+def find_contour(mask, method='all'):
+
+    if method == 'all':
+
+        contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_TREE,
+                                       cv2.CHAIN_APPROX_NONE)
+    else:
+        contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_TREE,
+                                       cv2.CHAIN_APPROX_SIMPLE)
+
+    contour_cloth = np.array(find_max_list(contours))[:, 0, :]
+
+    return contour_cloth
+
+
+def mean_value_cordinates(inner_pts, contour_pts):
+
+    body_edges_a = np.sqrt(
+        ((inner_pts[:, None] - contour_pts[None, :])**2).sum(axis=2))
+    body_edges_c = np.roll(body_edges_a, shift=-1, axis=1)
+    body_edges_b = np.sqrt(
+        ((contour_pts -
+          np.roll(contour_pts, shift=-1, axis=0))**2).sum(axis=1))
+
+    body_edges = np.concatenate([
+        body_edges_a[..., None], body_edges_c[..., None],
+        np.repeat(body_edges_b[None, :, None], axis=0, repeats=len(inner_pts))
+    ],
+                                axis=-1)
+
+    body_cos = (body_edges[:, :, 0]**2 + body_edges[:, :, 1]**2 -
+                body_edges[:, :, 2]**2) / (2 * body_edges[:, :, 0] *
+                                           body_edges[:, :, 1])
+    body_tan_half = np.sqrt((1. - np.clip(body_cos, a_max=1., a_min=-1.)) /
+                            np.clip(1. + body_cos, 1e-6, 2.))
+
+    w = (body_tan_half +
+         np.roll(body_tan_half, shift=1, axis=1)) / body_edges_a
+    w /= w.sum(axis=1, keepdims=True)
+
+    return w
+
+
+def get_dst_mat(contour_body, contour_cloth):
+
+    dst_mat = ((contour_body[:, None, :] -
+                contour_cloth[None, :, :])**2).sum(axis=2)
+
+    return dst_mat
+
+
+def dispCorres(img_size, contour1, contour2, phi, dir_path):
+
+    contour1 = contour1[None, :, None, :].astype(np.int32)
+    contour2 = contour2[None, :, None, :].astype(np.int32)
+
+    disp = np.zeros((img_size, img_size, 3), dtype=np.uint8)
+    cv2.drawContours(disp, contour1, -1, (0, 255, 0), 1)  # green
+    cv2.drawContours(disp, contour2, -1, (255, 0, 0), 1)  # blue
+
+    for i in range(
+            contour1.shape[1]):  # do not show all the points when display
+        # cv2.circle(disp, (contour1[0, i, 0, 0], contour1[0, i, 0, 1]), 1,
+        #            (255, 0, 0), -1)
+        corresPoint = contour2[0, phi[i], 0]
+        # cv2.circle(disp, (corresPoint[0], corresPoint[1]), 1, (0, 255, 0), -1)
+        cv2.line(disp, (contour1[0, i, 0, 0], contour1[0, i, 0, 1]),
+                 (corresPoint[0], corresPoint[1]), (255, 255, 255), 1)
+
+    cv2.imwrite(osp.join(dir_path, "corres.png"), disp)
 
 
 def remove_stretched_faces(verts, faces):
@@ -26,8 +139,9 @@ def tensor2arr(t, mask=False):
     if not mask:
         return t.squeeze(0).permute(1, 2, 0).detach().cpu().numpy()
     else:
-        return ((t.squeeze(0).abs().sum(dim=0, keepdim=True) !=
-                 0.0).float().permute(1, 2, 0).detach().cpu().numpy())
+        mask = t.squeeze(0).abs().sum(dim=0, keepdim=True)
+        return (mask != mask[:, 0,
+                             0]).float().squeeze(0).detach().cpu().numpy()
 
 
 def arr2png(t):
@@ -42,9 +156,12 @@ def depth2arr(t):
 def depth2png(t):
 
     t_copy = t.copy()
-    t_copy -= t_copy[t > -1.0].min()
-    t_copy /= t_copy[t > -1.0].max()
-    t_copy = (-t_copy + 1.0) * 255.0
+    t_bg = t_copy[0, 0]
+    valid_region = np.logical_and(t > -1.0, t != t_bg)
+    t_copy[valid_region] -= t_copy[valid_region].min()
+    t_copy[valid_region] /= t_copy[valid_region].max()
+    t_copy[valid_region] = (1. - t_copy[valid_region]) * 255.0
+    t_copy[~valid_region] = 0.0
 
     return t_copy[..., None].astype(np.uint8)
 

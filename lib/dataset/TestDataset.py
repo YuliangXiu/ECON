@@ -45,7 +45,8 @@ class TestDataset:
 
         self.image_dir = cfg["image_dir"]
         self.seg_dir = cfg["seg_dir"]
-        self.has_det = cfg["has_det"]
+        self.use_det = cfg["use_det"]
+        self.use_seg = cfg["use_seg"]
         self.hps_type = cfg["hps_type"]
         self.smpl_type = "smpl" if cfg["hps_type"] != "pixie" else "smplx"
         self.smpl_gender = "neutral"
@@ -53,10 +54,7 @@ class TestDataset:
 
         self.device = device
 
-        if self.has_det:
-            self.det = human_det.Detection()
-        else:
-            self.det = None
+        self.det = human_det.Detection() if self.use_det else None
 
         keep_lst = sorted(glob.glob(f"{self.image_dir}/*"))
         img_fmts = ["jpg", "png", "jpeg", "JPG", "bmp"]
@@ -214,6 +212,7 @@ class TestDataset:
 
         arr_dict = process_image(img_path,
                                  self.det,
+                                 self.use_seg,
                                  self.hps_type,
                                  512,
                                  self.device,
@@ -396,7 +395,8 @@ if __name__ == "__main__":
     dataset = TestDataset(
         {
             "image_dir": "./examples",
-            "has_det": True,  # w/ or w/o detection
+            "use_det": True,  # w/ or w/o detection
+            "use_seg": True,  # w/ or w/o segmentation
             "hps_type": "bev",  # pymaf/pare/pixie/hybrik/bev
         },
         device,

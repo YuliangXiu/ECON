@@ -179,8 +179,10 @@ def remesh(obj_path, perc, device):
 
 
 def save_normal_tensor(in_tensor, png_path):
-    
+
     os.makedirs(os.path.dirname(png_path), exist_ok=True)
+
+    torch.save(in_tensor, png_path + "_in_tensor.pt")
 
     depth_scale = 256.0
 
@@ -207,7 +209,7 @@ def save_normal_tensor(in_tensor, png_path):
                 (mask_normal_arr * 255.0).astype(np.uint8))
     cv2.imwrite(png_path + "_T_mask.png",
                 (T_mask_normal_arr * 255.0).astype(np.uint8))
-
+    
     # write depth map as pngs with scaling to 0~255
     cv2.imwrite(png_path + "_depth_F.png", depth2png(depth_F_arr))
     cv2.imwrite(png_path + "_depth_B.png", depth2png(depth_B_arr))
@@ -254,7 +256,7 @@ def save_normal_tensor(in_tensor, png_path):
 
 
 def possion(mesh, obj_path):
-    
+
     mesh.export(obj_path)
     ms = pymeshlab.MeshSet(verbose=False)
     ms.load_new_mesh(obj_path)
@@ -279,10 +281,14 @@ def get_mask(tensor, dim):
 
 
 def blend_rgb_norm(norm, data):
-    
-    norm_pred = ((norm[0].permute(1, 2, 0) + 1.0) * 255.0 / 2.0).detach().cpu().numpy().astype(np.uint8)
-    norm_ori = unwrap(norm_pred,  data["uncrop_param"])
-    mask_pred = np.repeat(data["img_mask"].permute(1, 2, 0).detach().cpu().numpy(), 3, axis=2).astype(np.uint8)
+
+    norm_pred = ((norm[0].permute(1, 2, 0) + 1.0) * 255.0 /
+                 2.0).detach().cpu().numpy().astype(np.uint8)
+    norm_ori = unwrap(norm_pred, data["uncrop_param"])
+    mask_pred = np.repeat(data["img_mask"].permute(1, 2,
+                                                   0).detach().cpu().numpy(),
+                          3,
+                          axis=2).astype(np.uint8)
     mask_ori = unwrap(mask_pred, data["uncrop_param"])
 
     # [0,0,0] or [127,127,127] should be marked as mask
@@ -290,12 +296,11 @@ def blend_rgb_norm(norm, data):
 
     return final.astype(np.uint8)
 
+
 def unwrap(image, uncrop_param):
 
     img_uncrop = uncrop(
-        np.array(
-            Image.fromarray(image).resize(
-                uncrop_param["box_shape"][:2])),
+        np.array(Image.fromarray(image).resize(uncrop_param["box_shape"][:2])),
         uncrop_param["center"],
         uncrop_param["scale"],
         uncrop_param["crop_shape"],

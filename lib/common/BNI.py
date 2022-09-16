@@ -1,35 +1,36 @@
-from lib.common.BNI_utils import (
-    depth2arr,
-    tensor2arr,
-    verts_inverse_transform,
-    bilateral_normal_integration,
-)
+from gettext import lngettext
+from lib.common.BNI_utils import (depth2arr, tensor2arr,
+                                  verts_inverse_transform,
+                                  bilateral_normal_integration,
+                                  mean_value_cordinates, find_contour,
+                                  depth2png, dispCorres, repeat_pts,
+                                  get_dst_mat)
 
 import torch
-import os
+import os, cv2
 import trimesh
 import numpy as np
-from pytorch3d.structures import Meshes, Pointclouds
+import os.path as osp
+from scipy.optimize import linear_sum_assignment
+from pytorch3d.structures import Meshes
 from pytorch3d.io import IO
-from pytorch3d.loss.point_mesh_distance import _PointFaceDistance
 
 
 class BNI:
 
-    def __init__(self, dir_path, name, in_tensor, device, mvc=True):
+    def __init__(self, dir_path, name, in_tensor, device, mvc=False):
 
         self.scale = 256.0
 
         self.normal_front = tensor2arr(in_tensor["normal_F"])
         self.normal_back = tensor2arr(in_tensor["normal_B"])
-        self.mask = tensor2arr(in_tensor["image"], True).astype(bool)[..., 0]
+        self.mask = tensor2arr(in_tensor["image"], True) > 0.
+        self.depth_mask = tensor2arr(in_tensor["T_normal_F"], True) > 0.
+
         self.depth_front = (depth2arr(in_tensor["depth_F"]) -
                             100.0) * self.scale
         self.depth_back = (100.0 -
                            depth2arr(in_tensor["depth_B"])) * self.scale
-        self.depth_mask = depth2arr(in_tensor["depth_F"]) > -1.0
-        
-        
 
         # hparam
         self.k = 2
@@ -41,9 +42,82 @@ class BNI:
         self.F_B_trimesh = None
         self.device = device
         self.export_dir = dir_path
-        
-    # @staticmethod
-    # def mvp_expand()
+
+        if mvc:
+            self.mvp_expand(self.mask, self.depth_mask, self.depth_front,
+                            self.depth_back)
+
+    def mvp_expand(self, cloth_mask, body_mask, depth_front, depth_back):
+
+        # contour [num_contour, 2]
+        # extract contour points from body and cloth masks
+        contour_cloth = find_contour(cloth_mask, method='all')
+        contour_body = find_contour(body_mask, method='simple')
+
+        # correspondence body_contour --> cloth_contour
+        # construct distance_matrix and solve bipartite matching
+        dst_mat = get_dst_mat(contour_body, contour_cloth)
+        _, cloth_ind = linear_sum_assignment(dst_mat)
+        dispCorres(512, contour_body, contour_cloth, cloth_ind,
+                   self.export_dir)
+
+        # weights [num_innners, num_body_contour]
+        # compute barycentric weights from all the inner points from body mask
+        # Law of cosines: https://en.wikipedia.org/wiki/Law_of_cosines
+        # cos_beta = (a^2+c^2-b^2)/2ac
+        body_inner_pts = np.array(np.where(body_mask)).transpose()[:, [1, 0]]
+        body_inner_pts = body_inner_pts[
+            ~repeat_pts(body_inner_pts, contour_body)]
+        weights_body = mean_value_cordinates(body_inner_pts, contour_body)
+
+        # fill depth values on the cloth_depth using correspondence
+        cloth_inner_pts = np.around(
+            weights_body @ contour_cloth[cloth_ind]).clip(
+                0, cloth_mask.shape[0] - 1).astype(np.int32)
+
+        # fill depth holes
+        cloth_hole_pts = np.array(np.where(cloth_mask)).transpose()[:, [1, 0]]
+        cloth_hole_pts = cloth_hole_pts[~repeat_pts(
+            cloth_hole_pts, cloth_inner_pts)]  # remove already filled pts
+        cloth_hole_pts = cloth_hole_pts[~repeat_pts(
+            cloth_hole_pts, contour_cloth)]  # remove contour pts
+        weights_cloth = mean_value_cordinates(cloth_hole_pts,
+                                              contour_cloth[cloth_ind])
+
+        # backward from hole_cloth_pts into body_depth_map
+        body_backward_pts = np.around(weights_cloth @ contour_body).clip(
+            0, body_mask.shape[0] - 1).astype(np.int32)
+
+        # complete back and front depth maps
+        left_idx_x = cloth_inner_pts[:,
+                                     1].tolist() + cloth_hole_pts[:,
+                                                                  1].tolist()
+        left_idx_y = cloth_inner_pts[:,
+                                     0].tolist() + cloth_hole_pts[:,
+                                                                  0].tolist()
+        right_idx_x = body_inner_pts[:, 1].tolist(
+        ) + body_backward_pts[:, 1].tolist()
+        right_idx_y = body_inner_pts[:, 0].tolist(
+        ) + body_backward_pts[:, 0].tolist()
+
+        depth_front = np.zeros_like(self.depth_front)
+        depth_back = np.zeros_like(self.depth_back)
+
+        depth_front[left_idx_x, left_idx_y] = self.depth_front[right_idx_x,
+                                                               right_idx_y]
+        depth_back[left_idx_x, left_idx_y] = self.depth_back[right_idx_x,
+                                                             right_idx_y]
+
+        self.depth_mask = self.mask.copy()
+
+        self.depth_back = depth_back
+        self.depth_front = depth_front
+
+        cv2.imwrite(osp.join(self.export_dir, "depth_front.png"),
+                    depth2png(self.depth_front / self.scale + 100.))
+        cv2.imwrite(osp.join(self.export_dir, "depth_back.png"),
+                    depth2png(-(self.depth_back / self.scale - 100.)))
+
 
     @staticmethod
     def load_all(export_dir, name):
@@ -68,8 +142,9 @@ class BNI:
 
     def extract_surface(self):
 
-        if not os.path.exists(
-                os.path.join(self.export_dir, f"{self.name}_F_verts.pt")):
+        # if not os.path.exists(
+        #         os.path.join(self.export_dir, f"{self.name}_F_verts.pt")):
+        if True:
 
             F_verts, F_faces = bilateral_normal_integration(
                 normal_map=self.normal_front,
@@ -90,11 +165,12 @@ class BNI:
                 depth_mask=self.depth_mask,
                 label="Back",
             )
-            self.export_all(F_verts, F_faces, B_verts, B_faces,
-                            self.export_dir, self.name)
+            # self.export_all(F_verts, F_faces, B_verts, B_faces,
+            #                 self.export_dir, self.name)
         else:
             F_verts, F_faces, B_verts, B_faces = self.load_all(
                 self.export_dir, self.name)
+            pass
 
         F_verts = verts_inverse_transform(F_verts, self.scale)
         B_verts = verts_inverse_transform(B_verts, self.scale)
@@ -116,65 +192,15 @@ class BNI:
             os.path.join(self.export_dir, f"{self.name}_F_B_surface.obj"),
         )
 
-    @staticmethod
-    def point_mesh_face_distance(meshes: Meshes, pcls: Pointclouds):
-        """
-        Computes the distance between a pointcloud and a mesh within a batch.
-        Given a pair `(mesh, pcl)` in the batch, we define the distance to be the
-        sum of two distances, namely `point_face(mesh, pcl) + face_point(mesh, pcl)`
 
-        `point_face(mesh, pcl)`: Computes the squared distance of each point p in pcl
-            to the closest triangular face in mesh and averages across all points in pcl
-        `face_point(mesh, pcl)`: Computes the squared distance of each triangular face in
-            mesh to the closest point in pcl and averages across all faces in mesh.
+if __name__ == "__main__":
 
-        The above distance functions are applied for all `(mesh, pcl)` pairs in the batch
-        and then averaged across the batch.
-
-        Args:
-            meshes: A Meshes data structure containing N meshes
-            pcls: A Pointclouds data structure containing N pointclouds
-            min_triangle_area: (float, defaulted) Triangles of area less than this
-                will be treated as points/lines.
-
-        Returns:
-            loss: The `point_face(mesh, pcl) + face_point(mesh, pcl)` distance
-                between all `(mesh, pcl)` in a batch averaged across the batch.
-        """
-
-        if len(meshes) != len(pcls):
-            raise ValueError(
-                "meshes and pointclouds must be equal sized batches")
-        N = len(meshes)
-
-        # packed representation for pointclouds
-        points = pcls.points_packed()  # (P, 3)
-        points_first_idx = pcls.cloud_to_packed_first_idx()
-        max_points = pcls.num_points_per_cloud().max().item()
-
-        # packed representation for faces
-        verts_packed = meshes.verts_packed()
-        faces_packed = meshes.faces_packed()
-        tris = verts_packed[faces_packed]  # (T, 3, 3)
-        tris_first_idx = meshes.mesh_to_faces_packed_first_idx()
-
-        # point to face distance: shape (P,)
-        point_to_face = _PointFaceDistance.apply(points, points_first_idx,
-                                                 tris, tris_first_idx,
-                                                 max_points)
-
-        return point_to_face
-
-    def p2s_loss(self, meshes):
-
-        perm = torch.randperm(
-            self.F_B_surfaces.verts_packed().shape[0])[:10000]
-        random_samples = self.F_B_surfaces.verts_packed()[perm].unsqueeze(0)
-        random_samples_dis = self.point_mesh_face_distance(
-            meshes, Pointclouds(random_samples))
-        # loss = random_samples_dis.mean()
-        top_k_index = torch.argsort(random_samples_dis, dim=0,
-                                    descending=True)[:5000]
-        loss = random_samples_dis[top_k_index].mean()
-
-        return loss
+    dir_path = "./results/icon-mvp/BNI"
+    name = "e1e7622af7074a022f5d96dc16672517"
+    BNI_obj = BNI(dir_path,
+                  name,
+                  in_tensor=torch.load(
+                      osp.join(dir_path, f"{name}_in_tensor.pt")),
+                  device=torch.device("cuda:0"),
+                  mvc=True)
+    BNI_obj.extract_surface()

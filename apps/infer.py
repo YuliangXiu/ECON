@@ -111,7 +111,8 @@ if __name__ == "__main__":
         "image_dir": args.in_dir,
         "seg_dir": args.seg_dir,
         "colab": args.colab,
-        "has_det": True,  # w/ or w/o detection
+        "use_det": True,  # w/ or w/o detection
+        "use_seg": True,  # w/ or w/o segmentation
         "hps_type": args.hps_type,  # pymaf/pare/pixie
     }
 
@@ -439,12 +440,12 @@ if __name__ == "__main__":
 
             if args.BNI:
 
-                # # replace ICON by SMPL to provide depth-prior and side surfaces
-                # verts_remesh = in_tensor["smpl_verts"].detach() * torch.tensor([1.0, -1.0, 1.0], device=device)
-                # faces_remesh = in_tensor["smpl_faces"].detach()
-                # remeshed_mesh = trimesh.Trimesh(verts_remesh.cpu()[0], 
-                #                                 faces_remesh.cpu()[0], 
-                #                                 process=False, maintains_order=True)
+                # replace ICON by SMPL to provide depth-prior and side surfaces
+                verts_remesh = in_tensor["smpl_verts"].detach() * torch.tensor([1.0, -1.0, 1.0], device=device)
+                faces_remesh = in_tensor["smpl_faces"].detach()
+                remeshed_mesh = trimesh.Trimesh(verts_remesh.cpu()[0], 
+                                                faces_remesh.cpu()[0], 
+                                                process=False, maintains_order=True)
 
                 # rendering depth map for BNI
                 in_tensor["verts_pr"] = verts_remesh
@@ -466,6 +467,7 @@ if __name__ == "__main__":
                     name=data["name"],
                     in_tensor=in_tensor,
                     device=device,
+                    mvc=False
                 )
 
                 BNI_object.extract_surface()

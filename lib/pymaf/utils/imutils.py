@@ -113,6 +113,7 @@ def get_keypoints(image):
 
 def process_image(img_file,
                   det,
+                  use_seg,
                   hps_type,
                   input_res=512,
                   device=None,
@@ -165,11 +166,17 @@ def process_image(img_file,
         img_np, cropping_parameters = crop(img_for_crop, center, scale,
                                            (input_res, input_res))
 
-    with torch.no_grad():
-        buf = io.BytesIO()
-        Image.fromarray(img_np).save(buf, format="png")
-        img_pil = Image.open(io.BytesIO(remove(
-            buf.getvalue()))).convert("RGBA")
+    if use_seg:
+        with torch.no_grad():
+            buf = io.BytesIO()
+            Image.fromarray(img_np).save(buf, format="png")
+            img_pil = Image.open(io.BytesIO(remove(
+                buf.getvalue()))).convert("RGBA")
+    else:
+        img_pil = Image.fromarray(
+            np.concatenate(
+                [img_np, 255 * (img_np.sum(axis=2, keepdims=True) != 0).astype(np.uint8)],
+                axis=2)).convert("RGBA")
 
     # for icon
     img_rgb = image_to_tensor(img_pil.convert("RGB"))
