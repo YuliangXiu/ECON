@@ -14,6 +14,7 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
+import kornia
 import os.path as osp
 import numpy as np
 from PIL import Image
@@ -90,6 +91,14 @@ class NormalDataset:
             subject_list += subject_list[:self.bsize -
                                          len(subject_list) % self.bsize]
             print(colored(f"total: {len(subject_list)}", "yellow"))
+            
+        bug_list = sorted(
+                np.loadtxt(osp.join(self.root, 'bug.txt'), dtype=str).tolist())
+        
+        subject_list = [
+                subject for subject in subject_list
+                if (subject not in bug_list)
+            ]
 
         # subject_list = ["thuman2/0008"]
         return subject_list
@@ -107,6 +116,9 @@ class NormalDataset:
         dataset = self.subject_list[mid].split("/")[0]
         render_folder = "/".join(
             [dataset + f"_{self.opt.rotation_num}views", subject])
+        
+        if not osp.exists(osp.join(self.root, render_folder)):
+            render_folder = "/".join([dataset + f"_36views", subject])
 
         # setup paths
         data_dict = {
@@ -133,12 +145,12 @@ class NormalDataset:
                              f"{rotation:03d}.png")
                 })
 
-            # tensor update
             data_dict.update({
                 name:
                 self.imagepath2tensor(data_dict[f"{name}_path"],
                                       channel,
-                                      inv=False)
+                                      inv=False,
+                                      erasing = name == "image")
             })
 
         path_keys = [
@@ -150,13 +162,20 @@ class NormalDataset:
 
         return data_dict
 
-    def imagepath2tensor(self, path, channel=3, inv=False):
+    def imagepath2tensor(self, path, channel=3, inv=False, erasing=False):
 
         rgba = Image.open(path).convert("RGBA")
         mask = rgba.split()[-1]
+        
         image = rgba.convert("RGB")
         image = self.image_to_tensor(image)
         mask = self.mask_to_tensor(mask)
+        
+        # simulate occlusion
+        if erasing:
+            mask = kornia.augmentation.RandomErasing(p=0.2, 
+                                                    scale=(0.01, 0.2), 
+                                                    ratio=(0.3, 3.3), keepdim=True)(mask)
         image = (image * mask)[:channel]
 
         return (image * (0.5 - inv) * 2.0).float()
