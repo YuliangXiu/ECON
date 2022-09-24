@@ -42,6 +42,7 @@ class NormalNet(BasePIFuNet):
         self.l1_loss = nn.SmoothL1Loss()
 
         self.opt = cfg.net
+        self.erase_mask = "normal" in cfg.name
 
         if self.training:
             self.vgg_loss = [VGGLoss()]
@@ -89,8 +90,13 @@ class NormalNet(BasePIFuNet):
 
         # output: float_arr [-1,1] with [B, C, H, W]
 
-        mask = ((in_tensor["image"].abs().sum(dim=1, keepdim=True) !=
-                 0.0).detach().float())
+        if self.erase_mask:
+
+            mask = ((in_tensor["normal_F"].abs().sum(dim=1, keepdim=True) !=
+                     0.0).detach().float())
+        else:
+            mask = ((in_tensor["image"].abs().sum(dim=1, keepdim=True) !=
+                     0.0).detach().float())
 
         nmlF = nmlF * mask
         nmlB = nmlB * mask

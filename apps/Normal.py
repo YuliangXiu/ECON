@@ -103,6 +103,8 @@ class Normal(pl.LightningModule):
             "normal_B": batch["normal_B"]
         }
 
+        in_tensor.update(FB_tensor)
+
         preds_F, preds_B = self.netG(in_tensor)
         error_NF, error_NB = self.netG.get_norm_error(preds_F, preds_B,
                                                       FB_tensor)
@@ -112,7 +114,7 @@ class Normal(pl.LightningModule):
         opt_nf.zero_grad()
         self.manual_backward(error_NF)
         opt_nf.step()
-        
+
         opt_nb.zero_grad()
         self.manual_backward(error_NB)
         opt_nb.step()
@@ -169,6 +171,7 @@ class Normal(pl.LightningModule):
             "normal_F": batch["normal_F"],
             "normal_B": batch["normal_B"]
         }
+        in_tensor.update(FB_tensor)
 
         preds_F, preds_B = self.netG(in_tensor)
         error_NF, error_NB = self.netG.get_norm_error(preds_F, preds_B,

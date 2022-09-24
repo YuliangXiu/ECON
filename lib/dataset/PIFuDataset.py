@@ -174,11 +174,11 @@ class PIFuDataset:
         for dataset in self.datasets:
 
             split_txt = osp.join(self.root, dataset, f"{split}.txt")
-            
+
             if osp.exists(split_txt) and osp.getsize(split_txt) > 0:
                 print(f"load from {split_txt}")
                 subject_list += np.loadtxt(split_txt, dtype=str).tolist()
-            
+
         if self.split == "train":
             subject_list += subject_list[:self.bsize -
                                          len(subject_list) % self.bsize]
@@ -251,7 +251,7 @@ class PIFuDataset:
                     f"{subject}.pkl",
                 ),
             })
-            
+
         elif dataset == "cape":
             data_dict.update({
                 "mesh_path":
@@ -270,7 +270,7 @@ class PIFuDataset:
                 ),
             })
         else:
-            
+
             data_dict.update({
                 "mesh_path":
                 osp.join(
@@ -297,7 +297,6 @@ class PIFuDataset:
                     f"{subject}.pkl",
                 ),
             })
-            
 
         # load training data
         data_dict.update(self.load_calib(data_dict))
