@@ -13,7 +13,7 @@ abs_pixie_dir = os.path.abspath(
 cfg.pixie_dir = abs_pixie_dir
 cfg.device = "cuda"
 cfg.device_id = "0"
-cfg.pretrained_modelpath = os.path.join(cfg.pixie_dir, "data/pixie_data",
+cfg.pretrained_modelpath = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
                                         "pixie_model.tar")
 # smplx parameter settings
 cfg.params = CN()
@@ -32,34 +32,34 @@ cfg.params.hand_share_list = [
 # Options for Body model
 # ---------------------------------------------------------------------------- #
 cfg.model = CN()
-cfg.model.topology_path = os.path.join(cfg.pixie_dir, "data/pixie_data",
+cfg.model.topology_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
                                        "SMPL_X_template_FLAME_uv.obj")
 cfg.model.topology_smplxtex_path = os.path.join(cfg.pixie_dir,
-                                                "data/pixie_data",
+                                                "data/HPS/pixie_data",
                                                 "smplx_tex.obj")
 cfg.model.topology_smplx_hand_path = os.path.join(cfg.pixie_dir,
-                                                  "data/pixie_data",
+                                                  "data/HPS/pixie_data",
                                                   "smplx_hand.obj")
-cfg.model.smplx_model_path = os.path.join(cfg.pixie_dir, "data/pixie_data",
+cfg.model.smplx_model_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
                                           "SMPLX_NEUTRAL_2020.npz")
-cfg.model.face_mask_path = os.path.join(cfg.pixie_dir, "data/pixie_data",
+cfg.model.face_mask_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
                                         "uv_face_mask.png")
-cfg.model.face_eye_mask_path = os.path.join(cfg.pixie_dir, "data/pixie_data",
+cfg.model.face_eye_mask_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
                                             "uv_face_eye_mask.png")
-cfg.model.tex_path = os.path.join(cfg.pixie_dir, "data/pixie_data",
+cfg.model.tex_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
                                   "FLAME_albedo_from_BFM.npz")
-cfg.model.extra_joint_path = os.path.join(cfg.pixie_dir, "data/pixie_data",
+cfg.model.extra_joint_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
                                           "smplx_extra_joints.yaml")
-cfg.model.j14_regressor_path = os.path.join(cfg.pixie_dir, "data/pixie_data",
+cfg.model.j14_regressor_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
                                             "SMPLX_to_J14.pkl")
 cfg.model.flame2smplx_cached_path = os.path.join(cfg.pixie_dir,
-                                                 "data/pixie_data",
+                                                 "data/HPS/pixie_data",
                                                  "flame2smplx_tex_1024.npy")
-cfg.model.smplx_tex_path = os.path.join(cfg.pixie_dir, "data/pixie_data",
+cfg.model.smplx_tex_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
                                         "smplx_tex.png")
-cfg.model.mano_ids_path = os.path.join(cfg.pixie_dir, "data/pixie_data",
+cfg.model.mano_ids_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
                                        "MANO_SMPLX_vertex_ids.pkl")
-cfg.model.flame_ids_path = os.path.join(cfg.pixie_dir, "data/pixie_data",
+cfg.model.flame_ids_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
                                         "SMPL-X__FLAME_vertex_ids.npy")
 cfg.model.uv_size = 256
 cfg.model.n_shape = 200

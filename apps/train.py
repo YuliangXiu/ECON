@@ -131,7 +131,7 @@ if __name__ == "__main__":
                 "freq_show_train",
                 cfg.freq_show_train * train_len // cfg.batch_size,
                 "freq_show_val",
-                max(cfg.freq_show_val * val_len, 1.0),
+                max(cfg.freq_show_val * val_len // cfg.batch_size, 1.0),
             ]
 
         cfg.merge_from_list(cfg_show_list)
@@ -148,5 +148,5 @@ if __name__ == "__main__":
 
     if not cfg.test_mode:
         trainer.fit(model=model, datamodule=datamodule)
-    
+
     trainer.test(model=model, datamodule=datamodule)

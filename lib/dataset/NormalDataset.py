@@ -14,7 +14,6 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-import random
 import os.path as osp
 import numpy as np
 from PIL import Image
@@ -29,7 +28,6 @@ class NormalDataset:
         self.split = split
         self.root = cfg.root
         self.bsize = cfg.batch_size
-        self.overfit = cfg.overfit
 
         self.opt = cfg.dataset
         self.datasets = self.opt.types
@@ -83,30 +81,8 @@ class NormalDataset:
         for dataset in self.datasets:
 
             split_txt = osp.join(self.root, dataset, f"{split}.txt")
-
-            if osp.exists(split_txt):
-                print(f"load from {split_txt}")
-                subject_list += np.loadtxt(split_txt, dtype=str).tolist()
-            else:
-                full_txt = osp.join(self.root, dataset, "all.txt")
-                print(f"split {full_txt} into train/val/test")
-
-                full_lst = np.loadtxt(full_txt, dtype=str)
-                full_lst = [dataset + "/" + item for item in full_lst]
-                [train_lst, test_lst, val_lst] = np.split(
-                    full_lst,
-                    [
-                        500,
-                        500 + 5,
-                    ],
-                )
-
-                np.savetxt(full_txt.replace("all", "train"),
-                           train_lst,
-                           fmt="%s")
-                np.savetxt(full_txt.replace("all", "test"), test_lst, fmt="%s")
-                np.savetxt(full_txt.replace("all", "val"), val_lst, fmt="%s")
-
+            
+            if osp.exists(split_txt) and osp.getsize(split_txt) > 0:
                 print(f"load from {split_txt}")
                 subject_list += np.loadtxt(split_txt, dtype=str).tolist()
 
@@ -114,7 +90,6 @@ class NormalDataset:
             subject_list += subject_list[:self.bsize -
                                          len(subject_list) % self.bsize]
             print(colored(f"total: {len(subject_list)}", "yellow"))
-            random.shuffle(subject_list)
 
         # subject_list = ["thuman2/0008"]
         return subject_list
@@ -123,10 +98,6 @@ class NormalDataset:
         return len(self.subject_list) * len(self.rotations)
 
     def __getitem__(self, index):
-
-        # only pick the first data if overfitting
-        if self.overfit:
-            index = 0
 
         rid = index % len(self.rotations)
         mid = index // len(self.rotations)

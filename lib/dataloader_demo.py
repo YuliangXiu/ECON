@@ -50,7 +50,7 @@ if __name__ == "__main__":
         args.merge_from_list(cfg_test_mode)
 
     # dataset sampler
-    dataset = PIFuDataset(args, split="test", vis=args_c.show)
+    dataset = PIFuDataset(args, split="train", vis=args_c.show)
     print(f"Number of subjects :{len(dataset.subject_list)}")
     data_dict = dataset[1]
 

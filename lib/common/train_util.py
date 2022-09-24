@@ -128,6 +128,31 @@ def rename(old_dict, old_name, new_name):
     return new_dict
 
 
+def load_normal_networks(cfg, model, normal_path):
+    
+    pretrained_dict = torch.load(
+            normal_path,
+            map_location=torch.device(f"cuda:{cfg.gpus[0]}"))["state_dict"]
+    model_dict = model.state_dict()
+
+    # 1. filter out unnecessary keys
+    pretrained_dict = {
+        k: v
+        for k, v in pretrained_dict.items()
+        if k in model_dict and v.shape == model_dict[k].shape
+    }
+
+    # # 2. overwrite entries in the existing state dict
+    model_dict.update(pretrained_dict)
+    # 3. load the new state dict
+    model.load_state_dict(model_dict)
+
+    del pretrained_dict
+    del model_dict
+
+    print(f"Resume Normal weights from {normal_path}")
+
+
 def load_networks(cfg, model, mlp_path, normal_path):
 
     model_dict = model.state_dict()

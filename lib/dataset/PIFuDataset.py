@@ -126,7 +126,6 @@ class PIFuDataset:
             dataset_dir = osp.join(self.root, dataset)
 
             mesh_dir = osp.join(dataset_dir, "scans")
-            param_dir = osp.join(dataset_dir, "fits")
             smplx_dir = osp.join(dataset_dir, "smplx")
             smpl_dir = osp.join(dataset_dir, "smpl")
 
@@ -134,20 +133,13 @@ class PIFuDataset:
                 "smplx_dir": smplx_dir,
                 "smpl_dir": smpl_dir,
                 "mesh_dir": mesh_dir,
-                "param_dir": param_dir,
                 "scale": self.scales[dataset_id],
             }
 
-            if split == "train":
-                self.datasets_dict[dataset].update({
-                    "subjects":
-                    np.loadtxt(osp.join(dataset_dir, "all.txt"), dtype=str)
-                })
-            else:
-                self.datasets_dict[dataset].update({
-                    "subjects":
-                    np.loadtxt(osp.join(dataset_dir, "test.txt"), dtype=str)
-                })
+            self.datasets_dict[dataset].update({
+                "subjects":
+                np.loadtxt(osp.join(dataset_dir, "all.txt"), dtype=str)
+            })
 
         self.subject_list = self.get_subject_list(split)
         self.smplx = SMPLX()
@@ -182,34 +174,12 @@ class PIFuDataset:
         for dataset in self.datasets:
 
             split_txt = osp.join(self.root, dataset, f"{split}.txt")
-
-            if osp.exists(split_txt):
+            
+            if osp.exists(split_txt) and osp.getsize(split_txt) > 0:
                 print(f"load from {split_txt}")
                 subject_list += np.loadtxt(split_txt, dtype=str).tolist()
-            else:
-                full_txt = osp.join(self.root, dataset, "all.txt")
-                print(f"split {full_txt} into train/val/test")
-
-                full_lst = np.loadtxt(full_txt, dtype=str)
-                full_lst = [dataset + "/" + item for item in full_lst]
-                [train_lst, test_lst, val_lst] = np.split(
-                    full_lst,
-                    [
-                        500,
-                        500 + 5,
-                    ],
-                )
-
-                np.savetxt(full_txt.replace("all", "train"),
-                           train_lst,
-                           fmt="%s")
-                np.savetxt(full_txt.replace("all", "test"), test_lst, fmt="%s")
-                np.savetxt(full_txt.replace("all", "val"), val_lst, fmt="%s")
-
-                print(f"load from {split_txt}")
-                subject_list += np.loadtxt(split_txt, dtype=str).tolist()
-
-        if self.split != "test":
+            
+        if self.split == "train":
             subject_list += subject_list[:self.bsize -
                                          len(subject_list) % self.bsize]
             print(colored(f"total: {len(subject_list)}", "yellow"))
@@ -250,9 +220,6 @@ class PIFuDataset:
             "image_path":
             osp.join(self.root, render_folder, "render",
                      f"{rotation:03d}.png"),
-            "smpl_path":
-            osp.join(self.datasets_dict[dataset]["smpl_dir"],
-                     f"{subject}.obj"),
             "vis_path":
             osp.join(self.root, render_folder, "vis", f"{rotation:03d}.pt"),
         }
@@ -267,20 +234,24 @@ class PIFuDataset:
                 "smplx_path":
                 osp.join(self.datasets_dict[dataset]["smplx_dir"],
                          f"{subject}.obj"),
-                "joint_path":
-                osp.join(self.datasets_dict[dataset]["smplx_dir"],
-                         f"{subject}.npy"),
-                "smpl_param":
-                osp.join(
-                    self.datasets_dict[dataset]["param_dir"],
-                    f"{subject}/smpl_param.pkl",
-                ),
                 "smplx_param":
                 osp.join(
-                    self.datasets_dict[dataset]["param_dir"],
-                    f"{subject}/smplx_param.pkl",
+                    self.datasets_dict[dataset]["smplx_dir"],
+                    f"{subject}.pkl",
+                ),
+                "joint_path":
+                osp.join(self.datasets_dict[dataset]["smplx_dir"],
+                         f"{subject}_joints.npy"),
+                "smpl_path":
+                osp.join(self.datasets_dict[dataset]["smpl_dir"],
+                         f"{subject}.obj"),
+                "smpl_param":
+                osp.join(
+                    self.datasets_dict[dataset]["smpl_dir"],
+                    f"{subject}.pkl",
                 ),
             })
+            
         elif dataset == "cape":
             data_dict.update({
                 "mesh_path":
@@ -289,12 +260,44 @@ class PIFuDataset:
                 "joint_path":
                 osp.join(self.datasets_dict[dataset]["smpl_dir"],
                          f"{subject}.npy"),
+                "smpl_path":
+                osp.join(self.datasets_dict[dataset]["smpl_dir"],
+                         f"{subject}.obj"),
                 "smpl_param":
                 osp.join(
-                    self.datasets_dict[dataset]["param_dir"],
+                    self.datasets_dict[dataset]["smpl_dir"],
                     f"{subject}.npz",
                 ),
             })
+        else:
+            
+            data_dict.update({
+                "mesh_path":
+                osp.join(
+                    self.datasets_dict[dataset]["mesh_dir"],
+                    f"{subject}.obj",
+                ),
+                "smplx_path":
+                osp.join(self.datasets_dict[dataset]["smplx_dir"],
+                         f"{subject}.obj"),
+                "smplx_param":
+                osp.join(
+                    self.datasets_dict[dataset]["smplx_dir"],
+                    f"{subject}.pkl",
+                ),
+                "joint_path":
+                osp.join(self.datasets_dict[dataset]["smplx_dir"],
+                         f"{subject}_joints.npy"),
+                "smpl_path":
+                osp.join(self.datasets_dict[dataset]["smpl_dir"],
+                         f"{subject}.obj"),
+                "smpl_param":
+                osp.join(
+                    self.datasets_dict[dataset]["smpl_dir"],
+                    f"{subject}.pkl",
+                ),
+            })
+            
 
         # load training data
         data_dict.update(self.load_calib(data_dict))
@@ -459,9 +462,8 @@ class PIFuDataset:
                             noise_type=None,
                             noise_scale=None):
 
-        
         smpl_param = np.load(data_dict["smpl_param"], allow_pickle=True)
-        
+
         if data_dict['dataset'] == 'cape':
             pid = data_dict['subject'].split("-")[0]
             gender = "male" if pid in cape_gender["male"] else "female"
@@ -473,7 +475,8 @@ class PIFuDataset:
                 torch.as_tensor(smpl_param["full_pose"][0])).numpy()
             smpl_betas = smpl_param["betas"]
 
-        smpl_path = osp.join(self.smplx.model_dir, f"smpl/SMPL_{gender.upper()}.pkl")
+        smpl_path = osp.join(self.smplx.model_dir,
+                             f"smpl/SMPL_{gender.upper()}.pkl")
         tetra_path = osp.join(self.smplx.tedra_dir,
                               f"tetra_{gender}_adult_smpl.npz")
 
@@ -499,9 +502,9 @@ class PIFuDataset:
         else:
             verts = (np.concatenate([smpl_model.verts, smpl_model.verts_added],
                                     axis=0) * smpl_param["scale"] +
-                    smpl_param["translation"]
-                    ) * self.datasets_dict[data_dict["dataset"]]["scale"]
-        
+                     smpl_param["translation"]
+                     ) * self.datasets_dict[data_dict["dataset"]]["scale"]
+
         faces = (np.loadtxt(
             osp.join(self.smplx.tedra_dir, "tetrahedrons_male_adult.txt"),
             dtype=np.int32,
@@ -739,8 +742,8 @@ class PIFuDataset:
         if mode == 'kpt':
             alpha = 0.2
         else:
-            alpha = 1.0 
-            
+            alpha = 1.0
+
         mesh = trimesh.Trimesh(verts, data_dict["faces"], process=True)
         mesh.visual.vertex_colors = [128.0, 128.0, 128.0, alpha * 255.0]
         vis_list.append(mesh)
@@ -772,7 +775,7 @@ class PIFuDataset:
             )
             smplx.visual.vertex_colors = [128.0, 128.0, 0.0, alpha * 255.0]
             vis_list.append(smplx)
-            
+
         if mode != 'kpt':
             # create a pointcloud
             pc = vedo.Points(points, r=15, c=np.float32(colors))
