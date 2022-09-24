@@ -1,4 +1,3 @@
-from gettext import lngettext
 from lib.common.BNI_utils import (depth2arr, tensor2arr,
                                   verts_inverse_transform,
                                   bilateral_normal_integration,
@@ -25,12 +24,10 @@ class BNI:
         self.normal_front = tensor2arr(in_tensor["normal_F"])
         self.normal_back = tensor2arr(in_tensor["normal_B"])
         self.mask = tensor2arr(in_tensor["image"], True) > 0.
-        self.depth_mask = tensor2arr(in_tensor["T_normal_F"], True) > 0.
 
-        self.depth_front = (depth2arr(in_tensor["depth_F"]) -
-                            100.0) * self.scale
-        self.depth_back = (100.0 -
-                           depth2arr(in_tensor["depth_B"])) * self.scale
+        self.depth_front = (depth2arr(in_tensor["depth_F"]) - 100.0) * self.scale
+        self.depth_back = (100.0 - depth2arr(in_tensor["depth_B"])) * self.scale
+        self.depth_mask = depth2arr(in_tensor["depth_F"]) > -1.0
 
         # hparam
         self.k = 2
@@ -46,7 +43,7 @@ class BNI:
         if mvc:
             self.mvp_expand(self.mask, self.depth_mask, self.depth_front,
                             self.depth_back)
-
+        
     def mvp_expand(self, cloth_mask, body_mask, depth_front, depth_back):
 
         # contour [num_contour, 2]
@@ -108,8 +105,6 @@ class BNI:
         depth_back[left_idx_x, left_idx_y] = self.depth_back[right_idx_x,
                                                              right_idx_y]
 
-        self.depth_mask = self.mask.copy()
-
         self.depth_back = depth_back
         self.depth_front = depth_front
 
@@ -117,7 +112,6 @@ class BNI:
                     depth2png(self.depth_front / self.scale + 100.))
         cv2.imwrite(osp.join(self.export_dir, "depth_back.png"),
                     depth2png(-(self.depth_back / self.scale - 100.)))
-
 
     @staticmethod
     def load_all(export_dir, name):
@@ -142,9 +136,8 @@ class BNI:
 
     def extract_surface(self):
 
-        # if not os.path.exists(
-        #         os.path.join(self.export_dir, f"{self.name}_F_verts.pt")):
-        if True:
+        if not os.path.exists(
+                os.path.join(self.export_dir, f"{self.name}_F_verts.pt")):
 
             F_verts, F_faces = bilateral_normal_integration(
                 normal_map=self.normal_front,
@@ -165,12 +158,12 @@ class BNI:
                 depth_mask=self.depth_mask,
                 label="Back",
             )
-            # self.export_all(F_verts, F_faces, B_verts, B_faces,
-            #                 self.export_dir, self.name)
+            self.export_all(F_verts, F_faces, B_verts, B_faces,
+                            self.export_dir, self.name)
         else:
+
             F_verts, F_faces, B_verts, B_faces = self.load_all(
                 self.export_dir, self.name)
-            pass
 
         F_verts = verts_inverse_transform(F_verts, self.scale)
         B_verts = verts_inverse_transform(B_verts, self.scale)
@@ -202,5 +195,5 @@ if __name__ == "__main__":
                   in_tensor=torch.load(
                       osp.join(dir_path, f"{name}_in_tensor.pt")),
                   device=torch.device("cuda:0"),
-                  mvc=True)
+                  mvc=False)
     BNI_obj.extract_surface()

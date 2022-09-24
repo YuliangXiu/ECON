@@ -303,7 +303,8 @@ class Render:
     def get_rendered_video(self, images, save_path):
 
         self.cam_pos = []
-        for angle in range(360):
+        
+        for angle in range(0, 360, 3):
             self.cam_pos.append((
                 100.0 * math.cos(np.pi / 180 * angle),
                 self.mesh_y_center,

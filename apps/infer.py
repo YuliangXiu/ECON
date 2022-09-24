@@ -85,16 +85,8 @@ if __name__ == "__main__":
 
     # setting for testing on in-the-wild images
     cfg_show_list = [
-        "test_gpus",
-        [args.gpu_device],
-        "mcube_res",
-        256,
-        "clean_mesh",
-        True,
-        "test_mode",
-        True,
-        "batch_size",
-        1
+        "test_gpus", [args.gpu_device], "mcube_res", 256, "clean_mesh", True,
+        "test_mode", True, "batch_size", 1
     ]
 
     cfg.merge_from_list(cfg_show_list)
@@ -223,23 +215,26 @@ if __name__ == "__main__":
 
                 smpl_verts = (smpl_verts + optimed_trans) * data["scale"]
                 smpl_joints = (smpl_joints + optimed_trans) * data["scale"]
-                
+
             smpl_joints *= torch.tensor([1.0, 1.0, -1.0]).to(device)
 
             # landmark errors
             if data["type"] == "smpl":
                 smpl_joints_3d = (smpl_joints[0, :, :] + 1.0) * 0.5
-                in_tensor["smpl_joint"] = smpl_joints[:, :24, :] 
+                in_tensor["smpl_joint"] = smpl_joints[:, :24, :]
             elif data["type"] == "smplx" and dataset_param[
                     "hps_type"] != "pixie":
                 smpl_joints_3d = (
                     smpl_joints[0, dataset.smpl_joint_ids_45, :] + 1.0) * 0.5
-                in_tensor["smpl_joint"] = smpl_joints[:, dataset.smpl_joint_ids_24, :]
+                in_tensor["smpl_joint"] = smpl_joints[:, dataset.
+                                                      smpl_joint_ids_24, :]
             else:
                 smpl_joints_3d = (
                     smpl_joints[0, dataset.smpl_joint_ids_45_pixie, :] +
                     1.0) * 0.5
-                in_tensor["smpl_joint"] = smpl_joints[:, dataset.smpl_joint_ids_24_pixie, :]
+                in_tensor[
+                    "smpl_joint"] = smpl_joints[:, dataset.
+                                                smpl_joint_ids_24_pixie, :]
 
             ghum_lmks = torch.tensor(data["landmark_dict"]["pose_landmarks"])[
                 SMPLX_object.ghum_smpl_pairs[:, 0], :2].to(device)
@@ -248,7 +243,7 @@ if __name__ == "__main__":
             smpl_lmks = smpl_joints_3d[SMPLX_object.ghum_smpl_pairs[:, 1], :2]
             losses["joint"]["value"] = (
                 torch.norm(ghum_lmks - smpl_lmks, dim=1) * ghum_conf).mean()
-            
+
             # render optimized mesh as normal [-1,1]
             in_tensor["T_normal_F"], in_tensor[
                 "T_normal_B"] = dataset.render_normal(
@@ -392,7 +387,7 @@ if __name__ == "__main__":
         # ------------------------------------------------------------------------------------------------------------------
         # clothing refinement
 
-        if True:
+        if False:
 
             per_data_lst = []
 
@@ -440,12 +435,14 @@ if __name__ == "__main__":
 
             if args.BNI:
 
-                # replace ICON by SMPL to provide depth-prior and side surfaces
-                verts_remesh = in_tensor["smpl_verts"].detach() * torch.tensor([1.0, -1.0, 1.0], device=device)
-                faces_remesh = in_tensor["smpl_faces"].detach()
-                remeshed_mesh = trimesh.Trimesh(verts_remesh.cpu()[0], 
-                                                faces_remesh.cpu()[0], 
-                                                process=False, maintains_order=True)
+                # # replace ICON by SMPL to provide depth-prior and side surfaces
+                # verts_remesh = in_tensor["smpl_verts"].detach() * torch.tensor(
+                #     [1.0, -1.0, 1.0], device=device)
+                # faces_remesh = in_tensor["smpl_faces"].detach()
+                side_mesh = trimesh.Trimesh(verts_remesh.cpu()[0],
+                                            faces_remesh.cpu()[0],
+                                            process=False,
+                                            maintains_order=True)
 
                 # rendering depth map for BNI
                 in_tensor["verts_pr"] = verts_remesh
@@ -462,19 +459,17 @@ if __name__ == "__main__":
                 )
 
                 # BNI process
-                BNI_object = BNI(
-                    dir_path=os.path.join(args.out_dir, cfg.name, "BNI"),
-                    name=data["name"],
-                    in_tensor=in_tensor,
-                    device=device,
-                    mvc=False
-                )
+                BNI_object = BNI(dir_path=os.path.join(args.out_dir, cfg.name,
+                                                       "BNI"),
+                                 name=data["name"],
+                                 in_tensor=in_tensor,
+                                 device=device,
+                                 mvc=True)
 
                 BNI_object.extract_surface()
 
                 # Possion Fusion: invisible ICON regions + visible BNI surfaces
 
-                side_mesh = remeshed_mesh.copy()
                 (xy, z) = verts_remesh.squeeze(0).split([2, 1], dim=1)
                 F_vis = get_visibility(xy, z,
                                        faces_remesh.squeeze(0)[:, [0, 2, 1]])
@@ -660,8 +655,13 @@ if __name__ == "__main__":
                 os.makedirs(os.path.join(args.out_dir, cfg.name, "vid"),
                             exist_ok=True)
 
-                verts_lst = [smpl_obj.vertices, final_mesh.vertices]
-                faces_lst = [smpl_obj.faces, final_mesh.faces]
+                verts_lst = [
+                    smpl_obj.vertices, remeshed_mesh.vertices,
+                    final_mesh.vertices
+                ]
+                faces_lst = [
+                    smpl_obj.faces, remeshed_mesh.faces, final_mesh.faces
+                ]
 
                 # self-rotated video
                 dataset.render.load_meshes(verts_lst, faces_lst)

@@ -18,7 +18,6 @@ python -m lib.dataloader_demo -v -c ./configs/train/pamir.yaml -m {mode}
     <img src="../assets/vedo.gif" width=50%>
 </p>
 
-:warning: Don't support headless mode currently, `unset PYOPENGL_PLATFORM` before training.
 ## Command
 
 ```bash
