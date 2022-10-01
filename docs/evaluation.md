@@ -39,7 +39,7 @@ The qualitative results are located at `./results/icon-filter`
 |P2S(cm)|1.483|1.438|1.431|**1.351**|1.358|
 |NC|0.186|0.119|**0.090**|0.101|0.109|
 
-:boom: ICON-keypoint leverages the core insight **Relative Spatial Encoder** from [KeypointNeRF[1]](https://markomih.github.io/KeypointNeRF/), and replace it with the SMPL-based SDF. This leads to comparable reconstruction quality, but much faster and convenient. 
+:boom: ICON-keypoint leverages the core insight **Relative Spatial Encoder** from [KeypointNeRF](https://markomih.github.io/KeypointNeRF/), and replace it with the SMPL-based SDF. This leads to comparable reconstruction quality, but much faster and convenient. 
 
 <br>
 

@@ -20,8 +20,6 @@ from lib.net import HGPIFuNet
 from lib.common.train_util import *
 from lib.common.render import Render
 from lib.dataset.mesh_util import SMPLX, update_mesh_shape_prior_losses, get_visibility
-import warnings
-import logging
 import torch
 import lib.smplx as smplx
 import numpy as np
@@ -30,10 +28,6 @@ from skimage.transform import resize
 import pytorch_lightning as pl
 
 torch.backends.cudnn.benchmark = True
-
-logging.getLogger("lightning").setLevel(logging.ERROR)
-
-warnings.filterwarnings("ignore")
 
 
 class ICON(pl.LightningModule):
@@ -68,10 +62,19 @@ class ICON(pl.LightningModule):
         ) + 1.0)
         self.resolutions = self.resolutions.astype(np.int16).tolist()
 
-        self.icon_keys = ["smpl_verts", "smpl_faces", "smpl_vis", "smpl_cmap"]
+        self.base_keys = ["smpl_verts", "smpl_faces"]
+        self.feat_names = self.cfg.net.smpl_feats
+
+        self.icon_keys = self.base_keys + [
+            f"smpl_{feat_name}" for feat_name in self.feat_names
+        ]
+        self.keypoint_keys = self.base_keys + [
+            f"smpl_{feat_name}" for feat_name in self.feat_names
+        ]
         self.pamir_keys = [
             "voxel_verts", "voxel_faces", "pad_v_num", "pad_f_num"
         ]
+        self.pifu_keys = []
 
         self.reconEngine = Seg3dLossless(
             query_func=query_func,
@@ -190,14 +193,10 @@ class ICON(pl.LightningModule):
         for name in self.in_total:
             in_tensor_dict.update({name: batch[name]})
 
-        if self.prior_type == "icon":
-            for key in self.icon_keys:
-                in_tensor_dict.update({key: batch[key]})
-        elif self.prior_type == "pamir":
-            for key in self.pamir_keys:
-                in_tensor_dict.update({key: batch[key]})
-        else:
-            pass
+        in_tensor_dict.update({
+            k: batch[k] if k in batch.keys() else None
+            for k in getattr(self, f"{self.prior_type}_keys")
+        })
 
         preds_G, error_G = self.netG(in_tensor_dict)
 
@@ -270,14 +269,10 @@ class ICON(pl.LightningModule):
         for name in self.in_total:
             in_tensor_dict.update({name: batch[name]})
 
-        if self.prior_type == "icon":
-            for key in self.icon_keys:
-                in_tensor_dict.update({key: batch[key]})
-        elif self.prior_type == "pamir":
-            for key in self.pamir_keys:
-                in_tensor_dict.update({key: batch[key]})
-        else:
-            pass
+        in_tensor_dict.update({
+            k: batch[k] if k in batch.keys() else None
+            for k in getattr(self, f"{self.prior_type}_keys")
+        })
 
         preds_G, error_G = self.netG(in_tensor_dict)
 
@@ -558,15 +553,10 @@ class ICON(pl.LightningModule):
             if name in batch.keys():
                 in_tensor_dict.update({name: batch[name]})
 
-        if self.prior_type == "icon":
-            for key in self.icon_keys:
-                if key not in in_tensor_dict.keys():
-                    in_tensor_dict.update({key: batch[key]})
-        elif self.prior_type == "pamir":
-            for key in self.pamir_keys:
-                in_tensor_dict.update({key: batch[key]})
-        else:
-            pass
+        in_tensor_dict.update({
+            k: batch[k] if k in batch.keys() else None
+            for k in getattr(self, f"{self.prior_type}_keys")
+        })
 
         if "T_normal_F" not in in_tensor_dict.keys(
         ) or "T_normal_B" not in in_tensor_dict.keys():
@@ -581,20 +571,6 @@ class ICON(pl.LightningModule):
                 'T_normal_F': T_normal_F,
                 'T_normal_B': T_noraml_B
             })
-
-        if "smpl_vis" not in in_tensor_dict.keys():
-
-            # update the new smpl_vis
-            (xy, z) = batch["smpl_verts"][0].split([2, 1], dim=1)
-
-            smpl_vis = get_visibility(
-                xy,
-                z,
-                torch.as_tensor(batch["smpl_faces"][0]).type_as(
-                    batch["smpl_verts"]).long(),
-            )
-            in_tensor_dict.update(
-                {"smpl_vis": smpl_vis.unsqueeze(0).to(self.device)})
 
         with torch.no_grad():
             features, inter = self.netG.filter(in_tensor_dict,
@@ -740,20 +716,18 @@ class ICON(pl.LightningModule):
             if name in batch.keys():
                 in_tensor_dict.update({name: batch[name]})
 
-        if self.prior_type == "icon":
-            for key in self.icon_keys:
-                in_tensor_dict.update({key: batch[key]})
-        elif self.prior_type == "pamir":
-            for key in self.pamir_keys:
-                in_tensor_dict.update({key: batch[key]})
-        else:
-            pass
+        in_tensor_dict.update({
+            k: batch[k] if k in batch.keys() else None
+            for k in getattr(self, f"{self.prior_type}_keys")
+        })
 
-        features, inter = self.netG.filter(in_tensor_dict, return_inter=True)
-        sdf = self.reconEngine(opt=self.cfg,
-                               netG=self.netG,
-                               features=features,
-                               proj_matrix=None)
+        with torch.no_grad():
+            features, inter = self.netG.filter(in_tensor_dict,
+                                               return_inter=True)
+            sdf = self.reconEngine(opt=self.cfg,
+                                   netG=self.netG,
+                                   features=features,
+                                   proj_matrix=None)
 
         verts_pr, faces_pr = self.reconEngine.export_mesh(sdf)
 

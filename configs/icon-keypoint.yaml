@@ -1,24 +1,23 @@
-name: icon-nofilter
+name: icon-keypoint
 ckpt_dir: "./data/ckpt/"
-resume_path: "./data/ckpt/icon-nofilter.ckpt"
+resume_path: "./data/ckpt/icon-keypoint.ckpt"
 normal_path: "./data/ckpt/normal.ckpt"
 
 test_mode: True
 batch_size: 1
-
 net:
   mlp_dim: [256, 512, 256, 128, 1]
   res_layers: [2,3,4]
   num_stack: 2
-  prior_type: "icon" # icon/pamir/icon
-  use_filter: False
+  prior_type: "keypoint"
+  use_filter: True
   in_geo: (('normal_F',3), ('normal_B',3))
   in_nml: (('image',3), ('T_normal_F',3), ('T_normal_B',3))
-  smpl_feats: ['sdf', 'cmap', 'norm', 'vis']
+  smpl_feats: ['joint', 'vis']
   gtype: 'HGPIFuNet'
-  norm_mlp: 'batch'
+  norm_mlp: 'none'
   hourglass_dim: 6
-  smpl_dim: 7
+  smpl_dim: 72
 
 # user defined
 mcube_res: 512    # occupancy field resolution, higher --> more details

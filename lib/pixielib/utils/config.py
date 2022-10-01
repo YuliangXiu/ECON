@@ -1,6 +1,6 @@
-'''
+"""
 Default config for PIXIE
-'''
+"""
 from yacs.config import CfgNode as CN
 import argparse
 import yaml
@@ -9,56 +9,58 @@ import os
 cfg = CN()
 
 abs_pixie_dir = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+    os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 cfg.pixie_dir = abs_pixie_dir
-cfg.device = 'cuda'
-cfg.device_id = '0'
-cfg.pretrained_modelpath = os.path.join(cfg.pixie_dir, 'data/pixie_data',
-                                        'pixie_model.tar')
+cfg.device = "cuda"
+cfg.device_id = "0"
+cfg.pretrained_modelpath = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
+                                        "pixie_model.tar")
 # smplx parameter settings
 cfg.params = CN()
 cfg.params.body_list = [
-    'body_cam', 'global_pose', 'partbody_pose', 'neck_pose'
+    "body_cam", "global_pose", "partbody_pose", "neck_pose"
 ]
-cfg.params.head_list = ['head_cam', 'tex', 'light']
-cfg.params.head_share_list = ['shape', 'exp', 'head_pose', 'jaw_pose']
-cfg.params.hand_list = ['hand_cam']
-cfg.params.hand_share_list = ['right_wrist_pose',
-                              'right_hand_pose']  # only for right hand
+cfg.params.head_list = ["head_cam", "tex", "light"]
+cfg.params.head_share_list = ["shape", "exp", "head_pose", "jaw_pose"]
+cfg.params.hand_list = ["hand_cam"]
+cfg.params.hand_share_list = [
+    "right_wrist_pose",
+    "right_hand_pose",
+]  # only for right hand
 
 # ---------------------------------------------------------------------------- #
 # Options for Body model
 # ---------------------------------------------------------------------------- #
 cfg.model = CN()
-cfg.model.topology_path = os.path.join(cfg.pixie_dir, 'data/pixie_data',
-                                       'SMPL_X_template_FLAME_uv.obj')
+cfg.model.topology_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
+                                       "SMPL_X_template_FLAME_uv.obj")
 cfg.model.topology_smplxtex_path = os.path.join(cfg.pixie_dir,
-                                                'data/pixie_data',
-                                                'smplx_tex.obj')
+                                                "data/HPS/pixie_data",
+                                                "smplx_tex.obj")
 cfg.model.topology_smplx_hand_path = os.path.join(cfg.pixie_dir,
-                                                  'data/pixie_data',
-                                                  'smplx_hand.obj')
-cfg.model.smplx_model_path = os.path.join(cfg.pixie_dir, 'data/pixie_data',
-                                          'SMPLX_NEUTRAL_2020.npz')
-cfg.model.face_mask_path = os.path.join(cfg.pixie_dir, 'data/pixie_data',
-                                        'uv_face_mask.png')
-cfg.model.face_eye_mask_path = os.path.join(cfg.pixie_dir, 'data/pixie_data',
-                                            'uv_face_eye_mask.png')
-cfg.model.tex_path = os.path.join(cfg.pixie_dir, 'data/pixie_data',
-                                  'FLAME_albedo_from_BFM.npz')
-cfg.model.extra_joint_path = os.path.join(cfg.pixie_dir, 'data/pixie_data',
-                                          'smplx_extra_joints.yaml')
-cfg.model.j14_regressor_path = os.path.join(cfg.pixie_dir, 'data/pixie_data',
-                                            'SMPLX_to_J14.pkl')
+                                                  "data/HPS/pixie_data",
+                                                  "smplx_hand.obj")
+cfg.model.smplx_model_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
+                                          "SMPLX_NEUTRAL_2020.npz")
+cfg.model.face_mask_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
+                                        "uv_face_mask.png")
+cfg.model.face_eye_mask_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
+                                            "uv_face_eye_mask.png")
+cfg.model.tex_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
+                                  "FLAME_albedo_from_BFM.npz")
+cfg.model.extra_joint_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
+                                          "smplx_extra_joints.yaml")
+cfg.model.j14_regressor_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
+                                            "SMPLX_to_J14.pkl")
 cfg.model.flame2smplx_cached_path = os.path.join(cfg.pixie_dir,
-                                                 'data/pixie_data',
-                                                 'flame2smplx_tex_1024.npy')
-cfg.model.smplx_tex_path = os.path.join(cfg.pixie_dir, 'data/pixie_data',
-                                        'smplx_tex.png')
-cfg.model.mano_ids_path = os.path.join(cfg.pixie_dir, 'data/pixie_data',
-                                       'MANO_SMPLX_vertex_ids.pkl')
-cfg.model.flame_ids_path = os.path.join(cfg.pixie_dir, 'data/pixie_data',
-                                        'SMPL-X__FLAME_vertex_ids.npy')
+                                                 "data/HPS/pixie_data",
+                                                 "flame2smplx_tex_1024.npy")
+cfg.model.smplx_tex_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
+                                        "smplx_tex.png")
+cfg.model.mano_ids_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
+                                       "MANO_SMPLX_vertex_ids.pkl")
+cfg.model.flame_ids_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data",
+                                        "SMPL-X__FLAME_vertex_ids.npy")
 cfg.model.uv_size = 256
 cfg.model.n_shape = 200
 cfg.model.n_tex = 50
@@ -66,10 +68,10 @@ cfg.model.n_exp = 50
 cfg.model.n_body_cam = 3
 cfg.model.n_head_cam = 3
 cfg.model.n_hand_cam = 3
-cfg.model.tex_type = 'BFM'  # BFM, FLAME, albedoMM
-cfg.model.uvtex_type = 'SMPLX'  # FLAME or SMPLX
+cfg.model.tex_type = "BFM"  # BFM, FLAME, albedoMM
+cfg.model.uvtex_type = "SMPLX"  # FLAME or SMPLX
 cfg.model.use_tex = False  # whether to use flame texture model
-cfg.model.flame_tex_path = ''
+cfg.model.flame_tex_path = ""
 
 # pose
 cfg.model.n_global_pose = 3 * 2
@@ -89,7 +91,7 @@ cfg.model.check_pose = True
 # Options for Dataset
 # ---------------------------------------------------------------------------- #
 cfg.dataset = CN()
-cfg.dataset.source = ['body', 'head', 'hand']
+cfg.dataset.source = ["body", "head", "hand"]
 
 # head/face dataset
 cfg.dataset.head = CN()
@@ -124,56 +126,56 @@ cfg.dataset.hand.trans_scale = 0.4
 cfg.network = CN()
 cfg.network.encoder = CN()
 cfg.network.encoder.body = CN()
-cfg.network.encoder.body.type = 'hrnet'
+cfg.network.encoder.body.type = "hrnet"
 cfg.network.encoder.head = CN()
-cfg.network.encoder.head.type = 'resnet50'
+cfg.network.encoder.head.type = "resnet50"
 cfg.network.encoder.hand = CN()
-cfg.network.encoder.hand.type = 'resnet50'
+cfg.network.encoder.hand.type = "resnet50"
 
 cfg.network.regressor = CN()
 cfg.network.regressor.head_share = CN()
-cfg.network.regressor.head_share.type = 'mlp'
+cfg.network.regressor.head_share.type = "mlp"
 cfg.network.regressor.head_share.channels = [1024, 1024]
 cfg.network.regressor.hand_share = CN()
-cfg.network.regressor.hand_share.type = 'mlp'
+cfg.network.regressor.hand_share.type = "mlp"
 cfg.network.regressor.hand_share.channels = [1024, 1024]
 cfg.network.regressor.body = CN()
-cfg.network.regressor.body.type = 'mlp'
+cfg.network.regressor.body.type = "mlp"
 cfg.network.regressor.body.channels = [1024]
 cfg.network.regressor.head = CN()
-cfg.network.regressor.head.type = 'mlp'
+cfg.network.regressor.head.type = "mlp"
 cfg.network.regressor.head.channels = [1024]
 cfg.network.regressor.hand = CN()
-cfg.network.regressor.hand.type = 'mlp'
+cfg.network.regressor.hand.type = "mlp"
 cfg.network.regressor.hand.channels = [1024]
 
 cfg.network.extractor = CN()
 cfg.network.extractor.head_share = CN()
-cfg.network.extractor.head_share.type = 'mlp'
+cfg.network.extractor.head_share.type = "mlp"
 cfg.network.extractor.head_share.channels = []
 cfg.network.extractor.left_hand_share = CN()
-cfg.network.extractor.left_hand_share.type = 'mlp'
+cfg.network.extractor.left_hand_share.type = "mlp"
 cfg.network.extractor.left_hand_share.channels = []
 cfg.network.extractor.right_hand_share = CN()
-cfg.network.extractor.right_hand_share.type = 'mlp'
+cfg.network.extractor.right_hand_share.type = "mlp"
 cfg.network.extractor.right_hand_share.channels = []
 
 cfg.network.moderator = CN()
 cfg.network.moderator.head_share = CN()
 cfg.network.moderator.head_share.detach_inputs = False
 cfg.network.moderator.head_share.detach_feature = False
-cfg.network.moderator.head_share.type = 'temp-softmax'
+cfg.network.moderator.head_share.type = "temp-softmax"
 cfg.network.moderator.head_share.channels = [1024, 1024]
 cfg.network.moderator.head_share.reduction = 4
-cfg.network.moderator.head_share.scale_type = 'scalars'
+cfg.network.moderator.head_share.scale_type = "scalars"
 cfg.network.moderator.head_share.scale_init = 1.0
 cfg.network.moderator.hand_share = CN()
 cfg.network.moderator.hand_share.detach_inputs = False
 cfg.network.moderator.hand_share.detach_feature = False
-cfg.network.moderator.hand_share.type = 'temp-softmax'
+cfg.network.moderator.hand_share.type = "temp-softmax"
 cfg.network.moderator.hand_share.channels = [1024, 1024]
 cfg.network.moderator.hand_share.reduction = 4
-cfg.network.moderator.hand_share.scale_type = 'scalars'
+cfg.network.moderator.hand_share.scale_type = "scalars"
 cfg.network.moderator.hand_share.scale_init = 0.0
 
 
@@ -192,7 +194,7 @@ def update_cfg(cfg, cfg_file):
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--cfg', type=str, help='cfg file path')
+    parser.add_argument("--cfg", type=str, help="cfg file path")
 
     args = parser.parse_args()
     cfg = get_cfg_defaults()

@@ -23,6 +23,7 @@ logging.getLogger("trimesh").setLevel(logging.ERROR)
 
 from tqdm.auto import tqdm
 from lib.common.render import query_color, image2vid
+from lib.renderer.mesh import compute_normal_batch
 from lib.common.config import cfg
 from lib.common.cloth_extraction import extract_cloth
 from lib.dataset.mesh_util import (load_checkpoint,
@@ -76,16 +77,8 @@ if __name__ == "__main__":
     cfg.merge_from_file("./lib/pymaf/configs/pymaf_config.yaml")
 
     cfg_show_list = [
-        "test_gpus",
-        [args.gpu_device],
-        "mcube_res",
-        256,
-        "clean_mesh",
-        True,
-        "test_mode",
-        True,
-        "batch_size",
-        1
+        "test_gpus", [args.gpu_device], "mcube_res", 256, "clean_mesh", True,
+        "test_mode", True, "batch_size", 1
     ]
 
     cfg.merge_from_list(cfg_show_list)
@@ -211,13 +204,14 @@ if __name__ == "__main__":
                     betas=optimed_betas,
                     body_pose=optimed_pose_mat,
                     global_orient=optimed_orient_mat,
+                    transl=optimed_trans,
                     pose2rot=False,
                 )
 
-                smpl_verts = (
-                    (smpl_out.vertices) + optimed_trans) * data["scale"]
+                smpl_verts = smpl_out.vertices * data["scale"]
+                smpl_joints = smpl_out.joints * data["scale"]
             else:
-                smpl_verts, _, _ = dataset.smpl_model(
+                smpl_verts, smpl_landmarks, smpl_joints = dataset.smpl_model(
                     shape_params=optimed_betas,
                     expression_params=tensor2variable(data["exp"], device),
                     body_pose=optimed_pose_mat,
@@ -230,6 +224,20 @@ if __name__ == "__main__":
                 )
 
                 smpl_verts = (smpl_verts + optimed_trans) * data["scale"]
+                smpl_joints = (smpl_joints + optimed_trans) * data["scale"]
+
+            smpl_joints *= torch.tensor([1.0, 1.0, -1.0]).to(device)
+
+            if data["type"] == "smpl":
+                in_tensor["smpl_joint"] = smpl_joints[:, :24, :]
+            elif data["type"] == "smplx" and dataset_param[
+                    "hps_type"] != "pixie":
+                in_tensor["smpl_joint"] = smpl_joints[:, dataset.
+                                                      smpl_joint_ids_24, :]
+            else:
+                in_tensor[
+                    "smpl_joint"] = smpl_joints[:, dataset.
+                                                smpl_joint_ids_24_pixie, :]
 
             # render optimized mesh (normal, T_normal, image [-1,1])
             in_tensor["T_normal_F"], in_tensor[
@@ -395,6 +403,12 @@ if __name__ == "__main__":
         in_tensor.update(
             dataset.compute_vis_cmap(in_tensor["smpl_verts"][0],
                                      in_tensor["smpl_faces"][0]))
+
+        in_tensor.update({
+            "smpl_norm":
+            compute_normal_batch(in_tensor["smpl_verts"],
+                                 in_tensor["smpl_faces"])
+        })
 
         if cfg.net.prior_type == "pamir":
             in_tensor.update(

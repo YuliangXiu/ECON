@@ -132,6 +132,7 @@ cd ICON
 #   "pamir"           reimplemented PaMIR
 #   "icon-filter"     ICON w/ global encoder (continous local wrinkles)
 #   "icon-nofilter"   ICON w/o global encoder (correct global pose)
+#   "icon-keypoint"   ICON w/ relative-spatial encoding (insight from KeypointNeRF)
 
 python -m apps.infer -cfg ./configs/icon-filter.yaml -gpu 0 -in_dir ./examples -out_dir ./results -export_video -loop_smpl 100 -loop_cloth 200 -hps_type pymaf
 

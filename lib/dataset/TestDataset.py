@@ -19,7 +19,7 @@ from lib.pixielib.utils.config import cfg as pixie_cfg
 from lib.pixielib.pixie import PIXIE
 import lib.smplx as smplx
 from lib.pare.pare.core.tester import PARETester
-from lib.pymaf.utils.geometry import rotation_matrix_to_angle_axis, batch_rodrigues
+from lib.pymaf.utils.geometry import rot6d_to_rotmat, batch_rodrigues, rotation_matrix_to_angle_axis
 from lib.pymaf.utils.imutils import process_image
 from lib.pymaf.core import path_config
 from lib.pymaf.models import pymaf_net
@@ -76,6 +76,11 @@ class TestDataset():
         # smpl related
         self.smpl_data = SMPLX()
 
+        # smpl-smplx correspondence
+        self.smpl_joint_ids_24 = np.arange(22).tolist() + [68, 73]
+        self.smpl_joint_ids_24_pixie = np.arange(22).tolist() + [
+            68 + 61, 72 + 68
+        ]
         self.get_smpl_model = lambda smpl_type, smpl_gender: smplx.create(
             model_path=self.smpl_data.model_dir,
             gender=smpl_gender,
@@ -155,7 +160,7 @@ class TestDataset():
         smpl_model = TetraSMPLModel(smpl_path, tetra_path, 'adult')
 
         pose = torch.cat([global_orient[0], body_pose[0]], dim=0)
-        smpl_model.set_params(rotation_matrix_to_angle_axis(pose),
+        smpl_model.set_params(rotation_matrix_to_angle_axis(rot6d_to_rotmat(pose)),
                               beta=betas[0])
 
         verts = np.concatenate(
@@ -238,6 +243,7 @@ class TestDataset():
             data_dict['body_pose'] = output['rotmat'][:, 1:]
             data_dict['global_orient'] = output['rotmat'][:, 0:1]
             data_dict['smpl_verts'] = output['verts']
+            data_dict["type"] = "smpl"
 
         elif self.hps_type == 'pare':
             data_dict['body_pose'] = preds_dict['pred_pose'][:, 1:]
@@ -245,6 +251,7 @@ class TestDataset():
             data_dict['betas'] = preds_dict['pred_shape']
             data_dict['smpl_verts'] = preds_dict['smpl_vertices']
             scale, tranX, tranY = preds_dict['pred_cam'][0, :3]
+            data_dict["type"] = "smpl"
 
         elif self.hps_type == 'pixie':
             data_dict.update(preds_dict)
@@ -253,6 +260,7 @@ class TestDataset():
             data_dict['betas'] = preds_dict['shape']
             data_dict['smpl_verts'] = preds_dict['vertices']
             scale, tranX, tranY = preds_dict['cam'][0, :3]
+            data_dict["type"] = "smplx"
 
         elif self.hps_type == 'hybrik':
             data_dict['body_pose'] = preds_dict['pred_theta_mats'][:, 1:]
@@ -261,6 +269,7 @@ class TestDataset():
             data_dict['smpl_verts'] = preds_dict['pred_vertices']
             scale, tranX, tranY = preds_dict['pred_camera'][0, :3]
             scale = scale * 2
+            data_dict["type"] = "smpl"
 
         elif self.hps_type == 'bev':
             data_dict['betas'] = torch.from_numpy(
@@ -275,10 +284,11 @@ class TestDataset():
             tranX = preds_dict['cam_trans'][0, 0]
             tranY = preds_dict['cam'][0, 1] + 0.28
             scale = preds_dict['cam'][0, 0] * 1.1
+            data_dict["type"] = "smpl"
 
         data_dict['scale'] = scale
         data_dict['trans'] = torch.tensor([tranX, tranY,
-                                           0.0]).to(self.device).float()
+                                           0.0]).unsqueeze(0).to(self.device).float()
 
         # data_dict info (key-shape):
         # scale, tranX, tranY - tensor.float

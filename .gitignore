@@ -1,5 +1,5 @@
 data/*/*
-data/thuman*
+data/*
 !data/tbfo.ttf
 __pycache__
 debug/
