@@ -841,9 +841,9 @@ class SMPLX(nn.Module):
             target = np.asarray(target)
             self.register_buffer("source_idxs", torch.from_numpy(source))
             self.register_buffer("target_idxs", torch.from_numpy(target))
-            joint_regressor = torch.from_numpy(j14_regressor).to(
-                dtype=torch.float32)
-            self.register_buffer("extra_joint_regressor", joint_regressor)
+            self.register_buffer(
+                "extra_joint_regressor",
+                torch.from_numpy(j14_regressor).to(torch.float32))
             self.part_indices = part_indices
 
     def forward(
@@ -950,12 +950,11 @@ class SMPLX(nn.Module):
             final_joint_set.append(extra_joints)
         # Create the final joint set
         joints = torch.cat(final_joint_set, dim=1)
-        if self.use_joint_regressor:
-            reg_joints = torch.einsum("ji,bik->bjk",
-                                      self.extra_joint_regressor, vertices)
-            joints[:, self.source_idxs] = (
-                joints[:, self.source_idxs].detach() * 0.0 +
-                reg_joints[:, self.target_idxs] * 1.0)
+        # if self.use_joint_regressor:
+        #     reg_joints = torch.einsum("ji,bik->bjk",
+        #                               self.extra_joint_regressor, vertices)
+        #     joints[:, self.source_idxs] = reg_joints[:, self.target_idxs]
+
         return vertices, landmarks, joints
 
     def pose_abs2rel(self, global_pose, body_pose, abs_joint="head"):

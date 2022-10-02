@@ -19,7 +19,7 @@ from lib.pixielib.utils.config import cfg as pixie_cfg
 from lib.pixielib.pixie import PIXIE
 import lib.smplx as smplx
 from lib.pare.pare.core.tester import PARETester
-from lib.pymaf.utils.geometry import rotation_matrix_to_angle_axis, batch_rodrigues
+from lib.pymaf.utils.geometry import rotation_matrix_to_angle_axis, batch_rodrigues, rot6d_to_rotmat
 from lib.pymaf.utils.imutils import process_image
 from lib.pymaf.core import path_config
 from lib.pymaf.models import pymaf_net
@@ -73,12 +73,36 @@ class TestDataset:
 
         # smpl-smplx correspondence
         self.smpl_joint_ids_24 = np.arange(22).tolist() + [68, 73]
-        self.smpl_joint_ids_24_pixie = np.arange(22).tolist() + [68+61, 72+68]
+        self.smpl_joint_ids_24_pixie = np.arange(22).tolist() + [
+            61 + 68, 72 + 68
+        ]
         self.smpl_joint_ids_45 = (np.arange(22).tolist() + [68, 73] +
                                   np.arange(55, 76).tolist())
 
         self.extra_joint_ids = (np.array([
-            61,72,66,69,58,68,57,56,64,59,67,75,70,65,60,61,63,62,76,71,72,74,73,
+            61,
+            72,
+            66,
+            69,
+            58,
+            68,
+            57,
+            56,
+            64,
+            59,
+            67,
+            75,
+            70,
+            65,
+            60,
+            61,
+            63,
+            62,
+            76,
+            71,
+            72,
+            74,
+            73,
         ]) + 68)
 
         self.smpl_joint_ids_45_pixie = (np.arange(22).tolist() +
@@ -166,7 +190,8 @@ class TestDataset:
         smpl_model = TetraSMPLModel(smpl_path, tetra_path, "adult")
 
         pose = torch.cat([global_orient[0], body_pose[0]], dim=0)
-        smpl_model.set_params(rotation_matrix_to_angle_axis(pose),
+        smpl_model.set_params(rotation_matrix_to_angle_axis(
+            rot6d_to_rotmat(pose)),
                               beta=betas[0])
 
         verts = (np.concatenate([smpl_model.verts, smpl_model.verts_added],
@@ -328,7 +353,7 @@ class TestDataset:
             smpl_verts = (((smpl_out.vertices + data["trans"]) *
                            data["scale"]).detach().cpu().numpy()[0])
         else:
-            smpl_verts, _, _ = self.smpl_model(
+            smpl_verts, _, smpl_joints = self.smpl_model(
                 shape_params=data["betas"],
                 expression_params=data["exp"],
                 body_pose=data["body_pose"],
@@ -381,7 +406,7 @@ class TestDataset:
 
 if __name__ == "__main__":
 
-    cfg.merge_from_file("./configs/icon-filter.yaml")
+    cfg.merge_from_file("./configs/icon-keypoint.yaml")
     cfg.merge_from_file("./lib/pymaf/configs/pymaf_config.yaml")
 
     cfg_show_list = ["test_gpus", ["0"], "mcube_res", 512, "clean_mesh", False]
@@ -395,9 +420,11 @@ if __name__ == "__main__":
     dataset = TestDataset(
         {
             "image_dir": "./examples",
+            "seg_dir": None,
+            "colab": False,
             "use_det": True,  # w/ or w/o detection
             "use_seg": True,  # w/ or w/o segmentation
-            "hps_type": "bev",  # pymaf/pare/pixie/hybrik/bev
+            "hps_type": "pixie",  # pymaf/pare/pixie/hybrik/bev
         },
         device,
     )
