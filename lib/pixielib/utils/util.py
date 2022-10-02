@@ -500,7 +500,6 @@ def save_pkl(savepath, params, ind=0):
             out_data[k] = v[ind].detach().cpu().numpy()
         else:
             out_data[k] = v
-    # import ipdb; ipdb.set_trace()
     with open(savepath, "wb") as f:
         pickle.dump(out_data, f, protocol=2)
 

@@ -30,7 +30,6 @@ wandb
 hydra-core
 mediapipe
 tinyobjloader==2.0.0rc7
-git+https://github.com/Project-Splinter/human_det
 git+https://github.com/facebookresearch/pytorch3d.git@stable
 git+https://github.com/YuliangXiu/neural_voxelization_layer.git
 git+https://github.com/NVIDIAGameWorks/kaolin.git

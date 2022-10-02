@@ -178,7 +178,6 @@ class BasicBlock(nn.Module):
 
 def copy_parameter_from_resnet(model, resnet_dict):
     cur_state_dict = model.state_dict()
-    # import ipdb; ipdb.set_trace()
     for name, param in list(resnet_dict.items())[0:None]:
         if name not in cur_state_dict:
             # print(name, ' not available in reconstructed resnet')

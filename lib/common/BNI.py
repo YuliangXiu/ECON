@@ -17,17 +17,17 @@ from pytorch3d.io import IO
 
 class BNI:
 
-    def __init__(self, dir_path, name, in_tensor, device, mvc=False):
+    def __init__(self, dir_path, name, BNI_dict, device, mvc=False):
 
         self.scale = 256.0
 
-        self.normal_front = tensor2arr(in_tensor["normal_F"])
-        self.normal_back = tensor2arr(in_tensor["normal_B"])
-        self.mask = tensor2arr(in_tensor["image"], True) > 0.
+        self.normal_front = BNI_dict["normal_F"]
+        self.normal_back = BNI_dict["normal_B"]
+        self.mask = BNI_dict["mask"]
 
-        self.depth_front = (depth2arr(in_tensor["depth_F"]) - 100.0) * self.scale
-        self.depth_back = (100.0 - depth2arr(in_tensor["depth_B"])) * self.scale
-        self.depth_mask = depth2arr(in_tensor["depth_F"]) > -1.0
+        self.depth_front = BNI_dict["depth_F"]
+        self.depth_back = BNI_dict["depth_B"]
+        self.depth_mask = BNI_dict["depth_mask"]
 
         # hparam
         self.k = 2
@@ -113,57 +113,30 @@ class BNI:
         cv2.imwrite(osp.join(self.export_dir, "depth_back.png"),
                     depth2png(-(self.depth_back / self.scale - 100.)))
 
-    @staticmethod
-    def load_all(export_dir, name):
-
-        F_verts = torch.load(os.path.join(export_dir, f"{name}_F_verts.pt"))
-        F_faces = torch.load(os.path.join(export_dir, f"{name}_F_faces.pt"))
-        B_verts = torch.load(os.path.join(export_dir, f"{name}_B_verts.pt"))
-        B_faces = torch.load(os.path.join(export_dir, f"{name}_B_faces.pt"))
-
-        return F_verts, F_faces, B_verts, B_faces
-
-    @staticmethod
-    def export_all(F_verts, F_faces, B_verts, B_faces, export_dir, name):
-
-        torch.save(F_verts, os.path.join(export_dir, f"{name}_F_verts.pt"))
-        torch.save(F_faces, os.path.join(export_dir, f"{name}_F_faces.pt"))
-        torch.save(B_verts, os.path.join(export_dir, f"{name}_B_verts.pt"))
-        torch.save(B_faces, os.path.join(export_dir, f"{name}_B_faces.pt"))
-
     # code: https://github.com/hoshino042/bilateral_normal_integration
     # paper: Bilateral Normal Integration
 
-    def extract_surface(self):
+    def extract_surface(self, idx):
 
-        if not os.path.exists(
-                os.path.join(self.export_dir, f"{self.name}_F_verts.pt")):
+        F_verts, F_faces = bilateral_normal_integration(
+            normal_map=self.normal_front,
+            normal_mask=self.mask,
+            k=self.k,
+            lambda1=self.lambda1,
+            depth_map=self.depth_front,
+            depth_mask=self.depth_mask,
+            label="Front",
+        )
 
-            F_verts, F_faces = bilateral_normal_integration(
-                normal_map=self.normal_front,
-                normal_mask=self.mask,
-                k=self.k,
-                lambda1=self.lambda1,
-                depth_map=self.depth_front,
-                depth_mask=self.depth_mask,
-                label="Front",
-            )
-
-            B_verts, B_faces = bilateral_normal_integration(
-                normal_map=self.normal_back,
-                normal_mask=self.mask,
-                k=self.k,
-                lambda1=self.lambda1,
-                depth_map=self.depth_back,
-                depth_mask=self.depth_mask,
-                label="Back",
-            )
-            self.export_all(F_verts, F_faces, B_verts, B_faces,
-                            self.export_dir, self.name)
-        else:
-
-            F_verts, F_faces, B_verts, B_faces = self.load_all(
-                self.export_dir, self.name)
+        B_verts, B_faces = bilateral_normal_integration(
+            normal_map=self.normal_back,
+            normal_mask=self.mask,
+            k=self.k,
+            lambda1=self.lambda1,
+            depth_map=self.depth_back,
+            depth_mask=self.depth_mask,
+            label="Back",
+        )
 
         F_verts = verts_inverse_transform(F_verts, self.scale)
         B_verts = verts_inverse_transform(B_verts, self.scale)
@@ -182,7 +155,7 @@ class BNI:
 
         IO().save_mesh(
             self.F_B_surfaces,
-            os.path.join(self.export_dir, f"{self.name}_F_B_surface.obj"),
+            os.path.join(self.export_dir, f"{self.name}_{idx}_F_B_surface.obj"),
         )
 
 

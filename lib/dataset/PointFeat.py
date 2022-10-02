@@ -26,9 +26,8 @@ class PointFeat:
 
         if verts.shape[1] == 10475:
             faces = faces[:, ~SMPLX().smplx_eyeball_fid]
-            mouth_faces = (torch.as_tensor(
-                SMPLX().smplx_mouth_fid).unsqueeze(0).repeat(
-                    self.Bsize, 1, 1).to(self.device))
+            mouth_faces = (torch.as_tensor(SMPLX().smplx_mouth_fid).unsqueeze(0).repeat(
+                self.Bsize, 1, 1).to(self.device))
             self.faces = torch.cat([faces, mouth_faces], dim=1).long()
 
         self.verts = verts
@@ -42,11 +41,10 @@ class PointFeat:
         del_keys = ["smpl_verts", "smpl_faces", "smpl_joint"]
 
         residues, pts_ind, _ = point_to_mesh_distance(points, self.triangles)
-        closest_triangles = torch.gather(
-            self.triangles, 1,
-            pts_ind[:, :, None, None].expand(-1, -1, 3, 3)).view(-1, 3, 3)
-        bary_weights = barycentric_coordinates_of_projection(
-            points.view(-1, 3), closest_triangles)
+        closest_triangles = torch.gather(self.triangles, 1, pts_ind[:, :, None,
+                                                                    None].expand(-1, -1, 3,
+                                                                                 3)).view(-1, 3, 3)
+        bary_weights = barycentric_coordinates_of_projection(points.view(-1, 3), closest_triangles)
 
         out_dict = {}
 
@@ -59,13 +57,11 @@ class PointFeat:
                 feat_arr = feats[feat_key]
                 feat_dim = feat_arr.shape[-1]
                 feat_tri = face_vertices(feat_arr, self.faces)
-                closest_feats = torch.gather(
-                    feat_tri, 1,
-                    pts_ind[:, :, None,
-                            None].expand(-1, -1, 3,
-                                         feat_dim)).view(-1, 3, feat_dim)
-                pts_feats = ((closest_feats *
-                              bary_weights[:, :, None]).sum(1).unsqueeze(0))
+                closest_feats = torch.gather(feat_tri, 1,
+                                             pts_ind[:, :, None,
+                                                     None].expand(-1, -1, 3,
+                                                                  feat_dim)).view(-1, 3, feat_dim)
+                pts_feats = ((closest_feats * bary_weights[:, :, None]).sum(1).unsqueeze(0))
                 out_dict[feat_key.split("_")[1]] = pts_feats
 
             else:
@@ -73,24 +69,39 @@ class PointFeat:
 
         if "sdf" in out_dict.keys():
             pts_dist = torch.sqrt(residues) / torch.sqrt(torch.tensor(3))
-            pts_signs = 2.0 * (
-                check_sign(self.verts, self.faces[0], points).float() - 0.5)
+            pts_signs = 2.0 * (check_sign(self.verts, self.faces[0], points).float() - 0.5)
             pts_sdf = (pts_dist * pts_signs).unsqueeze(-1)
             out_dict["sdf"] = pts_sdf
+
+        if "nsdf" in out_dict.keys():
+
+            feat_normals = face_vertices(self.mesh.verts_normals_padded(), self.faces)
+            closest_normals = torch.gather(feat_normals, 1, pts_ind[:, :, None,
+                                                                    None].expand(-1, -1, 3,
+                                                                                 3)).view(-1, 3, 3)
+            shoot_verts = ((closest_triangles * bary_weights[:, :, None]).sum(1).unsqueeze(0))
+            shoot_normals = ((closest_normals * bary_weights[:, :, None]).sum(1).unsqueeze(0))
+
+            shoot_normals = shoot_normals / torch.norm(shoot_normals, dim=-1, keepdim=True)
+            pts2shoot_normals = points - shoot_verts
+            pts2shoot_normals = pts2shoot_normals / torch.norm(
+                pts2shoot_normals, dim=-1, keepdim=True)
+
+            angles = (pts2shoot_normals * shoot_normals).sum(dim=-1)
+
+            return (torch.sqrt(residues), angles)
 
         if "vis" in out_dict.keys():
             out_dict["vis"] = out_dict["vis"].ge(1e-1).float()
 
         if "norm" in out_dict.keys():
-            pts_norm = out_dict["norm"] * torch.tensor([-1.0, 1.0, -1.0]).to(
-                self.device)
+            pts_norm = out_dict["norm"] * torch.tensor([-1.0, 1.0, -1.0]).to(self.device)
             out_dict["norm"] = F.normalize(pts_norm, dim=2)
 
         if "cmap" in out_dict.keys():
             out_dict["cmap"] = out_dict["cmap"].clamp_(min=0.0, max=1.0)
 
         for out_key in out_dict.keys():
-            out_dict[out_key] = out_dict[out_key].view(
-                self.Bsize, -1, out_dict[out_key].shape[-1])
+            out_dict[out_key] = out_dict[out_key].view(self.Bsize, -1, out_dict[out_key].shape[-1])
 
         return out_dict

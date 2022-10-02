@@ -19,7 +19,6 @@ from pytorch3d.renderer import (
     blending,
     look_at_view_transform,
     FoVOrthographicCameras,
-    PointLights,
     RasterizationSettings,
     PointsRasterizationSettings,
     PointsRenderer,
@@ -27,13 +26,12 @@ from pytorch3d.renderer import (
     PointsRasterizer,
     MeshRenderer,
     MeshRasterizer,
-    SoftPhongShader,
     SoftSilhouetteShader,
     TexturesVertex,
 )
 from pytorch3d.renderer.mesh import TexturesVertex
 from pytorch3d.structures import Meshes
-from lib.dataset.mesh_util import get_visibility
+from lib.dataset.mesh_util import get_visibility, blend_rgb_norm
 
 import lib.common.render_utils as util
 import torch
@@ -235,6 +233,9 @@ class Render:
             verts = verts.unsqueeze(0).float()
         if faces.ndimension() == 2:
             faces = faces.unsqueeze(0).long()
+            
+        if verts.shape[0] != faces.shape[0]:
+            faces = faces.repeat(verts.shape[0], 1, 1)
 
         verts = verts.to(self.device)
         faces = faces.to(self.device)
@@ -278,7 +279,9 @@ class Render:
         images = []
 
         for cam_id in range(len(self.cam_pos)):
+            
             if cam_id in cam_ids:
+                
                 self.init_renderer(self.get_camera(cam_id), type, bg)
 
                 if type == "depth":
@@ -287,11 +290,11 @@ class Render:
 
                 elif type == "rgb":
                     image = self.renderer(self.meshes[0])
-                    image = (image[0:1, :, :, :3].permute(0, 3, 1, 2) -
+                    image = (image[:, :, :, :3].permute(0, 3, 1, 2) -
                              0.5) * 2.0
 
                 elif type == "mask":
-                    image = self.renderer(self.meshes[0])[0:1, :, :, 3]
+                    image = self.renderer(self.meshes[0])[:, :, :, 3]
 
                 if cam_id == 2 and len(cam_ids) == 2:
                     image = torch.flip(image, dims=[len(image.shape) - 1])
@@ -342,6 +345,47 @@ class Render:
                                  255.0).cpu().numpy().astype(np.uint8))
 
                 img_lst.append(rendered_img)
+            final_img = np.concatenate(img_lst, axis=1)
+            video.write(final_img)
+
+        video.release()
+        self.reload_cam()
+        
+    def get_rendered_video_multi(self, image, data, save_path):
+
+        self.cam_pos = []
+        
+        for angle in range(0, 360, 3):
+            self.cam_pos.append((
+                100.0 * math.cos(np.pi / 180 * angle),
+                self.mesh_y_center,
+                100.0 * math.sin(np.pi / 180 * angle),
+            ))
+
+        old_shape = np.array(image.shape[:2])
+
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        video = cv2.VideoWriter(
+            save_path,
+            fourcc,
+            10,
+            (3 * old_shape[1], old_shape[0]),
+        )
+
+        pbar = tqdm(range(len(self.cam_pos)))
+        pbar.set_description(
+            colored(f"exporting video {os.path.basename(save_path)}...",
+                    "blue"))
+        
+        for cam_id in pbar:
+            self.init_renderer(self.get_camera(cam_id), "mesh", "gray")
+
+            img_lst = [image.astype(np.uint8)[:,:,[2,1,0]]]
+            norm_lst = []
+            for mesh in self.meshes:
+                norm_lst.append(self.renderer(mesh)[..., :3].permute(0, 3, 1, 2))
+
+            img_lst.append(blend_rgb_norm(torch.stack(norm_lst), data))
             final_img = np.concatenate(img_lst, axis=1)
             video.write(final_img)
 

@@ -24,10 +24,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-cfg",
-                        "--config_file",
-                        type=str,
-                        help="path of the yaml config file")
+    parser.add_argument("-cfg", "--config_file", type=str, help="path of the yaml config file")
     parser.add_argument("-test", "--test_mode", action="store_true")
     parser.add_argument("-overfit", "--overfit_mode", action="store_true")
     args = parser.parse_args()
@@ -74,36 +71,22 @@ if __name__ == "__main__":
                                  metrics="grey82")
     progress_bar = RichProgressBar(theme=theme)
 
-    profiler = AdvancedProfiler(dirpath=osp.join(cfg.results_path, cfg.name),
-                                filename="perf_logs")
+    profiler = AdvancedProfiler(dirpath=osp.join(cfg.results_path, cfg.name), filename="perf_logs")
 
     trainer_kwargs = {
-        "accelerator":
-        "gpu",
-        "devices":
-        1,
-        "reload_dataloaders_every_n_epochs":
-        1,
-        "sync_batchnorm":
-        True,
-        "benchmark":
-        True,
-        "profiler":
-        profiler,
-        "logger":
-        wandb_logger,
-        "num_sanity_val_steps":
-        cfg.num_sanity_val_steps,
-        "limit_train_batches":
-        cfg.dataset.train_bsize,
-        "limit_val_batches":
-        cfg.dataset.val_bsize if not cfg.overfit else 0.001,
-        "limit_test_batches":
-        cfg.dataset.test_bsize if not cfg.overfit else 0.0,
-        "fast_dev_run":
-        cfg.fast_dev,
-        "max_epochs":
-        cfg.num_epoch,
+        "accelerator": "gpu",
+        "devices": 1,
+        "reload_dataloaders_every_n_epochs": 1,
+        "sync_batchnorm": True,
+        "benchmark": True,
+        "profiler": profiler,
+        "logger": wandb_logger,
+        "num_sanity_val_steps": cfg.num_sanity_val_steps,
+        "limit_train_batches": cfg.dataset.train_bsize,
+        "limit_val_batches": cfg.dataset.val_bsize if not cfg.overfit else 0.001,
+        "limit_test_batches": cfg.dataset.test_bsize if not cfg.overfit else 0.0,
+        "fast_dev_run": cfg.fast_dev,
+        "max_epochs": cfg.num_epoch,
         "callbacks": [
             LearningRateMonitor(logging_interval="step"),
             checkpoint,
@@ -118,10 +101,8 @@ if __name__ == "__main__":
         train_len = datamodule.data_size["train"]
         val_len = datamodule.data_size["val"]
         trainer_kwargs.update({
-            "log_every_n_steps":
-            int(cfg.freq_plot * train_len // cfg.batch_size),
-            "val_check_interval":
-            int(cfg.freq_eval * train_len / cfg.batch_size),
+            "log_every_n_steps": int(cfg.freq_plot * train_len // cfg.batch_size),
+            "val_check_interval": int(cfg.freq_eval * train_len / cfg.batch_size),
         })
 
         if cfg.overfit:
@@ -141,10 +122,7 @@ if __name__ == "__main__":
     trainer = SubTrainer(**trainer_kwargs)
 
     # load checkpoints
-    load_networks(cfg,
-                  model,
-                  mlp_path=cfg.resume_path,
-                  normal_path=cfg.normal_path)
+    load_networks(cfg, model, mlp_path=cfg.resume_path, normal_path=cfg.normal_path)
 
     if not cfg.test_mode:
         trainer.fit(model=model, datamodule=datamodule)

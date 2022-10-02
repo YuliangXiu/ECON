@@ -34,28 +34,20 @@ class Normal(pl.LightningModule):
         # set optimizer
         weight_decay = self.cfg.weight_decay
 
-        optim_params_N_F = [{
-            "params": self.netG.netF.parameters(),
-            "lr": self.lr_N
-        }]
-        optim_params_N_B = [{
-            "params": self.netG.netB.parameters(),
-            "lr": self.lr_N
-        }]
+        optim_params_N_F = [{"params": self.netG.netF.parameters(), "lr": self.lr_N}]
+        optim_params_N_B = [{"params": self.netG.netB.parameters(), "lr": self.lr_N}]
 
-        optimizer_N_F = torch.optim.Adam(optim_params_N_F,
-                                         lr=self.lr_N,
-                                         weight_decay=weight_decay)
+        optimizer_N_F = torch.optim.Adam(optim_params_N_F, lr=self.lr_N, weight_decay=weight_decay)
 
-        optimizer_N_B = torch.optim.Adam(optim_params_N_B,
-                                         lr=self.lr_N,
-                                         weight_decay=weight_decay)
+        optimizer_N_B = torch.optim.Adam(optim_params_N_B, lr=self.lr_N, weight_decay=weight_decay)
 
-        scheduler_N_F = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer_N_F, milestones=self.cfg.schedule, gamma=self.cfg.gamma)
+        scheduler_N_F = torch.optim.lr_scheduler.MultiStepLR(optimizer_N_F,
+                                                             milestones=self.cfg.schedule,
+                                                             gamma=self.cfg.gamma)
 
-        scheduler_N_B = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer_N_B, milestones=self.cfg.schedule, gamma=self.cfg.gamma)
+        scheduler_N_B = torch.optim.lr_scheduler.MultiStepLR(optimizer_N_B,
+                                                             milestones=self.cfg.schedule,
+                                                             gamma=self.cfg.gamma)
 
         self.schedulers = [scheduler_N_F, scheduler_N_B]
         optims = [optimizer_N_F, optimizer_N_B]
@@ -70,25 +62,20 @@ class Normal(pl.LightningModule):
         for name in render_tensor.keys():
             result_list.append(
                 resize(
-                    ((render_tensor[name].cpu().numpy()[0] + 1.0) /
-                     2.0).transpose(1, 2, 0),
+                    ((render_tensor[name].cpu().numpy()[0] + 1.0) / 2.0).transpose(1, 2, 0),
                     (height, height),
                     anti_aliasing=True,
                 ))
         result_array = np.concatenate(result_list, axis=1)
 
-        self.logger.experiment.log({
-            f"Normal/{dataset}/{idx if not self.overfit else 1}":
-            wandb.Image(result_array)
-        })
+        self.logger.experiment.log(
+            {f"Normal/{dataset}/{idx if not self.overfit else 1}": wandb.Image(result_array)})
 
     def training_step(self, batch, batch_idx):
 
         # cfg log
         if not self.cfg.fast_dev and self.global_step == 0:
-            export_cfg(self.logger,
-                       osp.join(self.cfg.results_path, self.cfg.name),
-                       self.cfg)
+            export_cfg(self.logger, osp.join(self.cfg.results_path, self.cfg.name), self.cfg)
             self.logger.experiment.config.update(convert_to_dict(self.cfg))
 
         self.netG.train()
@@ -98,16 +85,12 @@ class Normal(pl.LightningModule):
         for name in self.in_nml:
             in_tensor[name] = batch[name]
 
-        FB_tensor = {
-            "normal_F": batch["normal_F"],
-            "normal_B": batch["normal_B"]
-        }
+        FB_tensor = {"normal_F": batch["normal_F"], "normal_B": batch["normal_B"]}
 
         in_tensor.update(FB_tensor)
 
         preds_F, preds_B = self.netG(in_tensor)
-        error_NF, error_NB = self.netG.get_norm_error(preds_F, preds_B,
-                                                      FB_tensor)
+        error_NF, error_NB = self.netG.get_norm_error(preds_F, preds_B, FB_tensor)
 
         (opt_nf, opt_nb) = self.optimizers()
 
@@ -134,11 +117,7 @@ class Normal(pl.LightningModule):
             "train/loss-NB": error_NB.item(),
         }
 
-        self.log_dict(metrics_log,
-                      prog_bar=True,
-                      logger=True,
-                      on_step=True,
-                      on_epoch=False)
+        self.log_dict(metrics_log, prog_bar=True, logger=True, on_step=True, on_epoch=False)
 
         return metrics_log
 
@@ -151,11 +130,7 @@ class Normal(pl.LightningModule):
             "train/avgloss-NB": batch_mean(outputs, "train/loss-NB"),
         }
 
-        self.log_dict(metrics_log,
-                      prog_bar=False,
-                      logger=True,
-                      on_step=False,
-                      on_epoch=True)
+        self.log_dict(metrics_log, prog_bar=False, logger=True, on_step=False, on_epoch=True)
 
     def validation_step(self, batch, batch_idx):
 
@@ -167,15 +142,11 @@ class Normal(pl.LightningModule):
         for name in self.in_nml:
             in_tensor[name] = batch[name]
 
-        FB_tensor = {
-            "normal_F": batch["normal_F"],
-            "normal_B": batch["normal_B"]
-        }
+        FB_tensor = {"normal_F": batch["normal_F"], "normal_B": batch["normal_B"]}
         in_tensor.update(FB_tensor)
 
         preds_F, preds_B = self.netG(in_tensor)
-        error_NF, error_NB = self.netG.get_norm_error(preds_F, preds_B,
-                                                      FB_tensor)
+        error_NF, error_NB = self.netG.get_norm_error(preds_F, preds_B, FB_tensor)
 
         if batch_idx % int(self.cfg.freq_show_train) == 0:
 
@@ -201,8 +172,4 @@ class Normal(pl.LightningModule):
             "val/avgloss-NB": batch_mean(outputs, "val/loss-NB"),
         }
 
-        self.log_dict(metrics_log,
-                      prog_bar=False,
-                      logger=True,
-                      on_step=False,
-                      on_epoch=True)
+        self.log_dict(metrics_log, prog_bar=False, logger=True, on_step=False, on_epoch=True)

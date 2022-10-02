@@ -17,8 +17,7 @@ def find_max_list(lst):
 
 def interpolate_pts(pts, diff_ids):
 
-    pts_extend = np.around(
-        (pts[diff_ids] + pts[diff_ids - 1]) * 0.5).astype(np.int32)
+    pts_extend = np.around((pts[diff_ids] + pts[diff_ids - 1]) * 0.5).astype(np.int32)
     pts = np.insert(pts, diff_ids, pts_extend, axis=0)
 
     return pts
@@ -27,8 +26,7 @@ def interpolate_pts(pts, diff_ids):
 def align_pts(pts1, pts2):
 
     diff_num = abs(len(pts1) - len(pts2))
-    diff_ids = np.sort(
-        np.random.choice(min(len(pts2), len(pts1)), diff_num, replace=True))
+    diff_ids = np.sort(np.random.choice(min(len(pts2), len(pts1)), diff_num, replace=True))
 
     if len(pts1) > len(pts2):
         pts2 = interpolate_pts(pts2, diff_ids)
@@ -42,8 +40,7 @@ def align_pts(pts1, pts2):
 
 def repeat_pts(pts1, pts2):
 
-    coverage_mask = ((pts1[:, None, :] == pts2[None, :, :]).sum(
-        axis=2) == 2.).any(axis=1)
+    coverage_mask = ((pts1[:, None, :] == pts2[None, :, :]).sum(axis=2) == 2.).any(axis=1)
 
     return coverage_mask
 
@@ -52,8 +49,7 @@ def find_contour(mask, method='all'):
 
     if method == 'all':
 
-        contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_TREE,
-                                       cv2.CHAIN_APPROX_NONE)
+        contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     else:
         contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_TREE,
                                        cv2.CHAIN_APPROX_SIMPLE)
@@ -65,12 +61,9 @@ def find_contour(mask, method='all'):
 
 def mean_value_cordinates(inner_pts, contour_pts):
 
-    body_edges_a = np.sqrt(
-        ((inner_pts[:, None] - contour_pts[None, :])**2).sum(axis=2))
+    body_edges_a = np.sqrt(((inner_pts[:, None] - contour_pts[None, :])**2).sum(axis=2))
     body_edges_c = np.roll(body_edges_a, shift=-1, axis=1)
-    body_edges_b = np.sqrt(
-        ((contour_pts -
-          np.roll(contour_pts, shift=-1, axis=0))**2).sum(axis=1))
+    body_edges_b = np.sqrt(((contour_pts - np.roll(contour_pts, shift=-1, axis=0))**2).sum(axis=1))
 
     body_edges = np.concatenate([
         body_edges_a[..., None], body_edges_c[..., None],
@@ -79,13 +72,11 @@ def mean_value_cordinates(inner_pts, contour_pts):
                                 axis=-1)
 
     body_cos = (body_edges[:, :, 0]**2 + body_edges[:, :, 1]**2 -
-                body_edges[:, :, 2]**2) / (2 * body_edges[:, :, 0] *
-                                           body_edges[:, :, 1])
-    body_tan_half = np.sqrt((1. - np.clip(body_cos, a_max=1., a_min=-1.)) /
-                            np.clip(1. + body_cos, 1e-6, 2.))
+                body_edges[:, :, 2]**2) / (2 * body_edges[:, :, 0] * body_edges[:, :, 1])
+    body_tan_half = np.sqrt(
+        (1. - np.clip(body_cos, a_max=1., a_min=-1.)) / np.clip(1. + body_cos, 1e-6, 2.))
 
-    w = (body_tan_half +
-         np.roll(body_tan_half, shift=1, axis=1)) / body_edges_a
+    w = (body_tan_half + np.roll(body_tan_half, shift=1, axis=1)) / body_edges_a
     w /= w.sum(axis=1, keepdims=True)
 
     return w
@@ -93,8 +84,7 @@ def mean_value_cordinates(inner_pts, contour_pts):
 
 def get_dst_mat(contour_body, contour_cloth):
 
-    dst_mat = ((contour_body[:, None, :] -
-                contour_cloth[None, :, :])**2).sum(axis=2)
+    dst_mat = ((contour_body[:, None, :] - contour_cloth[None, :, :])**2).sum(axis=2)
 
     return dst_mat
 
@@ -108,8 +98,7 @@ def dispCorres(img_size, contour1, contour2, phi, dir_path):
     cv2.drawContours(disp, contour1, -1, (0, 255, 0), 1)  # green
     cv2.drawContours(disp, contour2, -1, (255, 0, 0), 1)  # blue
 
-    for i in range(
-            contour1.shape[1]):  # do not show all the points when display
+    for i in range(contour1.shape[1]):  # do not show all the points when display
         # cv2.circle(disp, (contour1[0, i, 0, 0], contour1[0, i, 0, 1]), 1,
         #            (255, 0, 0), -1)
         corresPoint = contour2[0, phi[i], 0]
@@ -140,8 +129,7 @@ def tensor2arr(t, mask=False):
         return t.squeeze(0).permute(1, 2, 0).detach().cpu().numpy()
     else:
         mask = t.squeeze(0).abs().sum(dim=0, keepdim=True)
-        return (mask != mask[:, 0,
-                             0]).float().squeeze(0).detach().cpu().numpy()
+        return (mask != mask[:, 0, 0]).float().squeeze(0).detach().cpu().numpy()
 
 
 def arr2png(t):
@@ -171,8 +159,8 @@ def verts_transform(t, depth_scale):
     t_copy = t.clone()
     t_copy *= depth_scale * 0.5
     t_copy += depth_scale * 0.5
-    t_copy = t_copy[:, [1, 0, 2]] * torch.Tensor(
-        [2.0, 2.0, -2.0]) + torch.Tensor([0.0, 0.0, depth_scale])
+    t_copy = t_copy[:, [1, 0, 2]] * torch.Tensor([2.0, 2.0, -2.0]) + torch.Tensor(
+        [0.0, 0.0, depth_scale])
 
     return t_copy
 
@@ -197,8 +185,7 @@ def move_left(mask):
 
 
 def move_right(mask):
-    return cp.pad(mask, ((0, 0), (1, 0)), "constant",
-                  constant_values=0)[:, :-1]
+    return cp.pad(mask, ((0, 0), (1, 0)), "constant", constant_values=0)[:, :-1]
 
 
 def move_top(mask):
@@ -206,28 +193,23 @@ def move_top(mask):
 
 
 def move_bottom(mask):
-    return cp.pad(mask, ((1, 0), (0, 0)), "constant",
-                  constant_values=0)[:-1, :]
+    return cp.pad(mask, ((1, 0), (0, 0)), "constant", constant_values=0)[:-1, :]
 
 
 def move_top_left(mask):
-    return cp.pad(mask, ((0, 1), (0, 1)), "constant", constant_values=0)[1:,
-                                                                         1:]
+    return cp.pad(mask, ((0, 1), (0, 1)), "constant", constant_values=0)[1:, 1:]
 
 
 def move_top_right(mask):
-    return cp.pad(mask, ((0, 1), (1, 0)), "constant",
-                  constant_values=0)[1:, :-1]
+    return cp.pad(mask, ((0, 1), (1, 0)), "constant", constant_values=0)[1:, :-1]
 
 
 def move_bottom_left(mask):
-    return cp.pad(mask, ((1, 0), (0, 1)), "constant", constant_values=0)[:-1,
-                                                                         1:]
+    return cp.pad(mask, ((1, 0), (0, 1)), "constant", constant_values=0)[:-1, 1:]
 
 
 def move_bottom_right(mask):
-    return cp.pad(mask, ((1, 0), (1, 0)), "constant",
-                  constant_values=0)[:-1, :-1]
+    return cp.pad(mask, ((1, 0), (1, 0)), "constant", constant_values=0)[:-1, :-1]
 
 
 def generate_dx_dy(mask, step_size=1):
@@ -253,37 +235,29 @@ def generate_dx_dy(mask, step_size=1):
     # only the pixels having left neighbors have [-1, 1] in that row
     row_idx = pixel_idx[has_left_mask]
     row_idx = cp.tile(row_idx, 2)
-    col_idx = cp.concatenate(
-        (pixel_idx[move_left(has_left_mask)], pixel_idx[has_left_mask]))
-    D_horizontal_neg = coo_matrix((data_term, (row_idx, col_idx)),
-                                  shape=(num_pixel, num_pixel))
+    col_idx = cp.concatenate((pixel_idx[move_left(has_left_mask)], pixel_idx[has_left_mask]))
+    D_horizontal_neg = coo_matrix((data_term, (row_idx, col_idx)), shape=(num_pixel, num_pixel))
 
     data_term = cp.array([-1] * int(cp.sum(has_right_mask)) +
                          [1] * int(cp.sum(has_right_mask))).astype(cp.float32)
     row_idx = pixel_idx[has_right_mask]
     row_idx = cp.tile(row_idx, 2)
-    col_idx = cp.concatenate(
-        (pixel_idx[has_right_mask], pixel_idx[move_right(has_right_mask)]))
-    D_horizontal_pos = coo_matrix((data_term, (row_idx, col_idx)),
-                                  shape=(num_pixel, num_pixel))
+    col_idx = cp.concatenate((pixel_idx[has_right_mask], pixel_idx[move_right(has_right_mask)]))
+    D_horizontal_pos = coo_matrix((data_term, (row_idx, col_idx)), shape=(num_pixel, num_pixel))
 
-    data_term = cp.array([-1] * int(cp.sum(has_top_mask)) +
-                         [1] * int(cp.sum(has_top_mask))).astype(cp.float32)
+    data_term = cp.array([-1] * int(cp.sum(has_top_mask)) + [1] * int(cp.sum(has_top_mask))).astype(
+        cp.float32)
     row_idx = pixel_idx[has_top_mask]
     row_idx = cp.tile(row_idx, 2)
-    col_idx = cp.concatenate(
-        (pixel_idx[has_top_mask], pixel_idx[move_top(has_top_mask)]))
-    D_vertical_pos = coo_matrix((data_term, (row_idx, col_idx)),
-                                shape=(num_pixel, num_pixel))
+    col_idx = cp.concatenate((pixel_idx[has_top_mask], pixel_idx[move_top(has_top_mask)]))
+    D_vertical_pos = coo_matrix((data_term, (row_idx, col_idx)), shape=(num_pixel, num_pixel))
 
     data_term = cp.array([-1] * int(cp.sum(has_bottom_mask)) +
                          [1] * int(cp.sum(has_bottom_mask))).astype(cp.float32)
     row_idx = pixel_idx[has_bottom_mask]
     row_idx = cp.tile(row_idx, 2)
-    col_idx = cp.concatenate(
-        (pixel_idx[move_bottom(has_bottom_mask)], pixel_idx[has_bottom_mask]))
-    D_vertical_neg = coo_matrix((data_term, (row_idx, col_idx)),
-                                shape=(num_pixel, num_pixel))
+    col_idx = cp.concatenate((pixel_idx[move_bottom(has_bottom_mask)], pixel_idx[has_bottom_mask]))
+    D_vertical_neg = coo_matrix((data_term, (row_idx, col_idx)), shape=(num_pixel, num_pixel))
 
     return (
         D_horizontal_pos / step_size,
@@ -300,8 +274,8 @@ def construct_facets_from(mask):
     facet_move_top_mask = move_top(mask)
     facet_move_left_mask = move_left(mask)
     facet_move_top_left_mask = move_top_left(mask)
-    facet_top_left_mask = (facet_move_top_mask * facet_move_left_mask *
-                           facet_move_top_left_mask * mask)
+    facet_top_left_mask = (facet_move_top_mask * facet_move_left_mask * facet_move_top_left_mask *
+                           mask)
     facet_top_right_mask = move_right(facet_top_left_mask)
     facet_bottom_left_mask = move_bottom(facet_top_left_mask)
     facet_bottom_right_mask = move_bottom_right(facet_top_left_mask)
@@ -337,8 +311,7 @@ def map_depth_map_to_point_clouds(depth_map, mask, K=None, step_size=1):
         u[..., 1] = yy
         u[..., 2] = 1
         u = u[mask].T  # 3 x m
-        vertices = (cp.linalg.inv(K) @ u).T * depth_map[mask,
-                                                        cp.newaxis]  # m x 3
+        vertices = (cp.linalg.inv(K) @ u).T * depth_map[mask, cp.newaxis]  # m x 3
 
     return vertices
 
@@ -438,8 +411,8 @@ def bilateral_normal_integration(
     m = depth_mask[normal_mask].astype(int)  # shape: (num_normals,)
     M = diags(m)
 
-    z_prior = (cp.log(depth_map)[normal_mask] if K is not None else
-               depth_map[normal_mask])  # shape: (num_normals,)
+    z_prior = (cp.log(depth_map)[normal_mask] if K is not None else depth_map[normal_mask]
+              )  # shape: (num_normals,)
 
     pbar = tqdm(range(max_iter))
 
@@ -474,23 +447,17 @@ def bilateral_normal_integration(
 
     if K is not None:  # perspective
         depth_map = cp.exp(depth_map)
-        vertices = cp.asnumpy(
-            map_depth_map_to_point_clouds(depth_map, normal_mask, K=K))
+        vertices = cp.asnumpy(map_depth_map_to_point_clouds(depth_map, normal_mask, K=K))
     else:  # orthographic
         vertices = cp.asnumpy(
-            map_depth_map_to_point_clouds(depth_map,
-                                          normal_mask,
-                                          K=None,
-                                          step_size=step_size))
+            map_depth_map_to_point_clouds(depth_map, normal_mask, K=None, step_size=step_size))
 
     faces = cp.asnumpy(construct_facets_from(normal_mask))
 
     if normal_map[:, :, -1].mean() < 0:
-        faces = np.concatenate((faces[:, [1, 4, 3]], faces[:, [1, 3, 2]]),
-                               axis=0)
+        faces = np.concatenate((faces[:, [1, 4, 3]], faces[:, [1, 3, 2]]), axis=0)
     else:
-        faces = np.concatenate((faces[:, [1, 2, 3]], faces[:, [1, 3, 4]]),
-                               axis=0)
+        faces = np.concatenate((faces[:, [1, 2, 3]], faces[:, [1, 3, 4]]), axis=0)
 
     vertices, faces = remove_stretched_faces(vertices, faces)
 

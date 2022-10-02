@@ -26,10 +26,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-cfg",
-                        "--config_file",
-                        type=str,
-                        help="path of the yaml config file")
+    parser.add_argument("-cfg", "--config_file", type=str, help="path of the yaml config file")
     args = parser.parse_args()
     cfg = get_cfg_defaults()
     cfg.merge_from_file(args.config_file)
@@ -65,36 +62,22 @@ if __name__ == "__main__":
                                  metrics="grey82")
     progress_bar = RichProgressBar(theme=theme)
 
-    profiler = AdvancedProfiler(dirpath=osp.join(cfg.results_path, cfg.name),
-                                filename="perf_logs")
+    profiler = AdvancedProfiler(dirpath=osp.join(cfg.results_path, cfg.name), filename="perf_logs")
 
     trainer_kwargs = {
-        "accelerator":
-        "gpu",
-        "devices":
-        1,
-        "reload_dataloaders_every_n_epochs":
-        1,
-        "sync_batchnorm":
-        True,
-        "benchmark":
-        True,
-        "profiler":
-        profiler,
-        "logger":
-        wandb_logger,
-        "num_sanity_val_steps":
-        cfg.num_sanity_val_steps,
-        "limit_train_batches":
-        cfg.dataset.train_bsize,
-        "limit_val_batches":
-        cfg.dataset.val_bsize,
-        "limit_test_batches":
-        cfg.dataset.test_bsize,
-        "fast_dev_run":
-        cfg.fast_dev,
-        "max_epochs":
-        cfg.num_epoch,
+        "accelerator": "gpu",
+        "devices": 1,
+        "reload_dataloaders_every_n_epochs": 1,
+        "sync_batchnorm": True,
+        "benchmark": True,
+        "profiler": profiler,
+        "logger": wandb_logger,
+        "num_sanity_val_steps": cfg.num_sanity_val_steps,
+        "limit_train_batches": cfg.dataset.train_bsize,
+        "limit_val_batches": cfg.dataset.val_bsize,
+        "limit_test_batches": cfg.dataset.test_bsize,
+        "fast_dev_run": cfg.fast_dev,
+        "max_epochs": cfg.num_epoch,
         "callbacks": [
             LearningRateMonitor(logging_interval="step"),
             checkpoint,
@@ -108,10 +91,8 @@ if __name__ == "__main__":
     train_len = datamodule.data_size["train"]
     val_len = datamodule.data_size["val"]
     trainer_kwargs.update({
-        "log_every_n_steps":
-        int(cfg.freq_plot * train_len // cfg.batch_size),
-        "val_check_interval":
-        int(cfg.freq_eval * train_len // cfg.batch_size),
+        "log_every_n_steps": int(cfg.freq_plot * train_len // cfg.batch_size),
+        "val_check_interval": int(cfg.freq_eval * train_len // cfg.batch_size),
     })
 
     cfg_show_list = [

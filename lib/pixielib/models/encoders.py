@@ -15,15 +15,9 @@ class ResnetEncoder(nn.Module):
         self.encoder = resnet.load_ResNet50Model()  # out: 2048
         # regressor
         self.append_layers = append_layers
-        # for normalize input images
-        MEAN = [0.485, 0.456, 0.406]
-        STD = [0.229, 0.224, 0.225]
-        self.register_buffer("MEAN", torch.tensor(MEAN)[None, :, None, None])
-        self.register_buffer("STD", torch.tensor(STD)[None, :, None, None])
 
     def forward(self, inputs):
         """inputs: [bz, 3, h, w], range: [0,1]"""
-        inputs = (inputs - self.MEAN) / self.STD
         features = self.encoder(inputs)
         if self.append_layers:
             features = self.last_op(features)
@@ -60,15 +54,9 @@ class HRNEncoder(nn.Module):
         self.encoder = hrnet.load_HRNet(pretrained=True)  # out: 2048
         # regressor
         self.append_layers = append_layers
-        # for normalize input images
-        MEAN = [0.485, 0.456, 0.406]
-        STD = [0.229, 0.224, 0.225]
-        self.register_buffer("MEAN", torch.tensor(MEAN)[None, :, None, None])
-        self.register_buffer("STD", torch.tensor(STD)[None, :, None, None])
 
     def forward(self, inputs):
-        """inputs: [bz, 3, h, w], range: [0,1]"""
-        inputs = (inputs - self.MEAN) / self.STD
+        """inputs: [bz, 3, h, w], range: [-1,1]"""
         features = self.encoder(inputs)["concat"]
         if self.append_layers:
             features = self.last_op(features)

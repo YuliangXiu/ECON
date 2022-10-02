@@ -51,8 +51,7 @@ class ICON(pl.LightningModule):
             error_term=nn.SmoothL1Loss() if self.use_sdf else nn.MSELoss(),
         )
 
-        self.evaluator = Evaluator(
-            device=torch.device(f"cuda:{self.cfg.gpus[0]}"))
+        self.evaluator = Evaluator(device=torch.device(f"cuda:{self.cfg.gpus[0]}"))
 
         self.resolutions = (np.logspace(
             start=5,
@@ -66,15 +65,9 @@ class ICON(pl.LightningModule):
         self.base_keys = ["smpl_verts", "smpl_faces"]
         self.feat_names = self.cfg.net.smpl_feats
 
-        self.icon_keys = self.base_keys + [
-            f"smpl_{feat_name}" for feat_name in self.feat_names
-        ]
-        self.keypoint_keys = self.base_keys + [
-            f"smpl_{feat_name}" for feat_name in self.feat_names
-        ]
-        self.pamir_keys = [
-            "voxel_verts", "voxel_faces", "pad_v_num", "pad_f_num"
-        ]
+        self.icon_keys = self.base_keys + [f"smpl_{feat_name}" for feat_name in self.feat_names]
+        self.keypoint_keys = self.base_keys + [f"smpl_{feat_name}" for feat_name in self.feat_names]
+        self.pamir_keys = ["voxel_verts", "voxel_faces", "pad_v_num", "pad_f_num"]
         self.pifu_keys = []
 
         self.reconEngine = Seg3dLossless(
@@ -91,8 +84,7 @@ class ICON(pl.LightningModule):
             faster=True,
         )
 
-        self.render = Render(
-            size=512, device=torch.device(f"cuda:{self.cfg.test_gpus[0]}"))
+        self.render = Render(size=512, device=torch.device(f"cuda:{self.cfg.test_gpus[0]}"))
         self.smpl_data = SMPLX()
 
         self.in_geo = [item[0] for item in cfg.net.in_geo]
@@ -111,22 +103,13 @@ class ICON(pl.LightningModule):
         weight_decay = self.cfg.weight_decay
         momentum = self.cfg.momentum
 
-        optim_params_G = [{
-            "params": self.netG.if_regressor.parameters(),
-            "lr": self.lr_G
-        }]
+        optim_params_G = [{"params": self.netG.if_regressor.parameters(), "lr": self.lr_G}]
 
         if self.cfg.net.use_filter:
-            optim_params_G.append({
-                "params": self.netG.F_filter.parameters(),
-                "lr": self.lr_G
-            })
+            optim_params_G.append({"params": self.netG.F_filter.parameters(), "lr": self.lr_G})
 
         if self.cfg.net.prior_type == "pamir":
-            optim_params_G.append({
-                "params": self.netG.ve.parameters(),
-                "lr": self.lr_G
-            })
+            optim_params_G.append({"params": self.netG.ve.parameters(), "lr": self.lr_G})
 
         if self.cfg.optim == "Adadelta":
 
@@ -136,9 +119,7 @@ class ICON(pl.LightningModule):
 
         elif self.cfg.optim == "Adam":
 
-            optimizer_G = torch.optim.Adam(optim_params_G,
-                                           lr=self.lr_G,
-                                           weight_decay=weight_decay)
+            optimizer_G = torch.optim.Adam(optim_params_G, lr=self.lr_G, weight_decay=weight_decay)
 
         elif self.cfg.optim == "RMSprop":
 
@@ -153,8 +134,9 @@ class ICON(pl.LightningModule):
             raise NotImplementedError
 
         # set scheduler
-        scheduler_G = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer_G, milestones=self.cfg.schedule, gamma=self.cfg.gamma)
+        scheduler_G = torch.optim.lr_scheduler.MultiStepLR(optimizer_G,
+                                                           milestones=self.cfg.schedule,
+                                                           gamma=self.cfg.gamma)
 
         return [optimizer_G], [scheduler_G]
 
@@ -162,9 +144,7 @@ class ICON(pl.LightningModule):
 
         # cfg log
         if not self.cfg.fast_dev and self.global_step == 0:
-            export_cfg(self.logger,
-                       osp.join(self.cfg.results_path, self.cfg.name),
-                       self.cfg)
+            export_cfg(self.logger, osp.join(self.cfg.results_path, self.cfg.name), self.cfg)
             self.logger.experiment.config.update(convert_to_dict(self.cfg))
 
         self.netG.train()
@@ -201,18 +181,12 @@ class ICON(pl.LightningModule):
             "train/recall": recall.item(),
         }
 
-        self.log_dict(metrics_log,
-                      prog_bar=True,
-                      logger=True,
-                      on_step=True,
-                      on_epoch=False)
+        self.log_dict(metrics_log, prog_bar=True, logger=True, on_step=True, on_epoch=False)
 
         if batch_idx % int(self.cfg.freq_show_train) == 0:
 
             with torch.no_grad():
-                self.render_func(in_tensor_dict,
-                                 dataset="train",
-                                 idx=self.global_step)
+                self.render_func(in_tensor_dict, dataset="train", idx=self.global_step)
 
         return metrics_log
 
@@ -227,11 +201,7 @@ class ICON(pl.LightningModule):
             "train/avgacc": batch_mean(outputs, "train/acc"),
         }
 
-        self.log_dict(metrics_log,
-                      prog_bar=False,
-                      logger=True,
-                      on_step=False,
-                      on_epoch=True)
+        self.log_dict(metrics_log, prog_bar=False, logger=True, on_step=False, on_epoch=True)
 
     def validation_step(self, batch, batch_idx):
 
@@ -273,11 +243,7 @@ class ICON(pl.LightningModule):
             "val/recall": recall,
         }
 
-        self.log_dict(metrics_log,
-                      prog_bar=True,
-                      logger=False,
-                      on_step=True,
-                      on_epoch=False)
+        self.log_dict(metrics_log, prog_bar=True, logger=False, on_step=True, on_epoch=False)
 
         return metrics_log
 
@@ -292,11 +258,7 @@ class ICON(pl.LightningModule):
             "val/avgrecall": batch_mean(outputs, "val/recall"),
         }
 
-        self.log_dict(metrics_log,
-                      prog_bar=False,
-                      logger=True,
-                      on_step=False,
-                      on_epoch=True)
+        self.log_dict(metrics_log, prog_bar=False, logger=True, on_step=False, on_epoch=True)
 
     def test_step(self, batch, batch_idx):
 
@@ -331,43 +293,35 @@ class ICON(pl.LightningModule):
             for k in getattr(self, f"{self.prior_type}_keys")
         })
 
-        if ("T_normal_F" not in in_tensor_dict.keys()
-                or "T_normal_B" not in in_tensor_dict.keys()):
+        if ("T_normal_F" not in in_tensor_dict.keys() or "T_normal_B" not in in_tensor_dict.keys()):
 
             # update the new T_normal_F/B
             self.render.load_meshes(
-                batch["smpl_verts"] *
-                torch.tensor([1.0, -1.0, 1.0]).to(self.device),
+                batch["smpl_verts"] * torch.tensor([1.0, -1.0, 1.0]).to(self.device),
                 batch["smpl_faces"],
             )
             T_normal_F, T_noraml_B = self.render.get_image()
-            in_tensor_dict.update({
-                "T_normal_F": T_normal_F,
-                "T_normal_B": T_noraml_B
-            })
+            in_tensor_dict.update({"T_normal_F": T_normal_F, "T_normal_B": T_noraml_B})
 
         with torch.no_grad():
-            features, inter = self.netG.filter(in_tensor_dict,
-                                               return_inter=True)
+            features, inter = self.netG.filter(in_tensor_dict, return_inter=True)
             sdf = self.reconEngine(opt=self.cfg,
                                    netG=self.netG,
                                    features=features,
                                    proj_matrix=None)
 
         def tensor2arr(x):
-            return (x[0].permute(1, 2, 0).detach().cpu().numpy() +
-                    1.0) * 0.5 * 255.0
+            return (x[0].permute(1, 2, 0).detach().cpu().numpy() + 1.0) * 0.5 * 255.0
 
         # save inter results
         image = tensor2arr(in_tensor_dict["image"])
         smpl_F = tensor2arr(in_tensor_dict["T_normal_F"])
         smpl_B = tensor2arr(in_tensor_dict["T_normal_B"])
-        image_inter = np.concatenate(self.tensor2image(512, inter[0]) +
-                                     [smpl_F, smpl_B, image],
+        image_inter = np.concatenate(self.tensor2image(512, inter[0]) + [smpl_F, smpl_B, image],
                                      axis=1)
 
-        Image.fromarray((image_inter).astype(np.uint8)).save(
-            osp.join(self.export_dir, f"{mesh_rot}_inter.png"))
+        Image.fromarray(
+            (image_inter).astype(np.uint8)).save(osp.join(self.export_dir, f"{mesh_rot}_inter.png"))
 
         verts_pr, faces_pr = self.reconEngine.export_mesh(sdf)
 
@@ -393,11 +347,7 @@ class ICON(pl.LightningModule):
 
         test_log = {"chamfer": chamfer, "p2s": p2s, "p2s_hf": p2s_hf, "NC": nc, "NC_hf": nc_hf}
 
-        self.log_dict(test_log,
-                      prog_bar=True,
-                      logger=False,
-                      on_step=True,
-                      on_epoch=False)
+        self.log_dict(test_log, prog_bar=True, logger=False, on_step=True, on_epoch=False)
 
         return test_log
 
@@ -415,11 +365,7 @@ class ICON(pl.LightningModule):
         print(colored(self.cfg.name, "green"))
         print(colored(self.cfg.dataset.noise_scale, "green"))
 
-        self.log_dict(accu_outputs,
-                      prog_bar=False,
-                      logger=True,
-                      on_step=False,
-                      on_epoch=True)
+        self.log_dict(accu_outputs, prog_bar=False, logger=True, on_step=False, on_epoch=True)
 
         np.save(
             osp.join(self.export_dir, "../test_results.npy"),
@@ -433,8 +379,7 @@ class ICON(pl.LightningModule):
         for dim in self.in_geo_dim:
             img = resize(
                 np.tile(
-                    ((inter[:dim].cpu().numpy() + 1.0) / 2.0 *
-                     255.0).transpose(1, 2, 0),
+                    ((inter[:dim].cpu().numpy() + 1.0) / 2.0 * 255.0).transpose(1, 2, 0),
                     (1, 1, int(3 / dim)),
                 ),
                 (height, height),
@@ -454,10 +399,7 @@ class ICON(pl.LightningModule):
 
         self.netG.eval()
         features, inter = self.netG.filter(in_tensor_dict, return_inter=True)
-        sdf = self.reconEngine(opt=self.cfg,
-                               netG=self.netG,
-                               features=features,
-                               proj_matrix=None)
+        sdf = self.reconEngine(opt=self.cfg, netG=self.netG, features=features, proj_matrix=None)
 
         if sdf is not None:
             render = self.reconEngine.display(sdf)
@@ -466,8 +408,7 @@ class ICON(pl.LightningModule):
             height = image_pred.shape[0]
 
             image_gt = resize(
-                ((in_tensor_dict["image"].cpu().numpy()[0] + 1.0) / 2.0 *
-                 255.0).transpose(1, 2, 0),
+                ((in_tensor_dict["image"].cpu().numpy()[0] + 1.0) / 2.0 * 255.0).transpose(1, 2, 0),
                 (height, height),
                 anti_aliasing=True,
             )
@@ -476,15 +417,14 @@ class ICON(pl.LightningModule):
                 np.concatenate(
                     [
                         image_pred,
-                        np.concatenate([image_gt] + image_inter + [image_gt],
-                                       axis=1),
+                        np.concatenate([image_gt] + image_inter + [image_gt], axis=1),
                     ],
                     axis=0,
                 ).astype(np.uint8))
 
             self.logger.experiment.log({
                 f"SDF/{dataset}/{idx if not self.overfit else 1}":
-                wandb.Image(image, caption="multi-views")
+                    wandb.Image(image, caption="multi-views")
             })
 
     def test_single(self, batch):
@@ -503,8 +443,7 @@ class ICON(pl.LightningModule):
         })
 
         with torch.no_grad():
-            features, inter = self.netG.filter(in_tensor_dict,
-                                               return_inter=True)
+            features, inter = self.netG.filter(in_tensor_dict, return_inter=True)
             sdf = self.reconEngine(opt=self.cfg,
                                    netG=self.netG,
                                    features=features,

@@ -80,7 +80,7 @@ class NormalNet(BasePIFuNet):
             inF_list.append(in_tensor[name])
         for name in self.in_nmlB:
             inB_list.append(in_tensor[name])
-
+            
         nmlF = self.netF(torch.cat(inF_list, dim=1))
         nmlB = self.netB(torch.cat(inB_list, dim=1))
 

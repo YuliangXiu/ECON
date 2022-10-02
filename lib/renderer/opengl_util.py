@@ -17,11 +17,7 @@
 from lib.renderer.mesh import (
     load_scan,
     compute_tangent,
-    compute_normal,
-    load_obj_mesh_mtl,
 )
-from lib.dataset.mesh_util import projection
-from lib.renderer.gl.prt_render import PRTRender
 from lib.renderer.camera import Camera
 import os
 import cv2

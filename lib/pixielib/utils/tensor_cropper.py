@@ -168,7 +168,6 @@ def transform_points(points, tform, points_scale=None):
     if points_scale:
         assert points_scale[0] == points_scale[1]
         points_2d = (points_2d * 0.5 + 0.5) * points_scale[0]
-    # import ipdb; ipdb.set_trace()
 
     batch_size, n_points, _ = points.shape
     trans_points_2d = torch.bmm(
