@@ -77,12 +77,11 @@ def query_color(verts, faces, image, device):
     visibility = get_visibility(xy, z, faces[:, [0, 2, 1]]).flatten()
     uv = xy.unsqueeze(0).unsqueeze(2)  # [B, N, 2]
     uv = uv * torch.tensor([1.0, -1.0]).type_as(uv)
-    colors = ((torch.nn.functional.grid_sample(
-        image, uv, align_corners=True)[0, :, :, 0].permute(1, 0) + 1.0) * 0.5 *
-              255.0)
+    colors = (
+        (torch.nn.functional.grid_sample(image, uv, align_corners=True)[0, :, :, 0].permute(1, 0) +
+         1.0) * 0.5 * 255.0)
     colors[visibility == 0.0] = (
-        (Meshes(verts.unsqueeze(0),
-                faces.unsqueeze(0)).verts_normals_padded().squeeze(0) + 1.0) *
+        (Meshes(verts.unsqueeze(0), faces.unsqueeze(0)).verts_normals_padded().squeeze(0) + 1.0) *
         0.5 * 255.0)[visibility == 0.0]
 
     return colors.detach().cpu()
@@ -90,28 +89,16 @@ def query_color(verts, faces, image, device):
 
 class cleanShader(torch.nn.Module):
 
-    def __init__(self, device="cpu", cameras=None, blend_params=None):
+    def __init__(self, blend_params=None):
         super().__init__()
-        self.cameras = cameras
-        self.blend_params = blend_params if blend_params is not None else BlendParams(
-        )
+        self.blend_params = blend_params if blend_params is not None else BlendParams()
 
     def forward(self, fragments, meshes, **kwargs):
-        cameras = kwargs.get("cameras", self.cameras)
-        if cameras is None:
-            msg = "Cameras must be specified either at initialization \
-                or in the forward pass of TexturedSoftPhongShader"
-
-            raise ValueError(msg)
 
         # get renderer output
         blend_params = kwargs.get("blend_params", self.blend_params)
         texels = meshes.sample_textures(fragments)
-        images = blending.softmax_rgb_blend(texels,
-                                            fragments,
-                                            blend_params,
-                                            znear=-256,
-                                            zfar=256)
+        images = blending.softmax_rgb_blend(texels, fragments, blend_params, znear=-256, zfar=256)
 
         return images
 
@@ -127,7 +114,28 @@ class Render:
         self.scale = 100.0
         self.mesh_y_center = 0.0
 
-        self.reload_cam()
+        # speed control
+        self.fps = 30
+        self.step = 3
+
+        self.cam_pos = {
+            "frontback":
+                torch.tensor([
+                    (0, self.mesh_y_center, self.dis),
+                    (0, self.mesh_y_center, -self.dis),
+                ]),
+            "four":
+                torch.tensor([
+                    (0, self.mesh_y_center, self.dis),
+                    (self.dis, self.mesh_y_center, 0),
+                    (0, self.mesh_y_center, -self.dis),
+                    (-self.dis, self.mesh_y_center, 0),
+                ]),
+            "around":
+                torch.tensor([(100.0 * math.cos(np.pi / 180 * angle), self.mesh_y_center,
+                               100.0 * math.sin(np.pi / 180 * angle))
+                              for angle in range(0, 360, self.step)])
+        }
 
         self.type = "color"
 
@@ -139,24 +147,18 @@ class Render:
 
         self.uv_rasterizer = util.Pytorch3dRasterizer(self.size)
 
-    def reload_cam(self):
+    def get_camera_batch(self, type="four", idx=None):
 
-        self.cam_pos = [
-            (0, self.mesh_y_center, self.dis),
-            (self.dis, self.mesh_y_center, 0),
-            (0, self.mesh_y_center, -self.dis),
-            (-self.dis, self.mesh_y_center, 0),
-        ]
-
-    def get_camera(self, cam_id):
+        if idx is None:
+            idx = np.arange(len(self.cam_pos[type]))
 
         R, T = look_at_view_transform(
-            eye=[self.cam_pos[cam_id]],
-            at=((0, self.mesh_y_center, 0), ),
-            up=((0, 1, 0), ),
+            eye=self.cam_pos[type][idx],
+            at=((0, self.mesh_y_center, 0),),
+            up=((0, 1, 0),),
         )
 
-        camera = FoVOrthographicCameras(
+        cameras = FoVOrthographicCameras(
             device=self.device,
             R=R,
             T=T,
@@ -166,15 +168,14 @@ class Render:
             min_y=-100.0,
             max_x=100.0,
             min_x=-100.0,
-            scale_xyz=(self.scale * np.ones(3), ),
+            scale_xyz=(self.scale * np.ones(3),) * len(R),
         )
 
-        return camera
+        return cameras
 
     def init_renderer(self, camera, type="mesh", bg="gray"):
 
-        blendparam = BlendParams(1e-4, 1e-8,
-                                 np.array(ImageColor.getrgb(bg)) / 255.0)
+        blendparam = BlendParams(1e-4, 1e-8, np.array(ImageColor.getrgb(bg)) / 255.0)
 
         if ("mesh" in type) or ("depth" in type) or ("rgb" in type):
 
@@ -185,14 +186,11 @@ class Render:
                 bin_size=0,
                 faces_per_pixel=30,
             )
-            self.meshRas = MeshRasterizer(
-                cameras=camera, raster_settings=self.raster_settings_mesh)
+            self.meshRas = MeshRasterizer(cameras=camera, raster_settings=self.raster_settings_mesh)
 
             self.renderer = MeshRenderer(
                 rasterizer=self.meshRas,
-                shader=cleanShader(device=self.device,
-                                   cameras=camera,
-                                   blend_params=blendparam),
+                shader=cleanShader(blend_params=blendparam),
             )
 
         elif type == "mask":
@@ -205,189 +203,137 @@ class Render:
                 cull_backfaces=True,
             )
 
-            self.silhouetteRas = MeshRasterizer(
-                cameras=camera,
-                raster_settings=self.raster_settings_silhouette)
+            self.silhouetteRas = MeshRasterizer(cameras=camera,
+                                                raster_settings=self.raster_settings_silhouette)
             self.renderer = MeshRenderer(rasterizer=self.silhouetteRas,
                                          shader=SoftSilhouetteShader())
 
         elif type == "pointcloud":
-            self.raster_settings_pcd = PointsRasterizationSettings(
-                image_size=self.size, radius=0.006, points_per_pixel=10)
+            self.raster_settings_pcd = PointsRasterizationSettings(image_size=self.size,
+                                                                   radius=0.006,
+                                                                   points_per_pixel=10)
 
-            self.pcdRas = PointsRasterizer(
-                cameras=camera, raster_settings=self.raster_settings_pcd)
+            self.pcdRas = PointsRasterizer(cameras=camera, raster_settings=self.raster_settings_pcd)
             self.renderer = PointsRenderer(
                 rasterizer=self.pcdRas,
                 compositor=AlphaCompositor(background_color=(0, 0, 0)),
             )
 
-    def VF2Mesh(self, verts, faces):
-
-        if not torch.is_tensor(verts):
-            verts = torch.tensor(verts)
-        if not torch.is_tensor(faces):
-            faces = torch.tensor(faces)
-
-        if verts.ndimension() == 2:
-            verts = verts.unsqueeze(0).float()
-        if faces.ndimension() == 2:
-            faces = faces.unsqueeze(0).long()
-            
-        if verts.shape[0] != faces.shape[0]:
-            faces = faces.repeat(verts.shape[0], 1, 1)
-
-        verts = verts.to(self.device)
-        faces = faces.to(self.device)
-
-        mesh = Meshes(verts, faces).to(self.device)
-
-        mesh.textures = TexturesVertex(
-            verts_features=(mesh.verts_normals_padded() + 1.0) * 0.5)
-        return mesh
-
     def load_meshes(self, verts, faces):
         """load mesh into the pytorch3d renderer
 
         Args:
-            verts ([N,3]): verts
-            faces ([N,3]): faces
-            offset ([N,3]): offset
+            verts ([N,3] / [B,N,3]): array or tensor
+            faces ([N,3]/ [B,N,3]): array or tensor
         """
 
         if isinstance(verts, list):
-            self.meshes = []
+            V_lst = []
+            F_lst = []
             for V, F in zip(verts, faces):
-                self.meshes.append(self.VF2Mesh(V, F))
+                V_lst.append(torch.tensor(V).float().to(self.device))
+                F_lst.append(torch.tensor(F).long().to(self.device))
+            self.meshes = Meshes(V_lst, F_lst).to(self.device)
         else:
-            self.meshes = [self.VF2Mesh(verts, faces)]
+            # array or tensor
+            if not torch.is_tensor(verts):
+                verts = torch.tensor(verts)
+                faces = torch.tensor(faces)
+            if verts.ndimension() == 2:
+                verts = verts.float().unsqueeze(0).to(self.device)
+                faces = faces.long().unsqueeze(0).to(self.device)
+            if verts.shape[0] != faces.shape[0]:
+                faces = faces.repeat(len(verts), 1, 1).to(self.device)
+            self.meshes = Meshes(verts, faces).to(self.device)
 
-    def colored_meshes(self, vc):
+        # texture only support single mesh
+        if len(self.meshes) == 1:
+            self.meshes.textures = TexturesVertex(
+                verts_features=(self.meshes.verts_normals_padded() + 1.0) * 0.5)
 
-        if not torch.is_tensor(vc):
-            vc = torch.tensor(vc)
-        if vc.ndimension() == 2:
-            vc = vc.unsqueeze(0).float()
-        vc = vc.to(self.device)
+    def get_image(self, cam_type="frontback", type="rgb", bg="gray"):
 
-        for mid, mesh in enumerate(self.meshes):
-            mesh.textures = TexturesVertex(verts_features=vc)
-            self.meshes[mid] = mesh
+        self.init_renderer(self.get_camera_batch(cam_type), type, bg)
 
-    def get_image(self, cam_ids=[0, 2], type="rgb", bg="gray"):
+        img_lst = []
 
-        images = []
+        for mesh_id in range(len(self.meshes)):
 
-        for cam_id in range(len(self.cam_pos)):
-            
-            if cam_id in cam_ids:
-                
-                self.init_renderer(self.get_camera(cam_id), type, bg)
+            current_mesh = self.meshes[mesh_id]
+            current_mesh.textures = TexturesVertex(
+                verts_features=(current_mesh.verts_normals_padded() + 1.0) * 0.5)
 
-                if type == "depth":
-                    fragments = self.meshRas(self.meshes[0])
-                    image = fragments.zbuf[..., 0].squeeze(0)
+            if type == "depth":
+                fragments = self.meshRas(current_mesh.extend(len(self.cam_pos[cam_type])))
+                images = fragments.zbuf[..., 0]
 
-                elif type == "rgb":
-                    image = self.renderer(self.meshes[0])
-                    image = (image[:, :, :, :3].permute(0, 3, 1, 2) -
-                             0.5) * 2.0
+            elif type == "rgb":
+                images = self.renderer(current_mesh.extend(len(self.cam_pos[cam_type])))
+                images = (images[:, :, :, :3].permute(0, 3, 1, 2) - 0.5) * 2.0
 
-                elif type == "mask":
-                    image = self.renderer(self.meshes[0])[:, :, :, 3]
+            elif type == "mask":
+                images = self.renderer(current_mesh.extend(len(self.cam_pos[cam_type])))[:, :, :, 3]
+            else:
+                print(f"unknown {type}")
 
-                if cam_id == 2 and len(cam_ids) == 2:
-                    image = torch.flip(image, dims=[len(image.shape) - 1])
+            if cam_type == 'frontback':
+                images[1] = torch.flip(images[1], dims=(-1,))
 
-                images.append(image)
+            # images [N_render, 3, res, res]
+            img_lst.append(images.unsqueeze(1))
 
-        return images
+        # meshes [N_render, N_mesh, 3, res, res]
+        meshes = torch.cat(img_lst, dim=1)
 
-    def get_rendered_video(self, images, save_path):
+        return list(meshes)
 
-        self.cam_pos = []
-        
-        for angle in range(0, 360, 3):
-            self.cam_pos.append((
-                100.0 * math.cos(np.pi / 180 * angle),
-                self.mesh_y_center,
-                100.0 * math.sin(np.pi / 180 * angle),
-            ))
-
-        old_shape = np.array(images[0].shape[:2])
-        new_shape = np.around(
-            (self.size / old_shape[0]) * old_shape).astype(np.int)
+    def get_rendered_video_multi(self, data, save_path):
 
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         video = cv2.VideoWriter(
             save_path,
             fourcc,
-            10,
-            (self.size * len(self.meshes) + new_shape[1] * len(images),
-             self.size),
+            self.fps // self.step,
+            (data["img_raw"].shape[1], 3 * data["img_raw"].shape[0]),
         )
 
-        pbar = tqdm(range(len(self.cam_pos)))
-        pbar.set_description(
-            colored(f"exporting video {os.path.basename(save_path)}...",
-                    "blue"))
+        pbar = tqdm(range(len(self.meshes)))
+        pbar.set_description(colored(f"Normal Rendering {os.path.basename(save_path)}...", "blue"))
 
+        mesh_renders = []  #[(N_cam, 3, res, res)*N_mesh]
+
+        # render all the normals
+        for mesh_id in pbar:
+
+            current_mesh = self.meshes[mesh_id]
+            current_mesh.textures = TexturesVertex(
+                verts_features=(current_mesh.verts_normals_padded() + 1.0) * 0.5)
+
+            norm_lst = []
+
+            for batch_cams_idx in np.array_split(np.arange(len(self.cam_pos["around"])), 24):
+
+                batch_cams = self.get_camera_batch(type='around', idx=batch_cams_idx)
+
+                self.init_renderer(batch_cams, "mesh", "gray")
+
+                norm_lst.append(
+                    self.renderer(current_mesh.extend(len(batch_cams_idx)))[..., :3].permute(
+                        0, 3, 1, 2))
+            mesh_renders.append(torch.cat(norm_lst).detach().cpu())
+
+        # generate video frame by frame
+        pbar = tqdm(range(len(self.cam_pos["around"])))
+        pbar.set_description(colored(f"Video Exporting {os.path.basename(save_path)}...", "blue"))
         for cam_id in pbar:
-            self.init_renderer(self.get_camera(cam_id), "mesh", "gray")
+            img_lst = [data["img_raw"].astype(np.uint8)]
 
-            img_lst = [
-                np.array(Image.fromarray(img).resize(new_shape[::-1])).astype(
-                    np.uint8)[:, :, [2, 1, 0]] for img in images
+            img_lst += [
+                blend_rgb_norm((torch.stack(mesh_renders)[:6, cam_id] - 0.5) * 2.0, data),
+                blend_rgb_norm((torch.stack(mesh_renders)[6:, cam_id] - 0.5) * 2.0, data)
             ]
 
-            for mesh in self.meshes:
-                rendered_img = ((self.renderer(mesh)[0, :, :, :3] *
-                                 255.0).cpu().numpy().astype(np.uint8))
-
-                img_lst.append(rendered_img)
-            final_img = np.concatenate(img_lst, axis=1)
-            video.write(final_img)
+            final_img = np.concatenate(img_lst, axis=0)
+            video.write(final_img[:, :, ::-1])
 
         video.release()
-        self.reload_cam()
-        
-    def get_rendered_video_multi(self, image, data, save_path):
-
-        self.cam_pos = []
-        
-        for angle in range(0, 360, 3):
-            self.cam_pos.append((
-                100.0 * math.cos(np.pi / 180 * angle),
-                self.mesh_y_center,
-                100.0 * math.sin(np.pi / 180 * angle),
-            ))
-
-        old_shape = np.array(image.shape[:2])
-
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        video = cv2.VideoWriter(
-            save_path,
-            fourcc,
-            10,
-            (3 * old_shape[1], old_shape[0]),
-        )
-
-        pbar = tqdm(range(len(self.cam_pos)))
-        pbar.set_description(
-            colored(f"exporting video {os.path.basename(save_path)}...",
-                    "blue"))
-        
-        for cam_id in pbar:
-            self.init_renderer(self.get_camera(cam_id), "mesh", "gray")
-
-            img_lst = [image.astype(np.uint8)[:,:,[2,1,0]]]
-            norm_lst = []
-            for mesh in self.meshes:
-                norm_lst.append(self.renderer(mesh)[..., :3].permute(0, 3, 1, 2))
-
-            img_lst.append(blend_rgb_norm(torch.stack(norm_lst), data))
-            final_img = np.concatenate(img_lst, axis=1)
-            video.write(final_img)
-
-        video.release()
-        self.reload_cam()

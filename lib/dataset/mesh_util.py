@@ -20,7 +20,6 @@ import pymeshlab
 import torch
 import torchvision
 import trimesh
-from pytorch3d.io import load_obj
 import os
 from termcolor import colored
 import os.path as osp
@@ -80,7 +79,7 @@ def face_hand_removal(full_mesh, hand_mesh, face_mesh, device):
     full_mesh.update_faces(BNI_faces_mask.detach().cpu())
     full_mesh.remove_unreferenced_vertices()
     full_mesh = clean_floats(full_mesh)
-    
+
     return full_mesh
 
 
@@ -240,7 +239,7 @@ def save_normal_tensor(in_tensor, idx, png_path):
 
     depth_F_arr = depth2arr(in_tensor["depth_F"][idx])
     depth_B_arr = depth2arr(in_tensor["depth_B"][idx])
-    
+
     # T_normal_F_arr = tensor2arr(in_tensor["T_normal_F"][idx:idx+1])
     # T_normal_B_arr = tensor2arr(in_tensor["T_normal_B"][idx:idx+1])
     T_mask_normal_arr = tensor2arr(in_tensor["T_normal_F"][idx:idx + 1], True)
@@ -300,13 +299,13 @@ def save_normal_tensor(in_tensor, idx, png_path):
     return BNI_dict
 
 
-def possion(mesh, obj_path):
+def possion(mesh, obj_path, depth=10):
 
     mesh.export(obj_path)
     ms = pymeshlab.MeshSet(verbose=False)
     ms.load_new_mesh(obj_path)
     ms.set_verbosity(False)
-    ms.surface_reconstruction_screened_poisson(depth=10, preclean=True)
+    ms.surface_reconstruction_screened_poisson(depth=depth, preclean=True)
     ms.set_current_mesh(1)
     ms.save_current_mesh(obj_path)
 
@@ -329,9 +328,9 @@ def get_mask(tensor, dim):
 
 def blend_rgb_norm(norms, data):
 
-    # norm              [N, 3, res, res]
+    # norms [N, 3, res, res]
 
-    masks = (norms.sum(dim=1)!=0.).float().unsqueeze(1)
+    masks = (norms.sum(dim=1) != norms[0, :, 0, 0].sum()).float().unsqueeze(1)
     norm_mask = F.interpolate(torch.cat([norms, masks], dim=1).detach().cpu(),
                               size=data["uncrop_param"]["box_shape"],
                               mode="bilinear",
@@ -646,7 +645,6 @@ def calculate_mIoU(outputs, labels):
            )  # Or thresholded.mean() if you are interested in average across the batch
 
 
-
 def add_alpha(colors, alpha=0.7):
 
     colors_pad = np.pad(colors, ((0, 0), (0, 1)), mode="constant", constant_values=alpha)
@@ -712,32 +710,11 @@ def clean_mesh(verts, faces):
     return final_verts, final_faces
 
 
-def clean_floats(mesh):
+def clean_floats(mesh, thres=100):
 
     mesh_lst = mesh.split(only_watertight=False)
-    mesh_clean = trimesh.boolean.union([mesh for mesh in mesh_lst if mesh.vertices.shape[0] > 50],
-                                       engine="blender")
-    return mesh_clean
-
-
-def merge_mesh(verts_A, faces_A, verts_B, faces_B, color=False):
-
-    sep_mesh = trimesh.Trimesh(
-        np.concatenate([verts_A, verts_B], axis=0),
-        np.concatenate([faces_A, faces_B + faces_A.max() + 1], axis=0),
-        maintain_order=True,
-        process=False,
-    )
-    if color:
-        colors = np.ones_like(sep_mesh.vertices)
-        colors[:verts_A.shape[0]] *= np.array([255.0, 0.0, 0.0])
-        colors[verts_A.shape[0]:] *= np.array([0.0, 255.0, 0.0])
-        sep_mesh.visual.vertex_colors = colors
-
-    # union_mesh = trimesh.boolean.union([trimesh.Trimesh(verts_A, faces_A),
-    #                                     trimesh.Trimesh(verts_B, faces_B)], engine='blender')
-
-    return sep_mesh
+    clean_mesh_lst = [mesh for mesh in mesh_lst if mesh.vertices.shape[0] > thres]
+    return sum(clean_mesh_lst)
 
 
 def mesh_move(mesh_lst, step, scale=1.0):

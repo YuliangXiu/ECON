@@ -66,8 +66,11 @@ class TestDataset:
 
         # smpl related
         self.smpl_data = SMPLX()
-        self.get_smpl_model = lambda smpl_type, smpl_gender: smplx.create(
-            model_path=self.smpl_data.model_dir, gender=smpl_gender, model_type=smpl_type, ext="npz")
+        self.get_smpl_model = lambda smpl_type, smpl_gender: smplx.create(model_path=self.smpl_data.
+                                                                          model_dir,
+                                                                          gender=smpl_gender,
+                                                                          model_type=smpl_type,
+                                                                          ext="npz")
 
         # Load SMPL model
         self.smpl_model = self.get_smpl_model(self.smpl_type, self.smpl_gender).to(self.device)
@@ -91,7 +94,8 @@ class TestDataset:
                 smpl_path=smpl_path,
                 data_path=path_config.hybrik_data_dir,
             )
-            self.hps.load_state_dict(torch.load(path_config.HYBRIK_CKPT, map_location="cpu"), strict=False)
+            self.hps.load_state_dict(torch.load(path_config.HYBRIK_CKPT, map_location="cpu"),
+                                     strict=False)
             self.hps.to(self.device)
         elif self.hps_type == "bev":
             try:
@@ -146,8 +150,11 @@ class TestDataset:
         pad_v_num = int(8000 - verts.shape[0])
         pad_f_num = int(25100 - faces.shape[0])
 
-        verts = (np.pad(verts, ((0, pad_v_num), (0, 0)), mode="constant", constant_values=0.0).astype(np.float32) * 0.5)
-        faces = np.pad(faces, ((0, pad_f_num), (0, 0)), mode="constant", constant_values=0.0).astype(np.int32)
+        verts = (np.pad(verts,
+                        ((0, pad_v_num),
+                         (0, 0)), mode="constant", constant_values=0.0).astype(np.float32) * 0.5)
+        faces = np.pad(faces, ((0, pad_f_num), (0, 0)), mode="constant",
+                       constant_values=0.0).astype(np.int32)
 
         verts[:, 2] *= -1.0
 
@@ -164,9 +171,15 @@ class TestDataset:
 
         img_path = self.subject_list[index]
         img_name = img_path.split("/")[-1].rsplit(".", 1)[0]
-        seg_path = (os.path.join(self.seg_dir, f"{img_name}.json") if self.seg_dir is not None else None)
+        seg_path = (os.path.join(self.seg_dir, f"{img_name}.json")
+                    if self.seg_dir is not None else None)
 
-        arr_dict = process_image(img_path, self.use_seg, self.hps_type, 512, self.device, seg_path=seg_path)
+        arr_dict = process_image(img_path,
+                                 self.use_seg,
+                                 self.hps_type,
+                                 512,
+                                 self.device,
+                                 seg_path=seg_path)
 
         # "img_icon":         #[N, 3, res, res] tensor
         # "img_crop":         #[N, 3, res, res] array
@@ -183,7 +196,8 @@ class TestDataset:
         with torch.no_grad():
             preds_dict = self.hps.forward(arr_dict["img_hps"])
 
-        arr_dict["smpl_faces"] = (torch.as_tensor(self.faces.astype(np.int64)).unsqueeze(0).long().to(self.device))
+        arr_dict["smpl_faces"] = (torch.as_tensor(self.faces.astype(
+            np.int64)).unsqueeze(0).long().to(self.device))
         arr_dict["type"] = self.smpl_type
 
         if self.hps_type == "pymaf":
@@ -217,11 +231,14 @@ class TestDataset:
             scale = scale * 2
 
         elif self.hps_type == "bev":
-            arr_dict["betas"] = (torch.from_numpy(preds_dict["smpl_betas"])[[0], :10].to(self.device).float())
-            pred_thetas = batch_rodrigues(torch.from_numpy(preds_dict["smpl_thetas"][0]).reshape(-1, 3)).float()
+            arr_dict["betas"] = (torch.from_numpy(preds_dict["smpl_betas"])[[0], :10].to(
+                self.device).float())
+            pred_thetas = batch_rodrigues(
+                torch.from_numpy(preds_dict["smpl_thetas"][0]).reshape(-1, 3)).float()
             arr_dict["body_pose"] = pred_thetas[1:][None].to(self.device)
             arr_dict["global_orient"] = pred_thetas[[0]][None].to(self.device)
-            arr_dict["smpl_verts"] = (torch.from_numpy(preds_dict["verts"][[0]]).to(self.device).float())
+            arr_dict["smpl_verts"] = (torch.from_numpy(preds_dict["verts"][[0]]).to(
+                self.device).float())
             tranX = preds_dict["cam_trans"][0, 0]
             tranY = preds_dict["cam"][0, 1] + 0.28
             scale = preds_dict["cam"][0, 0] * 1.1
@@ -268,7 +285,8 @@ class TestDataset:
                 global_orient=data["global_orient"],
                 pose2rot=False,
             )
-            smpl_verts = (((smpl_out.vertices + data["trans"]) * data["scale"]).detach().cpu().numpy()[0])
+            smpl_verts = (((smpl_out.vertices + data["trans"]) *
+                           data["scale"]).detach().cpu().numpy()[0])
         else:
             smpl_verts, _, smpl_joints = self.smpl_model(
                 shape_params=data["betas"],
@@ -296,7 +314,9 @@ class TestDataset:
         image_B = (0.5 * (1.0 + image_B[0].permute(1, 2, 0).detach().cpu().numpy()) * 255.0)
         image_P = (0.5 * (1.0 + image_P[0].permute(1, 2, 0).detach().cpu().numpy()) * 255.0)
 
-        vis_list.append(vedo.Picture(image_P * 0.5 + image_F * 0.5).scale(2.0 / image_P.shape[0]).pos(-1.0, -1.0, 1.0))
+        vis_list.append(
+            vedo.Picture(image_P * 0.5 + image_F * 0.5).scale(2.0 / image_P.shape[0]).pos(
+                -1.0, -1.0, 1.0))
         vis_list.append(vedo.Picture(image_F).scale(2.0 / image_F.shape[0]).pos(-1.0, -1.0, -0.5))
         vis_list.append(vedo.Picture(image_B).scale(2.0 / image_B.shape[0]).pos(-1.0, -1.0, -1.0))
 
@@ -331,10 +351,31 @@ if __name__ == "__main__":
         device,
     )
 
-    for i in range(len(dataset)):
-        # dataset.visualize_alignment(dataset[i])
-        for key in dataset[i].keys():
-            if hasattr(dataset[i][key], "shape"):
-                print(key, dataset[i][key].shape, type(dataset[i][key]))
-            else:
-                print(key, dataset[i][key])
+    if False:
+        for i in range(len(dataset)):
+            # dataset.visualize_alignment(dataset[i])
+            for key in dataset[i].keys():
+                if hasattr(dataset[i][key], "shape"):
+                    print(key, dataset[i][key].shape, type(dataset[i][key]))
+                else:
+                    print(key, dataset[i][key])
+
+    if True:
+        import torchvision
+        result_dir = "./results/tmp/icon-filter/vid/"
+        in_tensor = torch.load(osp.join(result_dir, "in_tensor.pt"))
+
+        # self-rotated video
+        verts_lst = in_tensor["body_verts"] + in_tensor["BNI_verts"]
+        faces_lst = in_tensor["body_faces"] + in_tensor["BNI_faces"]
+        dataset.render.load_meshes(verts_lst, faces_lst)
+        dataset.render.get_rendered_video_multi(in_tensor, osp.join(result_dir, "ECON-MultiPerson.mp4"))
+
+        # # test different kinds of renderers
+        # dataset.render.load_meshes(in_tensor["body_verts"][0], in_tensor["body_faces"][0])
+        # torchvision.utils.save_image(torch.stack(dataset.render.get_image(cam_type="four")),
+        #                              osp.join(result_dir, "four.png"))
+        # torchvision.utils.save_image(torch.stack(dataset.render.get_image()),
+        #                              osp.join(result_dir, "T_normal_FB.png"))
+        # torchvision.utils.save_image(torch.stack(dataset.render.get_image(type="mask")),
+        #                              osp.join(result_dir, "mask.png"))

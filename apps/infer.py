@@ -29,14 +29,12 @@ import pickle
 import os
 
 from termcolor import colored
-from pytorch3d.structures import Meshes
 from tqdm.auto import tqdm
 from apps.ICON import ICON
 from lib.common.cloth_extraction import extract_cloth
 from lib.common.config import cfg
 from lib.common.render import image2vid
 from lib.common.train_util import init_loss
-from lib.net.local_affine import LocalAffine
 from lib.renderer.mesh import compute_normal_batch
 from lib.common.BNI import BNI
 from lib.dataset.TestDataset import TestDataset
@@ -105,7 +103,6 @@ if __name__ == "__main__":
     pbar = tqdm(dataset)
 
     for data in pbar:
-
         losses = init_loss()
 
         pbar.set_description(f"{data['name']}")
@@ -259,31 +256,16 @@ if __name__ == "__main__":
 
             if (i % args.vis_freq == 0) or (i == args.loop_smpl - 1):
 
-                # # render optimized mesh as vitruvian color [-1,1]
-                # with torch.no_grad():
-
-                #     dataset.render.colored_meshes(SMPLX().cmap_smpl_vids(
-                #         type="smpl" if smpl_verts.shape[1] ==
-                #         6890 else "smplx"))
-                #     (
-                #         in_tensor["T_vitruvian_F"],
-                #         in_tensor["T_vitruvian_B"],
-                #     ) = dataset.render.get_image()
-
                 per_loop_lst.extend([
                     in_tensor["image"],
                     in_tensor["T_normal_F"],
                     in_tensor["normal_F"],
-                    # in_tensor["T_vitruvian_F"],
-                    # diff_F_smpl / 2.0,
                     diff_S[:, :, :512].unsqueeze(1).repeat(1, 3, 1, 1),
                 ])
                 per_loop_lst.extend([
                     in_tensor["image"],
                     in_tensor["T_normal_B"],
                     in_tensor["normal_B"],
-                    # in_tensor["T_vitruvian_B"],
-                    # diff_B_smpl / 2.0,
                     diff_S[:, :, 512:].unsqueeze(1).repeat(1, 3, 1, 1),
                 ])
                 per_data_lst.append(
@@ -296,13 +278,6 @@ if __name__ == "__main__":
 
         # visualize the optimization process
         # 1. SMPL Fitting
-
-        if args.vis_freq == 1:
-
-            image2vid(
-                per_data_lst,
-                os.path.join(args.out_dir, cfg.name, f"refinement/{data['name']}_smpl.avi"),
-            )
 
         per_data_lst[-1].save(os.path.join(args.out_dir, cfg.name, f"png/{data['name']}_smpl.png"))
 
@@ -404,13 +379,13 @@ if __name__ == "__main__":
 
                 in_tensor["depth_F"], in_tensor["depth_B"] = dataset.render_depth(
                     verts_remesh, faces_remesh)
-                
+
                 (xy, z) = verts_remesh.split([2, 1], dim=-1)
                 F_vis = get_visibility(xy, z, faces_remesh[..., [0, 2, 1]])
                 B_vis = get_visibility(xy, -z, faces_remesh)
 
                 per_loop_lst = []
-                
+
                 in_tensor["BNI_verts"] = []
                 in_tensor["BNI_faces"] = []
                 in_tensor["body_verts"] = []
@@ -463,6 +438,7 @@ if __name__ == "__main__":
                     face_mesh = mesh_remove_vid_fid(face_mesh, torch.zeros_like(verts_mask),
                                                     SMPLX_object.smplx_front_flame_vid,
                                                     ~SMPLX_object.smplx_eyeball_fid)
+
                     # only hands
                     hand_vid_mask = torch.zeros_like(verts_mask)
                     hand_vid_mask[SMPLX_object.smplx_mano_vid] = 1.0
@@ -480,24 +456,21 @@ if __name__ == "__main__":
                     BNI_object.F_B_trimesh.export(
                         f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_BNI.obj")
 
-                    possion_mesh = merge_mesh(side_mesh.vertices, side_mesh.faces,
-                                              BNI_object.F_B_trimesh.vertices,
-                                              BNI_object.F_B_trimesh.faces)
-
                     final_mesh = possion(
-                        possion_mesh,
+                        sum([side_mesh, BNI_object.F_B_trimesh]),
                         f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_combine.obj",
+                        10,
                     )
 
                     dataset.render.load_meshes(final_mesh.vertices, final_mesh.faces)
-                    rotate_recon_lst = dataset.render.get_image(cam_ids=[0, 1, 2, 3])
+                    rotate_recon_lst = dataset.render.get_image(cam_type="four")
                     per_loop_lst.extend([data['image'][idx:idx + 1]] + rotate_recon_lst)
-                    
+
                     # for video rendering
-                    in_tensor["BNI_verts"].append(final_mesh.vertices)
-                    in_tensor["BNI_faces"].append(final_mesh.faces)
-                    in_tensor["body_verts"].append(verts_remesh[idx])
-                    in_tensor["body_faces"].append(faces_remesh[0])
+                    in_tensor["BNI_verts"].append(torch.tensor(final_mesh.vertices).float())
+                    in_tensor["BNI_faces"].append(torch.tensor(final_mesh.faces).long())
+                    in_tensor["body_verts"].append(verts_remesh.cpu()[idx].float())
+                    in_tensor["body_faces"].append(faces_remesh.cpu()[0].long())
 
             # always export visualized png regardless of the cloth refinment
 
@@ -507,20 +480,24 @@ if __name__ == "__main__":
             per_data_lst[-1].save(
                 os.path.join(args.out_dir, cfg.name, f"png/{data['name']}_cloth.png"))
 
+            os.makedirs(os.path.join(args.out_dir, cfg.name, "vid"), exist_ok=True)
+            in_tensor["uncrop_param"] = data["uncrop_param"]
+            in_tensor["img_raw"] = data["img_raw"]
+            torch.save(in_tensor, os.path.join(args.out_dir, cfg.name, "vid/in_tensor.pt"))
+
             # always export visualized video regardless of the cloth refinment
             if args.export_video:
+                
+                torch.cuda.empty_cache()
 
                 # visualize the final results in self-rotation mode
-                os.makedirs(os.path.join(args.out_dir, cfg.name, "vid"), exist_ok=True)
-                torch.save(in_tensor, os.path.join(args.out_dir, cfg.name, "vid", f"{data['name']}.pt"))
-
                 verts_lst = in_tensor["body_verts"] + in_tensor["BNI_verts"]
                 faces_lst = in_tensor["body_faces"] + in_tensor["BNI_faces"]
 
                 # self-rotated video
                 dataset.render.load_meshes(verts_lst, faces_lst)
                 dataset.render.get_rendered_video_multi(
-                    data["img_raw"], data, 
+                    in_tensor,
                     os.path.join(args.out_dir, cfg.name, f"vid/{data['name']}_cloth.mp4"),
                 )
 

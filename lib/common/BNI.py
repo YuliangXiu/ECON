@@ -43,7 +43,7 @@ class BNI:
         if mvc:
             self.mvp_expand(self.mask, self.depth_mask, self.depth_front,
                             self.depth_back)
-        
+
     def mvp_expand(self, cloth_mask, body_mask, depth_front, depth_back):
 
         # contour [num_contour, 2]
@@ -155,7 +155,8 @@ class BNI:
 
         IO().save_mesh(
             self.F_B_surfaces,
-            os.path.join(self.export_dir, f"{self.name}_{idx}_F_B_surface.obj"),
+            os.path.join(self.export_dir,
+                         f"{self.name}_{idx}_F_B_surface.obj"),
         )
 
 
