@@ -341,11 +341,11 @@ class ICON(pl.LightningModule):
         })
 
         self.evaluator.set_mesh(self.result_eval)
-        chamfer, p2s, p2s_hf = self.evaluator.calculate_chamfer_p2s(num_samples=1000)
-        nc, nc_hf = self.evaluator.calculate_normal_consist(
-            osp.join(self.export_dir, f"{mesh_rot}_nc.png"))
+        chamfer, p2s = self.evaluator.calculate_chamfer_p2s(num_samples=1000)
+        nc = self.evaluator.calculate_normal_consist(osp.join(self.export_dir,
+                                                              f"{mesh_rot}_nc.png"))
 
-        test_log = {"chamfer": chamfer, "p2s": p2s, "p2s_hf": p2s_hf, "NC": nc, "NC_hf": nc_hf}
+        test_log = {"chamfer": chamfer, "p2s": p2s, "NC": nc}
 
         self.log_dict(test_log, prog_bar=True, logger=False, on_step=True, on_epoch=False)
 

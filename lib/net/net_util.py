@@ -24,9 +24,7 @@ from torch.autograd import grad
 
 
 def gradient(inputs, outputs):
-    d_points = torch.ones_like(outputs,
-                               requires_grad=False,
-                               device=outputs.device)
+    d_points = torch.ones_like(outputs, requires_grad=False, device=outputs.device)
     points_grad = grad(
         outputs=outputs,
         inputs=inputs,
@@ -45,13 +43,7 @@ def gradient(inputs, outputs):
 #                      stride=strd, padding=padding, bias=bias)
 
 
-def conv3x3(in_planes,
-            out_planes,
-            kernel=3,
-            strd=1,
-            dilation=1,
-            padding=1,
-            bias=False):
+def conv3x3(in_planes, out_planes, kernel=3, strd=1, dilation=1, padding=1, bias=False):
     "3x3 convolution with padding"
     return nn.Conv2d(
         in_planes,
@@ -66,11 +58,7 @@ def conv3x3(in_planes,
 
 def conv1x1(in_planes, out_planes, stride=1):
     """1x1 convolution"""
-    return nn.Conv2d(in_planes,
-                     out_planes,
-                     kernel_size=1,
-                     stride=stride,
-                     bias=False)
+    return nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=stride, bias=False)
 
 
 def init_weights(net, init_type="normal", init_gain=0.02):
@@ -87,8 +75,8 @@ def init_weights(net, init_type="normal", init_gain=0.02):
 
     def init_func(m):  # define the initialization function
         classname = m.__class__.__name__
-        if hasattr(m, "weight") and (classname.find("Conv") != -1
-                                     or classname.find("Linear") != -1):
+        if hasattr(m, "weight") and (classname.find("Conv") != -1 or
+                                     classname.find("Linear") != -1):
             if init_type == "normal":
                 init.normal_(m.weight.data, 0.0, init_gain)
             elif init_type == "xavier":
@@ -98,14 +86,12 @@ def init_weights(net, init_type="normal", init_gain=0.02):
             elif init_type == "orthogonal":
                 init.orthogonal_(m.weight.data, gain=init_gain)
             else:
-                raise NotImplementedError(
-                    "initialization method [%s] is not implemented" %
-                    init_type)
+                raise NotImplementedError("initialization method [%s] is not implemented" %
+                                          init_type)
             if hasattr(m, "bias") and m.bias is not None:
                 init.constant_(m.bias.data, 0.0)
-        elif (
-                classname.find("BatchNorm2d") != -1
-        ):  # BatchNorm Layer's weight is not a matrix; only normal distribution applies.
+        elif (classname.find("BatchNorm2d") !=
+              -1):  # BatchNorm Layer's weight is not a matrix; only normal distribution applies.
             init.normal_(m.weight.data, 1.0, init_gain)
             init.constant_(m.bias.data, 0.0)
 
@@ -170,10 +156,9 @@ def cal_gradient_penalty(netD,
             interpolatesv = fake_data
         elif type == "mixed":
             alpha = torch.rand(real_data.shape[0], 1)
-            alpha = (alpha.expand(
-                real_data.shape[0],
-                real_data.nelement() //
-                real_data.shape[0]).contiguous().view(*real_data.shape))
+            alpha = (alpha.expand(real_data.shape[0],
+                                  real_data.nelement() //
+                                  real_data.shape[0]).contiguous().view(*real_data.shape))
             alpha = alpha.to(device)
             interpolatesv = alpha * real_data + ((1 - alpha) * fake_data)
         else:
@@ -189,8 +174,8 @@ def cal_gradient_penalty(netD,
             only_inputs=True,
         )
         gradients = gradients[0].view(real_data.size(0), -1)  # flat the data
-        gradient_penalty = (((gradients + 1e-16).norm(2, dim=1) - constant)**
-                            2).mean() * lambda_gp  # added eps
+        gradient_penalty = ((
+            (gradients + 1e-16).norm(2, dim=1) - constant)**2).mean() * lambda_gp  # added eps
         return gradient_penalty, gradients
     else:
         return 0.0, None
@@ -204,20 +189,15 @@ def get_norm_layer(norm_type="instance"):
     For InstanceNorm, we do not use learnable affine parameters. We do not track running statistics.
     """
     if norm_type == "batch":
-        norm_layer = functools.partial(nn.BatchNorm2d,
-                                       affine=True,
-                                       track_running_stats=True)
+        norm_layer = functools.partial(nn.BatchNorm2d, affine=True, track_running_stats=True)
     elif norm_type == "instance":
-        norm_layer = functools.partial(nn.InstanceNorm2d,
-                                       affine=False,
-                                       track_running_stats=False)
+        norm_layer = functools.partial(nn.InstanceNorm2d, affine=False, track_running_stats=False)
     elif norm_type == "group":
         norm_layer = functools.partial(nn.GroupNorm, 32)
     elif norm_type == "none":
         norm_layer = None
     else:
-        raise NotImplementedError("normalization layer [%s] is not found" %
-                                  norm_type)
+        raise NotImplementedError("normalization layer [%s] is not found" % norm_type)
     return norm_layer
 
 
@@ -233,10 +213,8 @@ class ConvBlock(nn.Module):
         super(ConvBlock, self).__init__()
         [k, s, d, p] = opt.conv3x3
         self.conv1 = conv3x3(in_planes, int(out_planes / 2), k, s, d, p)
-        self.conv2 = conv3x3(int(out_planes / 2), int(out_planes / 4), k, s, d,
-                             p)
-        self.conv3 = conv3x3(int(out_planes / 4), int(out_planes / 4), k, s, d,
-                             p)
+        self.conv2 = conv3x3(int(out_planes / 2), int(out_planes / 4), k, s, d, p)
+        self.conv3 = conv3x3(int(out_planes / 4), int(out_planes / 4), k, s, d, p)
 
         if opt.norm == "batch":
             self.bn1 = nn.BatchNorm2d(in_planes)
@@ -253,11 +231,7 @@ class ConvBlock(nn.Module):
             self.downsample = nn.Sequential(
                 self.bn4,
                 nn.ReLU(True),
-                nn.Conv2d(in_planes,
-                          out_planes,
-                          kernel_size=1,
-                          stride=1,
-                          bias=False),
+                nn.Conv2d(in_planes, out_planes, kernel_size=1, stride=1, bias=False),
             )
         else:
             self.downsample = None
@@ -291,8 +265,7 @@ class Vgg19(torch.nn.Module):
 
     def __init__(self, requires_grad=False):
         super(Vgg19, self).__init__()
-        vgg_pretrained_features = models.vgg19(
-            weights=models.VGG19_Weights.DEFAULT).features
+        vgg_pretrained_features = models.vgg19(weights=models.VGG19_Weights.DEFAULT).features
         self.slice1 = torch.nn.Sequential()
         self.slice2 = torch.nn.Sequential()
         self.slice3 = torch.nn.Sequential()
@@ -326,7 +299,7 @@ class VGGLoss(nn.Module):
 
     def __init__(self):
         super(VGGLoss, self).__init__()
-        self.vgg = Vgg19().cuda()
+        self.vgg = Vgg19().eval().cuda()
         self.criterion = nn.L1Loss()
         self.weights = [1.0 / 32, 1.0 / 16, 1.0 / 8, 1.0 / 4, 1.0]
 
@@ -334,6 +307,131 @@ class VGGLoss(nn.Module):
         x_vgg, y_vgg = self.vgg(x), self.vgg(y)
         loss = 0
         for i in range(len(x_vgg)):
-            loss += self.weights[i] * self.criterion(x_vgg[i],
-                                                     y_vgg[i].detach())
+            loss += self.weights[i] * self.criterion(x_vgg[i], y_vgg[i].detach())
         return loss
+
+
+class VGG19FeatLayer(nn.Module):
+
+    def __init__(self):
+        super(VGG19FeatLayer, self).__init__()
+        self.vgg19 = models.vgg19(weights=models.VGG19_Weights.DEFAULT).features.eval().cuda()
+        self.mean = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1).cuda()
+        self.std = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1).cuda()
+
+    def forward(self, x):
+        out = {}
+        x = x - self.mean
+        x = x / self.std
+        ci = 1
+        ri = 0
+        for layer in self.vgg19.children():
+            if isinstance(layer, nn.Conv2d):
+                ri += 1
+                name = 'conv{}_{}'.format(ci, ri)
+            elif isinstance(layer, nn.ReLU):
+                ri += 1
+                name = 'relu{}_{}'.format(ci, ri)
+                layer = nn.ReLU(inplace=False)
+            elif isinstance(layer, nn.MaxPool2d):
+                ri = 0
+                name = 'pool_{}'.format(ci)
+                ci += 1
+            elif isinstance(layer, nn.BatchNorm2d):
+                name = 'bn_{}'.format(ci)
+            else:
+                raise RuntimeError('Unrecognized layer: {}'.format(layer.__class__.__name__))
+            x = layer(x)
+            out[name] = x
+        # print([x for x in out])
+        return out
+
+
+class IDMRFLoss(nn.Module):
+
+    def __init__(self, featlayer=VGG19FeatLayer):
+        super(IDMRFLoss, self).__init__()
+        self.featlayer = featlayer()
+        self.feat_style_layers = {'relu3_2': 1.0, 'relu4_2': 1.0}
+        self.feat_content_layers = {'relu4_2': 1.0}
+        self.bias = 1.0
+        self.nn_stretch_sigma = 0.5
+        self.lambda_style = 1.0
+        self.lambda_content = 1.0
+
+    def sum_normalize(self, featmaps):
+        reduce_sum = torch.sum(featmaps, dim=1, keepdim=True)
+        return featmaps / reduce_sum
+
+    def patch_extraction(self, featmaps):
+        patch_size = 1
+        patch_stride = 1
+        patches_as_depth_vectors = featmaps.unfold(2, patch_size, patch_stride).unfold(
+            3, patch_size, patch_stride)
+        self.patches_OIHW = patches_as_depth_vectors.permute(0, 2, 3, 1, 4, 5)
+        dims = self.patches_OIHW.size()
+        self.patches_OIHW = self.patches_OIHW.view(-1, dims[3], dims[4], dims[5])
+        return self.patches_OIHW
+
+    def compute_relative_distances(self, cdist):
+        epsilon = 1e-5
+        div = torch.min(cdist, dim=1, keepdim=True)[0]
+        relative_dist = cdist / (div + epsilon)
+        return relative_dist
+
+    def exp_norm_relative_dist(self, relative_dist):
+        scaled_dist = relative_dist
+        dist_before_norm = torch.exp((self.bias - scaled_dist) / self.nn_stretch_sigma)
+        self.cs_NCHW = self.sum_normalize(dist_before_norm)
+        return self.cs_NCHW
+
+    def mrf_loss(self, gen, tar):
+        meanT = torch.mean(tar, 1, keepdim=True)
+        gen_feats, tar_feats = gen - meanT, tar - meanT
+
+        gen_feats_norm = torch.norm(gen_feats, p=2, dim=1, keepdim=True)
+        tar_feats_norm = torch.norm(tar_feats, p=2, dim=1, keepdim=True)
+
+        gen_normalized = gen_feats / gen_feats_norm
+        tar_normalized = tar_feats / tar_feats_norm
+
+        cosine_dist_l = []
+        BatchSize = tar.size(0)
+
+        for i in range(BatchSize):
+            tar_feat_i = tar_normalized[i:i + 1, :, :, :]
+            gen_feat_i = gen_normalized[i:i + 1, :, :, :]
+            patches_OIHW = self.patch_extraction(tar_feat_i)
+
+            cosine_dist_i = F.conv2d(gen_feat_i, patches_OIHW)
+            cosine_dist_l.append(cosine_dist_i)
+        cosine_dist = torch.cat(cosine_dist_l, dim=0)
+        cosine_dist_zero_2_one = -(cosine_dist - 1) / 2
+        relative_dist = self.compute_relative_distances(cosine_dist_zero_2_one)
+        rela_dist = self.exp_norm_relative_dist(relative_dist)
+        dims_div_mrf = rela_dist.size()
+        k_max_nc = torch.max(rela_dist.view(dims_div_mrf[0], dims_div_mrf[1], -1), dim=2)[0]
+        div_mrf = torch.mean(k_max_nc, dim=1)
+        div_mrf_sum = -torch.log(div_mrf)
+        div_mrf_sum = torch.sum(div_mrf_sum)
+        return div_mrf_sum
+
+    def forward(self, gen, tar):
+        ## gen: [bz,3,h,w] rgb [0,1]
+        gen_vgg_feats = self.featlayer(gen)
+        tar_vgg_feats = self.featlayer(tar)
+        style_loss_list = [
+            self.feat_style_layers[layer] *
+            self.mrf_loss(gen_vgg_feats[layer], tar_vgg_feats[layer])
+            for layer in self.feat_style_layers
+        ]
+        self.style_loss = functools.reduce(lambda x, y: x + y, style_loss_list) * self.lambda_style
+
+        content_loss_list = [
+            self.feat_content_layers[layer] *
+            self.mrf_loss(gen_vgg_feats[layer], tar_vgg_feats[layer])
+            for layer in self.feat_content_layers
+        ]
+        self.content_loss = functools.reduce(lambda x, y: x + y, content_loss_list) * self.lambda_content
+
+        return self.style_loss + self.content_loss

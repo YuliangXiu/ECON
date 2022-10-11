@@ -149,7 +149,7 @@ class NormalDataset:
                 self.imagepath2tensor(data_dict[f"{name}_path"],
                                       channel,
                                       inv=False,
-                                      erasing=name == "image")
+                                      erasing=False)
             })
 
         path_keys = [

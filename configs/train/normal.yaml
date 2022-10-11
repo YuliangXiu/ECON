@@ -20,8 +20,8 @@ net:
 lr_N: 1e-4
 weight_decay: 0.0 
 momentum: 0.0
-batch_size: 4
-num_threads: 4
+batch_size: 3
+num_threads: 3
 gpus: [0]
 test_gpus: [0]
 

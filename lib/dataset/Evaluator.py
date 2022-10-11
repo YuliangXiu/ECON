@@ -199,20 +199,20 @@ class Evaluator:
         src_normal_arr /= src_norm
         tgt_normal_arr /= tgt_norm
 
-        sim_mask = self.get_laplacian_2d(tgt_normal_arr).to(self.device)
+        # sim_mask = self.get_laplacian_2d(tgt_normal_arr).to(self.device)
 
         src_normal_arr = (src_normal_arr + 1.0) * 0.5
         tgt_normal_arr = (tgt_normal_arr + 1.0) * 0.5
 
         error = (((src_normal_arr - tgt_normal_arr)**2).sum(dim=0).mean()) * 4.0
 
-        error_hf = ((((src_normal_arr - tgt_normal_arr) * sim_mask)**2).sum(dim=0).mean()) * 4.0
+        # error_hf = ((((src_normal_arr - tgt_normal_arr) * sim_mask)**2).sum(dim=0).mean()) * 4.0
 
         normal_img = Image.fromarray((torch.cat([src_normal_arr, tgt_normal_arr], dim=1).permute(
             1, 2, 0).detach().cpu().numpy() * 255.0).astype(np.uint8))
         normal_img.save(normal_path)
 
-        return error, error_hf
+        return error
 
     def calculate_chamfer_p2s(self, num_samples=1000):
 
@@ -224,19 +224,19 @@ class Evaluator:
         src_points = Pointclouds(samples_src)
 
         # 3d laplacian matrix
-        tgt_pts_lapmat = self.get_laplacian_3d(self.tgt_mesh)
+        # tgt_pts_lapmat = self.get_laplacian_3d(self.tgt_mesh)
 
-        samples_hf_tgt = (tgt_pts_lapmat[self.faces_gt[samples_fid_tgt[0]]] *
-                          samples_bw_tgt[0]).sum(dim=1)
+        # samples_hf_tgt = (tgt_pts_lapmat[self.faces_gt[samples_fid_tgt[0]]] *
+        #                   samples_bw_tgt[0]).sum(dim=1)
 
         p2s_dist_all = point_mesh_distance(self.src_mesh, tgt_points) * 100.0
         p2s_dist = p2s_dist_all.sum()
-        p2s_dist_hf = (p2s_dist_all * samples_hf_tgt).sum()
+        # p2s_dist_hf = (p2s_dist_all * samples_hf_tgt).sum()
 
         chamfer_dist = (point_mesh_distance(self.tgt_mesh, src_points).sum() * 100.0 +
                         p2s_dist) * 0.5
 
-        return chamfer_dist, p2s_dist, p2s_dist_hf
+        return chamfer_dist, p2s_dist
 
     @staticmethod
     def get_laplacian_3d(meshes):

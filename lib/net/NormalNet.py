@@ -15,7 +15,7 @@
 # Contact: ps-license@tuebingen.mpg.de
 
 from lib.net.FBNet import define_G
-from lib.net.net_util import init_net, VGGLoss
+from lib.net.net_util import init_net, VGGLoss, IDMRFLoss
 from lib.net.HGFilters import *
 from lib.net.BasePIFuNet import BasePIFuNet
 import torch
@@ -42,32 +42,24 @@ class NormalNet(BasePIFuNet):
         self.l1_loss = nn.SmoothL1Loss()
 
         self.opt = cfg.net
-        self.erase_mask = "normal" in cfg.name
 
         if self.training:
-            self.vgg_loss = [VGGLoss()]
+            # self.vgg_loss = VGGLoss()
+            self.mrf_loss = IDMRFLoss()
 
         self.in_nmlF = [
-            item[0] for item in self.opt.in_nml
-            if "_F" in item[0] or item[0] == "image"
+            item[0] for item in self.opt.in_nml if "_F" in item[0] or item[0] == "image"
         ]
         self.in_nmlB = [
-            item[0] for item in self.opt.in_nml
-            if "_B" in item[0] or item[0] == "image"
+            item[0] for item in self.opt.in_nml if "_B" in item[0] or item[0] == "image"
         ]
-        self.in_nmlF_dim = sum([
-            item[1] for item in self.opt.in_nml
-            if "_F" in item[0] or item[0] == "image"
-        ])
-        self.in_nmlB_dim = sum([
-            item[1] for item in self.opt.in_nml
-            if "_B" in item[0] or item[0] == "image"
-        ])
+        self.in_nmlF_dim = sum(
+            [item[1] for item in self.opt.in_nml if "_F" in item[0] or item[0] == "image"])
+        self.in_nmlB_dim = sum(
+            [item[1] for item in self.opt.in_nml if "_B" in item[0] or item[0] == "image"])
 
-        self.netF = define_G(self.in_nmlF_dim, 3, 64, "global", 4, 9, 1, 3,
-                             "instance")
-        self.netB = define_G(self.in_nmlB_dim, 3, 64, "global", 4, 9, 1, 3,
-                             "instance")
+        self.netF = define_G(self.in_nmlF_dim, 3, 64, "global", 4, 9, 1, 3, "instance")
+        self.netB = define_G(self.in_nmlB_dim, 3, 64, "global", 4, 9, 1, 3, "instance")
 
         init_net(self)
 
@@ -80,7 +72,7 @@ class NormalNet(BasePIFuNet):
             inF_list.append(in_tensor[name])
         for name in self.in_nmlB:
             inB_list.append(in_tensor[name])
-            
+
         nmlF = self.netF(torch.cat(inF_list, dim=1))
         nmlB = self.netB(torch.cat(inB_list, dim=1))
 
@@ -90,13 +82,7 @@ class NormalNet(BasePIFuNet):
 
         # output: float_arr [-1,1] with [B, C, H, W]
 
-        if self.erase_mask:
-
-            mask = ((in_tensor["normal_F"].abs().sum(dim=1, keepdim=True) !=
-                     0.0).detach().float())
-        else:
-            mask = ((in_tensor["image"].abs().sum(dim=1, keepdim=True) !=
-                     0.0).detach().float())
+        mask = ((in_tensor["image"].abs().sum(dim=1, keepdim=True) != 0.0).detach().float())
 
         nmlF = nmlF * mask
         nmlB = nmlB * mask
@@ -113,15 +99,27 @@ class NormalNet(BasePIFuNet):
 
         tgt_F, tgt_B = tgt["normal_F"], tgt["normal_B"]
 
+        # [-1,1] to [0,1]
+        tgt_F = (tgt_F + 1.0) * 0.5
+        tgt_B = (tgt_B + 1.0) * 0.5
+        prd_F = (prd_F + 1.0) * 0.5
+        prd_B = (prd_B + 1.0) * 0.5
+
         l1_F_loss = self.l1_loss(prd_F, tgt_F)
         l1_B_loss = self.l1_loss(prd_B, tgt_B)
 
         with torch.no_grad():
-            vgg_F_loss = self.vgg_loss[0](prd_F, tgt_F)
-            vgg_B_loss = self.vgg_loss[0](prd_B, tgt_B)
+            # vgg_F_loss = self.vgg_loss(prd_F, tgt_F)
+            # vgg_B_loss = self.vgg_loss(prd_B, tgt_B)
 
-        total_loss = [
-            5.0 * l1_F_loss + vgg_F_loss, 5.0 * l1_B_loss + vgg_B_loss
-        ]
+            scale_factor = 0.5
+            mrf_F_loss = self.mrf_loss(
+                F.interpolate(prd_F, scale_factor=scale_factor, mode='bicubic', align_corners=True),
+                F.interpolate(tgt_F, scale_factor=scale_factor, mode='bicubic', align_corners=True))
+            mrf_B_loss = self.mrf_loss(
+                F.interpolate(prd_B, scale_factor=scale_factor, mode='bicubic', align_corners=True),
+                F.interpolate(tgt_B, scale_factor=scale_factor, mode='bicubic', align_corners=True))
+
+        total_loss = [5.0 * l1_F_loss + 1e-3 * mrf_F_loss, 5.0 * l1_B_loss + 1e-3 * mrf_B_loss]
 
         return total_loss
