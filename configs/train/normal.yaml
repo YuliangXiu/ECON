@@ -1,11 +1,11 @@
 name: normal
 ckpt_dir: "./data/ckpt/"
-resume_path: "./data/ckpt/normal.ckpt"
+resume_path: "./data/ckpt/normal/last.ckpt"
 results_path: "./results"
 
 dataset:
   root: "./data/"
-  rotation_num: 36
+  rotation_num: 12
   train_bsize: 1.0
   val_bsize: 1.0
   test_bsize: 1.0
@@ -20,8 +20,8 @@ net:
 lr_N: 1e-4
 weight_decay: 0.0 
 momentum: 0.0
-batch_size: 3
-num_threads: 3
+batch_size: 2
+num_threads: 12
 gpus: [0]
 test_gpus: [0]
 

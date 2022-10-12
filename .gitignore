@@ -17,3 +17,4 @@ cluster
 *.zip
 data/
 data
+wandb

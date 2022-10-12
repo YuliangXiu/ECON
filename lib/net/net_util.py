@@ -261,7 +261,7 @@ class ConvBlock(nn.Module):
         return out3
 
 
-class Vgg19(torch.nn.Module):
+class Vgg19(nn.Module):
 
     def __init__(self, requires_grad=False):
         super(Vgg19, self).__init__()
@@ -299,7 +299,7 @@ class VGGLoss(nn.Module):
 
     def __init__(self):
         super(VGGLoss, self).__init__()
-        self.vgg = Vgg19().eval().cuda()
+        self.vgg = Vgg19().eval()
         self.criterion = nn.L1Loss()
         self.weights = [1.0 / 32, 1.0 / 16, 1.0 / 8, 1.0 / 4, 1.0]
 
@@ -315,11 +315,13 @@ class VGG19FeatLayer(nn.Module):
 
     def __init__(self):
         super(VGG19FeatLayer, self).__init__()
-        self.vgg19 = models.vgg19(weights=models.VGG19_Weights.DEFAULT).features.eval().cuda()
-        self.mean = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1).cuda()
-        self.std = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1).cuda()
+        self.vgg19 = models.vgg19(weights=models.VGG19_Weights.DEFAULT).features.eval()
+
+        self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
+        self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
 
     def forward(self, x):
+
         out = {}
         x = x - self.mean
         x = x / self.std
@@ -432,6 +434,7 @@ class IDMRFLoss(nn.Module):
             self.mrf_loss(gen_vgg_feats[layer], tar_vgg_feats[layer])
             for layer in self.feat_content_layers
         ]
-        self.content_loss = functools.reduce(lambda x, y: x + y, content_loss_list) * self.lambda_content
+        self.content_loss = functools.reduce(lambda x, y: x + y,
+                                             content_loss_list) * self.lambda_content
 
         return self.style_loss + self.content_loss

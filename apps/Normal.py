@@ -1,15 +1,12 @@
 from lib.net import NormalNet
+from pytorch_lightning.utilities.distributed import rank_zero_only
 from lib.common.train_util import convert_to_dict, export_cfg, batch_mean
 import torch
 import numpy as np
 import os.path as osp
-import wandb
 from torch import nn
 from skimage.transform import resize
 import pytorch_lightning as pl
-
-torch.backends.cudnn.benchmark = True
-
 
 class Normal(pl.LightningModule):
 
@@ -66,17 +63,16 @@ class Normal(pl.LightningModule):
                     (height, height),
                     anti_aliasing=True,
                 ))
-        result_array = np.concatenate(result_list, axis=1)
 
-        self.logger.experiment.log(
-            {f"Normal/{dataset}/{idx if not self.overfit else 1}": wandb.Image(result_array)})
+        self.logger.log_image(key=f"Normal/{dataset}/{idx if not self.overfit else 1}",
+                              images=[(np.concatenate(result_list, axis=1)*255.0).astype(np.uint8)])
 
     def training_step(self, batch, batch_idx):
 
         # cfg log
-        if not self.cfg.fast_dev and self.global_step == 0:
-            export_cfg(self.logger, osp.join(self.cfg.results_path, self.cfg.name), self.cfg)
-            self.logger.experiment.config.update(convert_to_dict(self.cfg))
+        # if not self.cfg.fast_dev and self.global_step == 0:
+        #     export_cfg(self.logger, osp.join(self.cfg.results_path, self.cfg.name), self.cfg)
+        #     self.logger.experiment.config.update(convert_to_dict(self.cfg))
 
         self.netG.train()
 
@@ -102,13 +98,13 @@ class Normal(pl.LightningModule):
         self.manual_backward(error_NB)
         opt_nb.step()
 
-        if batch_idx > 0 and batch_idx % int(self.cfg.freq_show_train) == 0:
+        # if batch_idx > 0 and batch_idx % int(self.cfg.freq_show_train) == 0:
 
-            self.netG.eval()
-            with torch.no_grad():
-                nmlF, nmlB = self.netG(in_tensor)
-                in_tensor.update({"nmlF": nmlF, "nmlB": nmlB})
-                self.render_func(in_tensor, "train", self.global_step)
+        #     self.netG.eval()
+        #     with torch.no_grad():
+        #         nmlF, nmlB = self.netG(in_tensor)
+        #         in_tensor.update({"nmlF": nmlF, "nmlB": nmlB})
+        #         self.render_func(in_tensor, "train", self.global_step)
 
         # metrics processing
         metrics_log = {
@@ -117,7 +113,12 @@ class Normal(pl.LightningModule):
             "train/loss-NB": error_NB.item(),
         }
 
-        self.log_dict(metrics_log, prog_bar=True, logger=True, on_step=True, on_epoch=False)
+        self.log_dict(metrics_log,
+                      prog_bar=True,
+                      logger=True,
+                      on_step=True,
+                      on_epoch=False,
+                      sync_dist=True)
 
         return metrics_log
 
@@ -130,7 +131,12 @@ class Normal(pl.LightningModule):
             "train/avgloss-NB": batch_mean(outputs, "train/loss-NB"),
         }
 
-        self.log_dict(metrics_log, prog_bar=False, logger=True, on_step=False, on_epoch=True)
+        self.log_dict(metrics_log,
+                      prog_bar=False,
+                      logger=True,
+                      on_step=False,
+                      on_epoch=True,
+                      rank_zero_only=True)
 
     def validation_step(self, batch, batch_idx):
 
@@ -148,12 +154,12 @@ class Normal(pl.LightningModule):
         preds_F, preds_B = self.netG(in_tensor)
         error_NF, error_NB = self.netG.get_norm_error(preds_F, preds_B, FB_tensor)
 
-        if batch_idx % int(self.cfg.freq_show_train) == 0:
+        # if batch_idx % int(self.cfg.freq_show_train) == 0:
 
-            with torch.no_grad():
-                nmlF, nmlB = self.netG(in_tensor)
-                in_tensor.update({"nmlF": nmlF, "nmlB": nmlB})
-                self.render_func(in_tensor, "val", batch_idx)
+        #     with torch.no_grad():
+        #         nmlF, nmlB = self.netG(in_tensor)
+        #         in_tensor.update({"nmlF": nmlF, "nmlB": nmlB})
+        #         self.render_func(in_tensor, "val", batch_idx)
 
         metrics_log = {
             "val/loss": 0.5 * (error_NF + error_NB),
@@ -172,4 +178,9 @@ class Normal(pl.LightningModule):
             "val/avgloss-NB": batch_mean(outputs, "val/loss-NB"),
         }
 
-        self.log_dict(metrics_log, prog_bar=False, logger=True, on_step=False, on_epoch=True)
+        self.log_dict(metrics_log,
+                      prog_bar=False,
+                      logger=True,
+                      on_step=False,
+                      on_epoch=True,
+                      rank_zero_only=True)

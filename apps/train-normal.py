@@ -36,17 +36,16 @@ if __name__ == "__main__":
     os.makedirs(osp.join(cfg.ckpt_dir, cfg.name), exist_ok=True)
     os.makedirs(osp.join(cfg.results_path, "wandb"), exist_ok=True)
 
-    os.environ["WANDB_NOTEBOOK_NAME"] = osp.join(cfg.results_path, f"wandb")
     wandb_logger = pl_loggers.WandbLogger(
         offline=False,
         project="Norm-Pred",
-        save_dir=cfg.results_path,
+        save_dir=osp.join(cfg.results_path, "wandb"),
         name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}",
     )
 
     checkpoint = ModelCheckpoint(
         dirpath=osp.join(cfg.ckpt_dir, cfg.name),
-        save_top_k=1,
+        save_top_k=2,
         save_last=True,
         auto_insert_metric_name=False,
         verbose=False,
@@ -65,8 +64,8 @@ if __name__ == "__main__":
     profiler = AdvancedProfiler(dirpath=osp.join(cfg.results_path, cfg.name), filename="perf_logs")
 
     trainer_kwargs = {
-        "accelerator": "gpu",
-        "devices": 1,
+        "accelerator": "cuda",
+        "devices": 2,
         "reload_dataloaders_every_n_epochs": 1,
         "sync_batchnorm": True,
         "benchmark": True,
