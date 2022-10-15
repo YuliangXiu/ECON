@@ -343,7 +343,7 @@ class TetraSMPLModel:
         if pose is not None:
             self.pose = pose
         if beta is not None:
-            self.beta = beta
+            self.beta = beta.flatten()
         if trans is not None:
             self.trans = trans
         self.update()

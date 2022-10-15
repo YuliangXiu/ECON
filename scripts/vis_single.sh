@@ -5,7 +5,7 @@ NUM_VIEWS=$3
 MODE=$4
 PART=$5
 
-PYTHON_SCRIPT="scripts/vis_single.py"
+PYTHON_SCRIPT="scripts/vis_scan.py"
 
 if [[ $MODE == "gen" ]]; then
     echo "processing all the subjects"

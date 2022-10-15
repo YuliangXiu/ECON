@@ -14,6 +14,7 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
+from ipaddress import ip_address
 import numpy as np
 import cv2
 import pymeshlab
@@ -42,6 +43,27 @@ from kaolin.ops.mesh import check_sign
 
 from pytorch3d.loss import mesh_laplacian_smoothing, mesh_normal_consistency
 import tinyobjloader
+
+
+def create_grid_points_from_xyz_bounds(bound, res):
+    
+    min_x, max_x, min_y, max_y, min_z, max_z = bound
+    x = torch.linspace(min_x, max_x, res)
+    y = torch.linspace(min_y, max_y, res)
+    z = torch.linspace(min_z, max_z, res)
+    X, Y, Z = torch.meshgrid(x, y, z, indexing='ij')
+   
+    return torch.stack([X,Y,Z],dim=-1)
+
+
+def create_grid_points_from_xy_bounds(bound, res):
+    
+    min_x, max_x, min_y, max_y = bound
+    x = torch.linspace(min_x, max_x, res)
+    y = torch.linspace(min_y, max_y, res)
+    X, Y = torch.meshgrid(x, y, indexing='ij')
+   
+    return torch.stack([X,Y],dim=-1)
 
 
 def mesh_remove_vid_fid(mesh, init_mask, vid, fid):
@@ -458,8 +480,13 @@ def read_smpl_constants(folder):
     smpl_face_code = (smpl_vertex_code[smpl_faces[:, 0]] + smpl_vertex_code[smpl_faces[:, 1]] +
                       smpl_vertex_code[smpl_faces[:, 2]]) / 3.0
     smpl_tetras = (np.loadtxt(os.path.join(folder, "tetrahedrons.txt"), dtype=np.int32) - 1)
+    
+    return_dict = {"smpl_vertex_code": smpl_vertex_code,
+                   "smpl_face_code": smpl_face_code,
+                   "smpl_faces": smpl_faces,
+                   "smpl_tetras": smpl_tetras}
 
-    return smpl_vertex_code, smpl_face_code, smpl_faces, smpl_tetras
+    return return_dict
 
 
 def feat_select(feat, select):
@@ -477,7 +504,7 @@ def feat_select(feat, select):
     return feat_select
 
 
-def get_visibility(xy, z, faces):
+def get_visibility(xy, z, faces, img_res=2**12, blur_radius=0.0, faces_per_pixel=1):
     """get the visibility of vertices
 
     Args:
@@ -487,19 +514,23 @@ def get_visibility(xy, z, faces):
         size (int): resolution of rendered image
     """
 
+    if xy.ndimension() == 2:
+        xy = xy.unsqueeze(0)
+        z = z.unsqueeze(0)
+        faces = faces.unsqueeze(0)
+
     xyz = (torch.cat((xy, -z), dim=-1) + 1.) / 2.
     N_body = xyz.shape[0]
     faces = faces.long().repeat(N_body, 1, 1)
     vis_mask = torch.zeros(size=(N_body, z.shape[1]))
-    rasterizer = Pytorch3dRasterizer(image_size=2**12)
+    rasterizer = Pytorch3dRasterizer(image_size=img_res)
 
     meshes_screen = Meshes(verts=xyz, faces=faces)
-
     pix_to_face, zbuf, bary_coords, dists = rasterize_meshes(
         meshes_screen,
         image_size=rasterizer.raster_settings.image_size,
-        blur_radius=rasterizer.raster_settings.blur_radius,
-        faces_per_pixel=rasterizer.raster_settings.faces_per_pixel,
+        blur_radius=blur_radius,
+        faces_per_pixel=faces_per_pixel,
         bin_size=rasterizer.raster_settings.bin_size,
         max_faces_per_bin=rasterizer.raster_settings.max_faces_per_bin,
         perspective_correct=rasterizer.raster_settings.perspective_correct,
@@ -510,9 +541,9 @@ def get_visibility(xy, z, faces):
     faces = faces.detach().cpu()
 
     for idx in range(N_body):
+        Num_faces = len(faces[idx])
         vis_vertices_id = torch.unique(
-            faces[idx][torch.unique(pix_to_face[idx][pix_to_face[idx] != -1]) -
-                       len(faces[idx]) * idx, :])
+            faces[idx][torch.unique(pix_to_face[idx][pix_to_face[idx] != -1]) - Num_faces * idx, :])
         vis_mask[idx, vis_vertices_id] = 1.0
 
     # print("------------------------\n")

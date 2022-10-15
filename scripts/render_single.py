@@ -44,15 +44,19 @@ up_axis = 1
 pcd = False
 smpl_type = "smplx"
 with_light = True
-depth = False
-normal = True
+
+export_render = False
+export_depth = True
+export_normal = False
+export_calib = False
+export_smpl = False
 
 mesh_file = os.path.join(f"./data/{dataset}/scans/{subject}",
                          f"{subject}.{format}")
 smplx_file = f"./data/{dataset}/smplx/{subject}.obj"
 joint_file = f"./data/{dataset}/smplx/{subject}.npy"
 tex_file = f"./data/{dataset}/scans/{subject}/material0.jpeg"
-fit_file = f"./data/{dataset}/fits/{subject}/smplx_param.pkl"
+fit_file = f"./data/{dataset}/smplx/{subject}.pkl"
 
 # mesh
 mesh = trimesh.load(mesh_file,
@@ -76,20 +80,23 @@ else:
 
 # center
 
-scan_scale = 1.8 / (vertices.max(0)[up_axis] - vertices.min(0)[up_axis])
+# scan_scale = 1.8 / (vertices.max(0)[up_axis] - vertices.min(0)[up_axis])
+scan_scale = 1.0   # renderpeople
 rescale_smplx, joints = load_fit_body(fit_file,
                                       scale,
                                       smpl_type="smplx",
                                       smpl_gender="male")
 
 os.makedirs(os.path.dirname(smplx_file), exist_ok=True)
-trimesh.Trimesh(
-    rescale_smplx.vertices * 0.01,
-    rescale_smplx.faces,
-    process=False,
-    maintain_order=True,
-).export(smplx_file)
-np.save(joint_file, joints * 0.01)
+
+if export_smpl:
+    trimesh.Trimesh(
+        rescale_smplx.vertices * 0.01,
+        rescale_smplx.faces,
+        process=False,
+        maintain_order=True,
+    ).export(smplx_file)
+    np.save(joint_file, joints * 0.01)
 
 vertices *= scale
 vmin = vertices.min(0)
@@ -200,36 +207,39 @@ for y in range(0, 360, 360 // rotation):
     # calib
     calib = opengl_util.load_calib(dic, render_size=size)
 
-    export_calib_file = os.path.join(save_folder, subject, "calib",
-                                     f"{y:03d}.txt")
-    os.makedirs(os.path.dirname(export_calib_file), exist_ok=True)
-    np.savetxt(export_calib_file, calib)
+    if export_calib:
+        export_calib_file = os.path.join(save_folder, subject, "calib",
+                                        f"{y:03d}.txt")
+        os.makedirs(os.path.dirname(export_calib_file), exist_ok=True)
+        np.savetxt(export_calib_file, calib)
 
     # ==================================================================
 
     # front render
     rndr.display()
 
-    opengl_util.render_result(
-        rndr, 0, os.path.join(save_folder, subject, "render", f"{y:03d}.png"))
-    if normal:
+    if export_render:
+        opengl_util.render_result(
+            rndr, 0, os.path.join(save_folder, subject, "render", f"{y:03d}.png"))
+    if export_normal:
         opengl_util.render_result(
             rndr, 1,
             os.path.join(save_folder, subject, "normal_F", f"{y:03d}.png"))
 
-    if depth:
+    if export_depth:
         opengl_util.render_result(
             rndr, 2,
             os.path.join(save_folder, subject, "depth_F", f"{y:03d}.png"))
 
     if smpl_type != "none":
         rndr_depth.display()
-        opengl_util.render_result(
-            rndr_depth,
-            1,
-            os.path.join(save_folder, subject, "T_normal_F", f"{y:03d}.png"),
-        )
-        if depth:
+        if export_normal:
+            opengl_util.render_result(
+                rndr_depth,
+                1,
+                os.path.join(save_folder, subject, "T_normal_F", f"{y:03d}.png"),
+            )
+        if export_depth:
             opengl_util.render_result(
                 rndr_depth,
                 2,
@@ -247,11 +257,11 @@ for y in range(0, 360, 360 // rotation):
     rndr.set_camera(cam)
     rndr.display()
 
-    if normal:
+    if export_normal:
         opengl_util.render_result(
             rndr, 1,
             os.path.join(save_folder, subject, "normal_B", f"{y:03d}.png"))
-    if depth:
+    if export_depth:
         opengl_util.render_result(
             rndr, 2,
             os.path.join(save_folder, subject, "depth_B", f"{y:03d}.png"))
@@ -259,12 +269,13 @@ for y in range(0, 360, 360 // rotation):
     if smpl_type != "none":
         rndr_depth.set_camera(cam)
         rndr_depth.display()
-        opengl_util.render_result(
-            rndr_depth,
-            1,
-            os.path.join(save_folder, subject, "T_normal_B", f"{y:03d}.png"),
-        )
-        if depth:
+        if export_normal:
+            opengl_util.render_result(
+                rndr_depth,
+                1,
+                os.path.join(save_folder, subject, "T_normal_B", f"{y:03d}.png"),
+            )
+        if export_depth:
             opengl_util.render_result(
                 rndr_depth,
                 2,
@@ -272,7 +283,7 @@ for y in range(0, 360, 360 // rotation):
                              f"{y:03d}.png"),
             )
 
-done_jobs = len(glob.glob(f"{save_folder}/*/render"))
+done_jobs = len(glob.glob(f"{save_folder}/*/depth_F"))
 all_jobs = len(os.listdir(f"./data/{dataset}/scans"))
 print(
     f"Finish rendering {subject}| {done_jobs}/{all_jobs} | Time: {(time.time()-t0):.0f} secs"

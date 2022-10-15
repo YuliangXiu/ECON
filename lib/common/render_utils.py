@@ -169,15 +169,15 @@ class Pytorch3dRasterizer(nn.Module):
         can only render squared image now
     """
 
-    def __init__(self, image_size=224):
+    def __init__(self, image_size=224, blur_radius=0.0, faces_per_pixel=1):
         """
         use fixed raster_settings for rendering faces
         """
         super().__init__()
         raster_settings = {
             "image_size": image_size,
-            "blur_radius": 0.0,
-            "faces_per_pixel": 1,
+            "blur_radius": blur_radius,
+            "faces_per_pixel": faces_per_pixel,
             "bin_size": 0,
             "max_faces_per_bin": None,
             "perspective_correct": False,

@@ -204,6 +204,7 @@ class PIFuDataset:
         dataset = self.subject_list[mid].split("/")[0]
         render_folder = "/".join(
             [dataset + f"_{self.opt.rotation_num}views", subject])
+        
 
         # setup paths
         data_dict = {

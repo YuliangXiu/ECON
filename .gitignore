@@ -18,3 +18,7 @@ cluster
 data/
 data
 wandb
+build
+dist
+*egg-info
+*.so

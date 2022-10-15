@@ -108,18 +108,18 @@ class NormalNet(BasePIFuNet):
         l1_F_loss = self.l1_loss(prd_F, tgt_F)
         l1_B_loss = self.l1_loss(prd_B, tgt_B)
 
-        with torch.no_grad():
-            # vgg_F_loss = self.vgg_loss(prd_F, tgt_F)
-            # vgg_B_loss = self.vgg_loss(prd_B, tgt_B)
+        # vgg_F_loss = self.vgg_loss(prd_F, tgt_F)
+        # vgg_B_loss = self.vgg_loss(prd_B, tgt_B)
 
-            scale_factor = 0.5
-            mrf_F_loss = self.mrf_loss(
-                F.interpolate(prd_F, scale_factor=scale_factor, mode='bicubic', align_corners=True),
-                F.interpolate(tgt_F, scale_factor=scale_factor, mode='bicubic', align_corners=True))
-            mrf_B_loss = self.mrf_loss(
-                F.interpolate(prd_B, scale_factor=scale_factor, mode='bicubic', align_corners=True),
-                F.interpolate(tgt_B, scale_factor=scale_factor, mode='bicubic', align_corners=True))
+        scale_factor = 0.5
+        mrf_F_loss = self.mrf_loss(
+            F.interpolate(prd_F, scale_factor=scale_factor, mode='bicubic', align_corners=True),
+            F.interpolate(tgt_F, scale_factor=scale_factor, mode='bicubic', align_corners=True))
+        mrf_B_loss = self.mrf_loss(
+            F.interpolate(prd_B, scale_factor=scale_factor, mode='bicubic', align_corners=True),
+            F.interpolate(tgt_B, scale_factor=scale_factor, mode='bicubic', align_corners=True))
 
-        total_loss = [5.0 * l1_F_loss + 1e-3 * mrf_F_loss, 5.0 * l1_B_loss + 1e-3 * mrf_B_loss]
+        # total_loss = [5.0 * l1_F_loss + 1e-3 * mrf_F_loss, 5.0 * l1_B_loss + 1e-3 * mrf_B_loss]
+        total_loss = [5.0 * l1_F_loss + 1e-3 * mrf_F_loss, 1e-3 * mrf_B_loss]
 
         return total_loss
