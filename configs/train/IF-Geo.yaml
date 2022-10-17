@@ -6,7 +6,7 @@ results_path: "./results"
 dataset:
   root: "./data/"
   rotation_num: 36
-  num_sample_geo: 8000
+  num_sample_geo: 10000
   num_sample_color: 0
   sigma_geo: 5.0
   sigma_color: 5.0
@@ -24,18 +24,11 @@ dataset:
   # types: ["3dpeople","axyz","renderpeople","renderpeople_p27","humanalloy","thuman2"]
   # scales: [1.0, 100.0, 1.0, 1.0, 2.54000508001016, 100.0]
 
-# net:
-
 lr_G: 1e-4
 weight_decay: 0.0 
 momentum: 0.0
 batch_size: 12
 num_threads: 12
-gpus: [0]
-test_gpus: [0]
-
-sdf: False
-sdf_clip: 15.0
 
 fast_dev: 0
 resume: False
@@ -48,7 +41,7 @@ momentum: 0.0
 optim: RMSprop
 
 # training (batch=4, set=agora, rot-6)
-overfit: False
+overfit: True
 num_epoch: 10
 freq_show_train: 0.1
 freq_show_val: 0.3

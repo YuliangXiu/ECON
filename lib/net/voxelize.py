@@ -48,16 +48,11 @@ class VoxelizationFunction(Function):
         smpl_face_code = smpl_face_code.contiguous()
         smpl_tetrahedrons = smpl_tetrahedrons.contiguous()
 
-        occ_volume = torch.cuda.FloatTensor(ctx.batch_size, ctx.volume_res,
-                                            ctx.volume_res,
+        occ_volume = torch.cuda.FloatTensor(ctx.batch_size, ctx.volume_res, ctx.volume_res,
                                             ctx.volume_res).fill_(0.0)
-        semantic_volume = torch.cuda.FloatTensor(ctx.batch_size,
-                                                 ctx.volume_res,
-                                                 ctx.volume_res,
+        semantic_volume = torch.cuda.FloatTensor(ctx.batch_size, ctx.volume_res, ctx.volume_res,
                                                  ctx.volume_res, 3).fill_(0.0)
-        weight_sum_volume = torch.cuda.FloatTensor(ctx.batch_size,
-                                                   ctx.volume_res,
-                                                   ctx.volume_res,
+        weight_sum_volume = torch.cuda.FloatTensor(ctx.batch_size, ctx.volume_res, ctx.volume_res,
                                                    ctx.volume_res).fill_(1e-3)
 
         # occ_volume [B, volume_res, volume_res, volume_res]
@@ -115,45 +110,28 @@ class Voxelization(nn.Module):
         self.smpl_face_indices = smpl_face_indices
         self.smpl_tetraderon_indices = smpl_tetraderon_indices
 
-    def update_param(self, batch_size, smpl_tetra):
+    def update_param(self):
 
-        self.batch_size = batch_size
-        self.smpl_tetraderon_indices = smpl_tetra
+        smpl_vertex_code_batch = torch.tile(self.smpl_vertex_code, (self.batch_size, 1, 1))
+        smpl_face_code_batch = torch.tile(self.smpl_face_code, (self.batch_size, 1, 1))
+        smpl_face_indices_batch = torch.tile(self.smpl_face_indices, (self.batch_size, 1, 1))
+        smpl_tetraderon_indices_batch = torch.tile(self.smpl_tetraderon_indices,
+                                                   (self.batch_size, 1, 1))
 
-        smpl_vertex_code_batch = np.tile(self.smpl_vertex_code,
-                                         (self.batch_size, 1, 1))
-        smpl_face_code_batch = np.tile(self.smpl_face_code,
-                                       (self.batch_size, 1, 1))
-        smpl_face_indices_batch = np.tile(self.smpl_face_indices,
-                                          (self.batch_size, 1, 1))
-        smpl_tetraderon_indices_batch = np.tile(self.smpl_tetraderon_indices,
-                                                (self.batch_size, 1, 1))
-
-        smpl_vertex_code_batch = (
-            torch.from_numpy(smpl_vertex_code_batch).contiguous().to(
-                self.device))
-        smpl_face_code_batch = (
-            torch.from_numpy(smpl_face_code_batch).contiguous().to(
-                self.device))
-        smpl_face_indices_batch = (
-            torch.from_numpy(smpl_face_indices_batch).contiguous().to(
-                self.device))
-        smpl_tetraderon_indices_batch = (
-            torch.from_numpy(smpl_tetraderon_indices_batch).contiguous().to(
-                self.device))
+        smpl_vertex_code_batch = (smpl_vertex_code_batch.contiguous().to(self.device))
+        smpl_face_code_batch = (smpl_face_code_batch.contiguous().to(self.device))
+        smpl_face_indices_batch = (smpl_face_indices_batch.contiguous().to(self.device))
+        smpl_tetraderon_indices_batch = (smpl_tetraderon_indices_batch.contiguous().to(self.device))
 
         self.register_buffer("smpl_vertex_code_batch", smpl_vertex_code_batch)
         self.register_buffer("smpl_face_code_batch", smpl_face_code_batch)
-        self.register_buffer("smpl_face_indices_batch",
-                             smpl_face_indices_batch)
-        self.register_buffer("smpl_tetraderon_indices_batch",
-                             smpl_tetraderon_indices_batch)
+        self.register_buffer("smpl_face_indices_batch", smpl_face_indices_batch)
+        self.register_buffer("smpl_tetraderon_indices_batch", smpl_tetraderon_indices_batch)
 
     def forward(self, smpl_vertices):
         """
         Generate semantic volumes from SMPL vertices
         """
-        assert smpl_vertices.size()[0] == self.batch_size
         self.check_input(smpl_vertices)
         smpl_faces = self.vertices_to_faces(smpl_vertices)
         smpl_tetrahedrons = self.vertices_to_tetrahedrons(smpl_vertices)
@@ -179,8 +157,7 @@ class Voxelization(nn.Module):
         bs, nv = vertices.shape[:2]
         device = vertices.device
         face = (self.smpl_face_indices_batch +
-                (torch.arange(bs, dtype=torch.int32).to(device) * nv)[:, None,
-                                                                      None])
+                (torch.arange(bs, dtype=torch.int32).to(device) * nv)[:, None, None])
         vertices_ = vertices.reshape((bs * nv, 3))
         return vertices_[face.long()]
 
@@ -189,8 +166,7 @@ class Voxelization(nn.Module):
         bs, nv = vertices.shape[:2]
         device = vertices.device
         tets = (self.smpl_tetraderon_indices_batch +
-                (torch.arange(bs, dtype=torch.int32).to(device) * nv)[:, None,
-                                                                      None])
+                (torch.arange(bs, dtype=torch.int32).to(device) * nv)[:, None, None])
         vertices_ = vertices.reshape((bs * nv, 3))
         return vertices_[tets.long()]
 
@@ -220,5 +196,4 @@ class Voxelization(nn.Module):
         if x.device == "cpu":
             raise TypeError("Voxelization module supports only cuda tensors")
         if x.type() != "torch.cuda.FloatTensor":
-            raise TypeError(
-                "Voxelization module supports only float32 tensors")
+            raise TypeError("Voxelization module supports only float32 tensors")

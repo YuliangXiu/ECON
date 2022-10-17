@@ -481,10 +481,10 @@ def read_smpl_constants(folder):
                       smpl_vertex_code[smpl_faces[:, 2]]) / 3.0
     smpl_tetras = (np.loadtxt(os.path.join(folder, "tetrahedrons.txt"), dtype=np.int32) - 1)
     
-    return_dict = {"smpl_vertex_code": smpl_vertex_code,
-                   "smpl_face_code": smpl_face_code,
-                   "smpl_faces": smpl_faces,
-                   "smpl_tetras": smpl_tetras}
+    return_dict = {"smpl_vertex_code": torch.tensor(smpl_vertex_code),
+                   "smpl_face_code": torch.tensor(smpl_face_code),
+                   "smpl_faces": torch.tensor(smpl_faces),
+                   "smpl_tetras": torch.tensor(smpl_tetras)}
 
     return return_dict
 

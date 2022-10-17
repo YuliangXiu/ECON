@@ -1,5 +1,5 @@
 from torch.utils.data import DataLoader
-from .PIFuDataset import PIFuDataset
+from .IFDataset import IFDataset
 import pytorch_lightning as pl
 
 cfg_test_list = [
@@ -31,10 +31,10 @@ cfg_overfit_list = [
 ]
 
 
-class PIFuDataModule(pl.LightningDataModule):
+class IFDataModule(pl.LightningDataModule):
 
     def __init__(self, cfg):
-        super(PIFuDataModule, self).__init__()
+        super(IFDataModule, self).__init__()
         self.cfg = cfg
         self.overfit = self.cfg.overfit
 
@@ -52,8 +52,8 @@ class PIFuDataModule(pl.LightningDataModule):
     def setup(self, stage):
 
         if stage == "fit":
-            self.train_dataset = PIFuDataset(cfg=self.cfg, split="train")
-            self.val_dataset = PIFuDataset(cfg=self.cfg, split="val")
+            self.train_dataset = IFDataset(cfg=self.cfg, split="train")
+            self.val_dataset = IFDataset(cfg=self.cfg, split="val")
             self.data_size = {
                 "train": len(self.train_dataset),
                 "val": len(self.val_dataset),
@@ -61,7 +61,7 @@ class PIFuDataModule(pl.LightningDataModule):
 
         if stage == "test":
             self.cfg.merge_from_list(cfg_test_list)
-            self.test_dataset = PIFuDataset(cfg=self.cfg, split="test")
+            self.test_dataset = IFDataset(cfg=self.cfg, split="test")
 
     def train_dataloader(self):
 

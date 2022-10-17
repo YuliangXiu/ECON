@@ -10,10 +10,11 @@ logging.getLogger("trimesh").setLevel(logging.ERROR)
 import argparse
 import os.path as osp
 import os
+import torch
+from apps.IFGeo import IFGeo
 from lib.common.train_util import SubTrainer, load_networks
 from lib.common.config import get_cfg_defaults
-from lib.dataset.PIFuDataModule import PIFuDataModule, cfg_test_list, cfg_overfit_list
-from apps.ICON import ICON
+from lib.dataset.IFDataModule import IFDataModule, cfg_test_list, cfg_overfit_list
 from pytorch_lightning.profilers import AdvancedProfiler
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTheme
@@ -41,8 +42,8 @@ if __name__ == "__main__":
 
     os.environ["WANDB_NOTEBOOK_NAME"] = osp.join(cfg.results_path, f"wandb")
     wandb_logger = pl_loggers.WandbLogger(
-        offline=cfg.test_mode,
-        project="ICON",
+        offline=False,
+        project="IF-Geo",
         save_dir=cfg.results_path,
         name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}",
     )
@@ -94,7 +95,7 @@ if __name__ == "__main__":
         ],
     }
 
-    datamodule = PIFuDataModule(cfg)
+    datamodule = IFDataModule(cfg)
 
     if not cfg.test_mode:
         datamodule.setup(stage="fit")
@@ -106,7 +107,7 @@ if __name__ == "__main__":
         })
 
         if cfg.overfit:
-            cfg_show_list = ["freq_show_train", 100.0, "freq_show_val", 10.0]
+            cfg_show_list = ["freq_show_train", 10.0, "freq_show_val", 10.0]
         else:
             cfg_show_list = [
                 "freq_show_train",
@@ -117,14 +118,15 @@ if __name__ == "__main__":
 
         cfg.merge_from_list(cfg_show_list)
 
-    model = ICON(cfg)
+    # model = IFGeo(cfg)
 
     trainer = SubTrainer(**trainer_kwargs)
-
+    model = IFGeo(cfg, device=torch.device(f"cuda:{trainer.device_ids[0]}"))
+    
     # load checkpoints
-    load_networks(cfg, model, mlp_path=cfg.resume_path, normal_path=cfg.normal_path)
+    load_networks(cfg, model, mlp_path=cfg.resume_path)
 
     if not cfg.test_mode:
         trainer.fit(model=model, datamodule=datamodule)
 
-    trainer.test(model=model, datamodule=datamodule)
+    # trainer.test(model=model, datamodule=datamodule)

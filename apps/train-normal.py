@@ -108,6 +108,6 @@ if __name__ == "__main__":
     trainer = pl.Trainer(**trainer_kwargs)
 
     if (os.path.exists(cfg.resume_path) and cfg.resume_path.endswith("ckpt")):
-        load_normal_networks(cfg, model, cfg.resume_path)
+        load_normal_networks(model, cfg.resume_path)
 
     trainer.fit(model=model, datamodule=datamodule)

@@ -118,6 +118,7 @@ class HGPIFuNet(BasePIFuNet):
                 smpl_faces,
                 smpl_tetras,
             ) = read_smpl_constants(self.smplx_data.tedra_dir)
+            
             self.voxelization = Voxelization(
                 smpl_vertex_code,
                 smpl_face_code,

@@ -112,11 +112,11 @@ def rename(old_dict, old_name, new_name):
     return new_dict
 
 
-def load_normal_networks(cfg, model, normal_path):
+def load_normal_networks(model, normal_path):
     
     pretrained_dict = torch.load(
             normal_path,
-            map_location=torch.device(f"cuda:{cfg.gpus[0]}"))["state_dict"]
+            map_location=model.device)["state_dict"]
     model_dict = model.state_dict()
 
     # 1. filter out unnecessary keys
@@ -137,17 +137,17 @@ def load_normal_networks(cfg, model, normal_path):
     print(f"Resume Normal weights from {normal_path}")
 
 
-def load_networks(cfg, model, mlp_path, normal_path):
+def load_networks(cfg, model, mlp_path, normal_path=None):
 
     model_dict = model.state_dict()
     main_dict = {}
     normal_dict = {}
-
+    
     # MLP part loading
     if os.path.exists(mlp_path) and mlp_path.endswith("ckpt"):
         main_dict = torch.load(
             mlp_path,
-            map_location=torch.device(f"cuda:{cfg.gpus[0]}"))["state_dict"]
+            map_location=model.device)["state_dict"]
 
         main_dict = {
             k: v
@@ -159,10 +159,10 @@ def load_networks(cfg, model, mlp_path, normal_path):
         print(colored(f"Resume MLP weights from {mlp_path}", "green"))
 
     # normal network part loading
-    if os.path.exists(normal_path) and normal_path.endswith("ckpt"):
+    if normal_path is not None and os.path.exists(normal_path) and normal_path.endswith("ckpt"):
         normal_dict = torch.load(
             normal_path,
-            map_location=torch.device(f"cuda:{cfg.gpus[0]}"))["state_dict"]
+            map_location=model.device)["state_dict"]
 
         for key in normal_dict.keys():
             normal_dict = rename(normal_dict, key,
@@ -397,6 +397,19 @@ def query_func(opt, netG, features, points, proj_matrix=None):
         preds = preds[0]
 
     return preds
+
+def query_func_IF(batch, netG, points):
+    """
+        - points: size of (bz, N, 3)
+    return: size of (bz, 1, N)
+    """
+    
+    batch["samples_geo"] = points
+    batch["calib"] = torch.stack([torch.eye(4).float()], dim=0).type_as(points)
+    
+    preds = netG(batch)
+
+    return preds.unsqueeze(1)
 
 
 def isin(ar1, ar2):
