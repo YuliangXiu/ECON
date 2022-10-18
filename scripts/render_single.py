@@ -45,10 +45,10 @@ pcd = False
 smpl_type = "smplx"
 with_light = True
 
-export_render = False
+export_render = True
 export_depth = True
-export_normal = False
-export_calib = False
+export_normal = True
+export_calib = True
 export_smpl = False
 
 mesh_file = os.path.join(f"./data/{dataset}/scans/{subject}",
@@ -80,8 +80,8 @@ else:
 
 # center
 
-# scan_scale = 1.8 / (vertices.max(0)[up_axis] - vertices.min(0)[up_axis])
-scan_scale = 1.0   # renderpeople
+scan_scale = 1.8 / (vertices.max(0)[up_axis] - vertices.min(0)[up_axis])
+# scan_scale = 1.0   # renderpeople
 rescale_smplx, joints = load_fit_body(fit_file,
                                       scale,
                                       smpl_type="smplx",

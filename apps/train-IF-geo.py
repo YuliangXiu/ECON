@@ -77,10 +77,9 @@ if __name__ == "__main__":
     trainer_kwargs = {
         "accelerator": "gpu",
         "devices": 1,
-        "reload_dataloaders_every_n_epochs": 1,
+        "reload_dataloaders_every_n_epochs": 0,
         "sync_batchnorm": True,
         "benchmark": True,
-        "profiler": profiler,
         "logger": wandb_logger,
         "num_sanity_val_steps": cfg.num_sanity_val_steps,
         "limit_train_batches": cfg.dataset.train_bsize,
@@ -98,7 +97,7 @@ if __name__ == "__main__":
     datamodule = IFDataModule(cfg)
 
     if not cfg.test_mode:
-        datamodule.setup(stage="fit")
+        datamodule.prepare_data()
         train_len = datamodule.data_size["train"]
         val_len = datamodule.data_size["val"]
         trainer_kwargs.update({
@@ -118,11 +117,9 @@ if __name__ == "__main__":
 
         cfg.merge_from_list(cfg_show_list)
 
-    # model = IFGeo(cfg)
-
     trainer = SubTrainer(**trainer_kwargs)
     model = IFGeo(cfg, device=torch.device(f"cuda:{trainer.device_ids[0]}"))
-    
+
     # load checkpoints
     load_networks(cfg, model, mlp_path=cfg.resume_path)
 

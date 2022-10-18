@@ -38,7 +38,6 @@ def render_result(rndr, shader_id, path, mask=False):
         cam_render[:, :, -1] -= 0.5
         cam_render[:, :, -1] *= 2.0
         if not mask:
-            import ipdb; ipdb.set_trace()
             cv2.imwrite(path, np.uint8(255.0 / 2.0 * (cam_render + 1.0)))
         else:
             cv2.imwrite(path, np.uint8(-1.0 * cam_render[:, :, [3]]))

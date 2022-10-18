@@ -26,6 +26,7 @@ import trimesh
 import torch
 import torch.nn.functional as F
 import vedo
+from tqdm import tqdm
 import torchvision.transforms as transforms
 
 
@@ -78,6 +79,7 @@ class IFDataset:
             self.rotations = range(0, 360, 120)
 
         self.datasets_dict = {}
+        self.mesh_cached = {}
 
         for dataset_id, dataset in enumerate(self.datasets):
 
@@ -98,7 +100,22 @@ class IFDataset:
             }
 
             self.datasets_dict[dataset].update(
-                {"subjects": np.loadtxt(osp.join(dataset_dir, "all.txt"), dtype=str)})
+                {"subjects": np.loadtxt(osp.join(dataset_dir, f"{split}.txt"), dtype=str)})
+
+            # pre-cached meshes
+            self.mesh_cached[dataset] = {}
+            pbar = tqdm(self.datasets_dict[dataset]["subjects"])
+            for subject in pbar:
+                subject = subject.split("/")[-1]
+                pbar.set_description(f"Loading {dataset}-{split}-{subject}")
+                if dataset == "thuman2":
+                    mesh_path = osp.join(self.datasets_dict[dataset]["mesh_dir"],
+                                         f"{subject}/{subject}.obj")
+                else:
+                    mesh_path = osp.join(self.datasets_dict[dataset]["mesh_dir"], f"/{subject}.obj")
+                scale = self.scales[dataset_id]
+                if subject not in self.mesh_cached[dataset].keys():
+                    self.mesh_cached[dataset][subject] = self.load_mesh(mesh_path, scale)
 
         self.subject_list = self.get_subject_list(split)
         self.smplx = SMPLX()
@@ -166,11 +183,6 @@ class IFDataset:
 
         if dataset == "thuman2":
             data_dict.update({
-                "mesh_path":
-                    osp.join(
-                        self.datasets_dict[dataset]["mesh_dir"],
-                        f"{subject}/{subject}.obj",
-                    ),
                 "smplx_path":
                     osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}.obj"),
                 "smplx_param":
@@ -193,8 +205,6 @@ class IFDataset:
             data_dict.update({
                 "image_back_path":
                     osp.join(self.root, render_folder, "render", f"{rotation:03d}.png"),
-                "mesh_path":
-                    osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}.obj"),
                 "joint_path":
                     osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.npy"),
                 "smpl_path":
@@ -208,11 +218,6 @@ class IFDataset:
         else:
 
             data_dict.update({
-                "mesh_path":
-                    osp.join(
-                        self.datasets_dict[dataset]["mesh_dir"],
-                        f"{subject}.obj",
-                    ),
                 "smplx_path":
                     osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}.obj"),
                 "smplx_param":
@@ -240,9 +245,8 @@ class IFDataset:
             "depth_F": self.image2tensor(data_dict["image_path"].replace("render", "depth_F"), 'z'),
             "depth_B": self.image2tensor(data_dict["image_path"].replace("render", "depth_B"), 'z')
         })
-
-        data_dict.update(self.load_mesh(data_dict))
-        # data_dict.update(self.load_smpl(data_dict, self.vis))
+        if self.vis:
+            data_dict.update(self.load_smpl(data_dict, self.vis))
         data_dict.update(self.get_sampling_geo(data_dict))
 
         # load voxels from full SMPL body
@@ -251,14 +255,6 @@ class IFDataset:
         # load voxels from partial depth
         data_dict.update(self.depth_to_voxel(data_dict))
 
-        if (self.split != "test") and (not self.vis):
-
-            del data_dict["verts"]
-            del data_dict["faces"]
-
-        if not self.vis:
-            del data_dict["mesh"]
-
         path_keys = [key for key in data_dict.keys() if "_path" in key or "_dir" in key]
         for key in path_keys:
             del data_dict[key]
@@ -266,7 +262,7 @@ class IFDataset:
         return data_dict
 
     def image2tensor(self, path, type='rgb'):
-        
+
         if type == 'rgb':
             rgba = Image.open(path).convert("RGBA")
             mask = rgba.split()[-1]
@@ -301,27 +297,24 @@ class IFDataset:
                                                        keepdim=True)(depth_mask)
 
         depth_FB = torch.cat([data_dict['depth_F'], -data_dict['depth_B']], dim=0) * depth_mask
-        index_z = ((depth_FB + 1.) * 0.5 * self.vol_res).round().long().permute(1, 2, 0)
-        index_mask = index_z[:, :, 0] == self.vol_res * 0.5
+        index_z = ((depth_FB + 1.) * 0.5 * self.vol_res).round().clip(0, self.vol_res -
+                                                                      1).long().permute(1, 2, 0)
+        index_mask = index_z[..., 0] == torch.tensor(self.vol_res * 0.5).long()
+        if index_z.max() >= self.vol_res - 1:
+            print(data_dict["subject"])
         voxels = F.one_hot(index_z[..., 0], self.vol_res) + F.one_hot(index_z[..., 1], self.vol_res)
         voxels[index_mask] *= 0
-        voxels = torch.flip(voxels, [0, 2]).permute(2, 0, 1).float()
-        return {"depth_voxels": voxels}
+        voxels = torch.flip(voxels, [2]).permute(2, 0, 1).float()   #[x-2, y-0, z-1]
+        return {"depth_voxels": voxels, "depth_mask": depth_mask}
 
-    def load_mesh(self, data_dict):
-
-        mesh_path = data_dict["mesh_path"]
-        scale = data_dict["scale"]
+    @staticmethod
+    def load_mesh(mesh_path, scale):
 
         verts, faces = obj_loader(mesh_path)
 
         mesh = HoppeMesh(verts * scale, faces)
 
-        return {
-            "mesh": mesh,
-            "verts": torch.as_tensor(verts * scale).float(),
-            "faces": torch.as_tensor(faces).long(),
-        }
+        return mesh
 
     def add_noise(self, beta_num, smpl_pose, smpl_betas, noise_type, noise_scale, type, hashcode):
 
@@ -475,7 +468,7 @@ class IFDataset:
 
     def get_sampling_geo(self, data_dict):
 
-        mesh = data_dict["mesh"]
+        mesh = self.mesh_cached[data_dict['dataset']][data_dict['subject']]
         calib = data_dict["calib"]
 
         # Samples are around the true surface with an offset
@@ -531,13 +524,14 @@ class IFDataset:
         assert mode in ["occ", "kpt"]
 
         if mode == "occ":
-            labels = data_dict[f"labels_geo"][..., None]  # occupancy
+            labels = data_dict["labels_geo"][..., None]  # occupancy
             colors = np.concatenate([labels, labels, labels], axis=1)
         elif mode == "kpt":
             colors = np.ones_like(data_dict["smpl_joint"])
 
         points = projection(data_dict["samples_geo"], data_dict["calib"])
-        verts = projection(data_dict["verts"], data_dict["calib"])
+        verts = projection(self.mesh_cached[data_dict['dataset']][data_dict['subject']].verts,
+                           data_dict["calib"])
         points[:, 1] *= -1
         verts[:, 1] *= -1
 
@@ -550,51 +544,52 @@ class IFDataset:
         else:
             alpha = 1.0
 
-        mesh = trimesh.Trimesh(verts, data_dict["faces"], process=True)
+        mesh = trimesh.Trimesh(
+            verts,
+            self.mesh_cached[data_dict['dataset']][data_dict['subject']].faces,
+            process=True)
         mesh.visual.vertex_colors = [128.0, 128.0, 128.0, alpha * 255.0]
         vis_list.append(mesh)
 
-        # if "voxel_verts" in data_dict.keys():
+        if "voxel_verts" in data_dict.keys():
 
-        #     print(colored("voxel verts", "green"))
-        #     voxel_verts = data_dict["voxel_verts"] * 2.0
-        #     voxel_faces = data_dict["voxel_faces"]
-        #     voxel_verts[:, 1] *= -1
-        #     voxel = trimesh.Trimesh(
-        #         voxel_verts,
-        #         voxel_faces[:, [0, 2, 1]],
-        #         process=False,
-        #         maintain_order=True,
-        #     )
-        #     voxel.visual.vertex_colors = [0.0, 128.0, 0.0, alpha * 255.0]
-        #     vis_list.append(voxel)
+            print(colored("voxel verts", "green"))
+            voxel_verts = data_dict["voxel_verts"] * 2.0
+            voxel_faces = data_dict["voxel_faces"]
+            voxel_verts[:, 1] *= -1
+            voxel = trimesh.Trimesh(
+                voxel_verts,
+                voxel_faces[:, [0, 2, 1]],
+                process=False,
+                maintain_order=True,
+            )
+            voxel.visual.vertex_colors = [0.0, 128.0, 0.0, alpha * 255.0]
+            vis_list.append(voxel)
 
-        #     # voxelization
-        #     from lib.net.voxelize import Voxelization
+            # voxelization
+            from lib.net.voxelize import Voxelization
+            voxel_param = read_smpl_constants(self.smplx.tedra_dir)
 
-        #     self.voxelization = Voxelization(
-        #         data_dict["voxelize_params"]["smpl_vertex_code"],
-        #         data_dict["voxelize_params"]["smpl_face_code"],
-        #         data_dict["voxelize_params"]["smpl_faces"],
-        #         data_dict["voxelize_params"]["smpl_tetras"],
-        #         volume_res=128,
-        #         sigma=0.05,
-        #         smooth_kernel_size=7,
-        #         batch_size=1,
-        #         device=torch.device("cuda:0"),
-        #     )
+            self.voxelization = Voxelization(
+                voxel_param["smpl_vertex_code"],
+                voxel_param["smpl_face_code"],
+                voxel_param["smpl_faces"],
+                voxel_param["smpl_tetras"],
+                volume_res=128,
+                sigma=0.05,
+                smooth_kernel_size=7,
+                batch_size=1,
+                device=torch.device("cuda:0"),
+            )
 
-        #     self.voxelization.update_param(
-        #         batch_size=1,
-        #         smpl_tetra=voxel_faces,
-        #     )
+            self.voxelization.update_param(voxel_faces)
+            voxel_verts[:, 1] *= -1
+            vol = self.voxelization(voxel_verts.unsqueeze(0).to(torch.device("cuda:0")) / 2.0)
+            vis_list.append(vedo.Volume(vol[0, 0].detach().cpu().numpy()))
 
-        #     vol = self.voxelization(voxel_verts.unsqueeze(0).to(torch.device("cuda:0")) / 2.0)
-        #     vis_list.append(vedo.Volume(vol[0, 0].detach().cpu().numpy()))
-
-        # if "depth_voxels" in data_dict.keys():
-        #     depth_vol = vedo.Volume(data_dict["depth_voxels"].numpy())
-        #     vis_list.append(depth_vol)
+        if "depth_voxels" in data_dict.keys():
+            depth_vol = vedo.Volume(data_dict["depth_voxels"].numpy())
+            vis_list.append(depth_vol)
 
         if "smpl_verts" in data_dict.keys():
             print(colored("smpl verts", "green"))
@@ -634,13 +629,15 @@ class IFDataset:
 
 if __name__ == "__main__":
     from lib.common.config import cfg
+    from tqdm import tqdm
     cfg.merge_from_file("./configs/train/IF-Geo.yaml")
     cfg.freeze()
-    dataset = IFDataset(cfg, "test", False)
-    for i, data_dict in enumerate(dataset):
-        for key in data_dict.keys():
-            if hasattr(data_dict[key], "shape"):
-                print(key, data_dict[key].shape)
+    dataset = IFDataset(cfg, "one", True)
+    for data_dict in tqdm(dataset):
+        # pass
+        # for key in data_dict.keys():
+        #     if hasattr(data_dict[key], "shape"):
+        #         print(key, data_dict[key].shape)
 
         # calib torch.Size([4, 4])
         # image torch.Size([3, 512, 512])
@@ -656,6 +653,5 @@ if __name__ == "__main__":
         # voxel_verts torch.Size([8000, 3])
         # voxel_faces (25100, 4)
         # depth_voxels torch.Size([128, 128, 128])
-
         dataset.visualize_sampling3D(data_dict, mode="occ")
-        break
+        # break

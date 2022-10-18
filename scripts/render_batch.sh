@@ -2,7 +2,7 @@
 MODE=$1
 PART=$2
 # stringList=3dpeople,axyz,renderpeople,renderpeople_p27,humanalloy,thuman,thuman2
-stringList=renderpeople
+stringList=thuman2
 
 # Use comma as separator and apply as pattern
 for val in ${stringList//,/ }

@@ -307,8 +307,8 @@ class IFGeo(pl.LightningModule):
                         image_pred,
                         np.concatenate([
                             resize_img(batch["image"], height),
-                            resize_img(batch["depth_F"], height),
-                            resize_img(batch["depth_B"], height),
+                            resize_img(batch["depth_F"]*batch["depth_mask"], height),
+                            resize_img(batch["depth_B"]*batch["depth_mask"], height),
                             resize_img(batch["image_back"], height)
                         ],
                                        axis=1),

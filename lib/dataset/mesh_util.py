@@ -14,7 +14,6 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-from ipaddress import ip_address
 import numpy as np
 import cv2
 import pymeshlab
@@ -154,17 +153,28 @@ class HoppeMesh:
         :param points: pts
         :param normals: normals
         """
+        # self.device = torch.device("cuda:0")
         self.trimesh = trimesh.Trimesh(verts, faces, process=True)
-        self.verts = np.array(self.trimesh.vertices).astype(np.float32)
-        self.faces = np.array(self.trimesh.faces).astype(np.int)
-        self.vert_normals, self.faces_normals = compute_normal(self.verts, self.faces)
+        self.verts = torch.tensor(self.trimesh.vertices).float()
+        self.faces = torch.tensor(self.trimesh.faces).long()
+        self.vert_normals = compute_normal_batch(self.verts.unsqueeze(0), self.faces)
+        self.vert_normals = self.vert_normals[0].detach().cpu().numpy()
 
+    # def contains(self, points):
+
+    #     labels = check_sign(
+    #         self.verts.unsqueeze(0).to(self.device),
+    #         self.faces.to(self.device),
+    #         torch.tensor(points).float().to(self.device).unsqueeze(0),
+    #     )
+    #     return labels.cpu().squeeze(0).numpy()
+    
     def contains(self, points):
-
+    
         labels = check_sign(
-            torch.as_tensor(self.verts).unsqueeze(0),
-            torch.as_tensor(self.faces).long(),
-            torch.as_tensor(points).unsqueeze(0),
+            self.verts.unsqueeze(0),
+            self.faces,
+            torch.tensor(points).float().unsqueeze(0),
         )
         return labels.squeeze(0).numpy()
 
@@ -655,6 +665,47 @@ def compute_normal(vertices, faces):
     normalize_v3(vert_norms)
 
     return vert_norms, face_norms
+
+def face_vertices(vertices, faces):
+    """
+    :param vertices: [batch size, number of vertices, 3]
+    :param faces: [batch size, number of faces, 3]
+    :return: [batch size, number of faces, 3, 3]
+    """
+
+    bs, nv = vertices.shape[:2]
+    bs, nf = faces.shape[:2]
+    device = vertices.device
+    faces = faces + (torch.arange(bs, dtype=torch.int32).to(device) *
+                     nv)[:, None, None]
+    vertices = vertices.reshape((bs * nv, vertices.shape[-1]))
+
+    return vertices[faces.long()]
+
+def compute_normal_batch(vertices, faces):
+    
+    if faces.shape[0] != vertices.shape[0]:
+        faces = faces.repeat(vertices.shape[0], 1, 1)
+
+    bs, nv = vertices.shape[:2]
+    bs, nf = faces.shape[:2]
+
+    vert_norm = torch.zeros(bs * nv, 3).type_as(vertices)
+    tris = face_vertices(vertices, faces)
+    face_norm = F.normalize(
+        torch.cross(tris[:, :, 1] - tris[:, :, 0], tris[:, :, 2] - tris[:, :, 0]),
+        dim=-1,
+    )
+
+    faces = (faces + (torch.arange(bs).type_as(faces) * nv)[:, None, None]).view(-1, 3)
+
+    vert_norm[faces[:, 0]] += face_norm.view(-1, 3)
+    vert_norm[faces[:, 1]] += face_norm.view(-1, 3)
+    vert_norm[faces[:, 2]] += face_norm.view(-1, 3)
+
+    vert_norm = F.normalize(vert_norm, dim=-1).view(bs, nv, 3)
+
+    return vert_norm
 
 
 def calculate_mIoU(outputs, labels):

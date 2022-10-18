@@ -98,12 +98,11 @@ class IFGeoNet(nn.Module):
             device=device,
         )
         
-        self.voxelization.update_param()
-
         self.l1_loss = nn.SmoothL1Loss()
 
     def forward(self, batch):
-
+        
+        self.voxelization.update_param(batch["voxel_faces"])
         x_smpl = self.voxelization(batch["voxel_verts"])[:, 0]  #[B, 128, 128, 128]
         p = orthogonal(batch["samples_geo"].permute(0, 2, 1),
                        batch["calib"]).permute(0, 2, 1)  #[2, 60000, 3]

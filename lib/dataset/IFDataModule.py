@@ -1,6 +1,8 @@
 from torch.utils.data import DataLoader
 from .IFDataset import IFDataset
 import pytorch_lightning as pl
+import os.path as osp
+import numpy as np
 
 cfg_test_list = [
     "test_mode",
@@ -47,17 +49,26 @@ class IFDataModule(pl.LightningDataModule):
 
     def prepare_data(self):
 
-        pass
+        self.opt = self.cfg.dataset
+        self.datasets = self.opt.types
+
+        self.data_size = {"train": 0, "val": 0, "test": 0}
+
+        for dataset in self.datasets:
+
+            dataset_dir = osp.join(self.cfg.root, dataset)
+            for split in ["train", "val", "test"]:
+                self.data_size[split] += len(
+                    np.loadtxt(osp.join(dataset_dir, f"{split}.txt"),
+                               dtype=str)) * self.opt.rotation_num
+
+        print(self.data_size)
 
     def setup(self, stage):
 
         if stage == "fit":
             self.train_dataset = IFDataset(cfg=self.cfg, split="train")
             self.val_dataset = IFDataset(cfg=self.cfg, split="val")
-            self.data_size = {
-                "train": len(self.train_dataset),
-                "val": len(self.val_dataset),
-            }
 
         if stage == "test":
             self.cfg.merge_from_list(cfg_test_list)

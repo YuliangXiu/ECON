@@ -1,7 +1,8 @@
 import argparse
 from tqdm import tqdm
 from lib.common.config import get_cfg_defaults
-from lib.dataset.PIFuDataset import PIFuDataset
+# from lib.dataset.PIFuDataset import PIFuDataset as TheDataset
+from lib.dataset.IFDataset import IFDataset as TheDataset
 
 if __name__ == "__main__":
 
@@ -50,7 +51,7 @@ if __name__ == "__main__":
         args.merge_from_list(cfg_test_mode)
 
     # dataset sampler
-    dataset = PIFuDataset(args, split="train", vis=args_c.show)
+    dataset = TheDataset(args, split="train", vis=args_c.show)
     print(f"Number of subjects :{len(dataset.subject_list)}")
     data_dict = dataset[1]
 

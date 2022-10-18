@@ -110,18 +110,18 @@ class Voxelization(nn.Module):
         self.smpl_face_indices = smpl_face_indices
         self.smpl_tetraderon_indices = smpl_tetraderon_indices
 
-    def update_param(self):
+    def update_param(self, voxel_faces):
+        
+        self.smpl_tetraderon_indices = voxel_faces
 
         smpl_vertex_code_batch = torch.tile(self.smpl_vertex_code, (self.batch_size, 1, 1))
         smpl_face_code_batch = torch.tile(self.smpl_face_code, (self.batch_size, 1, 1))
         smpl_face_indices_batch = torch.tile(self.smpl_face_indices, (self.batch_size, 1, 1))
-        smpl_tetraderon_indices_batch = torch.tile(self.smpl_tetraderon_indices,
-                                                   (self.batch_size, 1, 1))
 
         smpl_vertex_code_batch = (smpl_vertex_code_batch.contiguous().to(self.device))
         smpl_face_code_batch = (smpl_face_code_batch.contiguous().to(self.device))
         smpl_face_indices_batch = (smpl_face_indices_batch.contiguous().to(self.device))
-        smpl_tetraderon_indices_batch = (smpl_tetraderon_indices_batch.contiguous().to(self.device))
+        smpl_tetraderon_indices_batch = (self.smpl_tetraderon_indices.contiguous().to(self.device))
 
         self.register_buffer("smpl_vertex_code_batch", smpl_vertex_code_batch)
         self.register_buffer("smpl_face_code_batch", smpl_face_code_batch)
