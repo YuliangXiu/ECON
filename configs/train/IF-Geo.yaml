@@ -7,9 +7,9 @@ dataset:
   root: "./data/"
   rotation_num: 36
   num_sample_geo: 10000
-  num_sample_color: 0
+  num_sample_color: 10000
   sigma_geo: 5.0
-  sigma_color: 5.0
+  sigma_color: 0.0
   train_bsize: 1.0
   val_bsize: 1.0
   test_bsize: 1.0

@@ -304,13 +304,13 @@ class IFDataset:
             print(data_dict["subject"])
         voxels = F.one_hot(index_z[..., 0], self.vol_res) + F.one_hot(index_z[..., 1], self.vol_res)
         voxels[index_mask] *= 0
-        voxels = torch.flip(voxels, [2]).permute(2, 0, 1).float()   #[x-2, y-0, z-1]
+        voxels = torch.flip(voxels, [2]).permute(2, 0, 1).float()  #[x-2, y-0, z-1]
         return {"depth_voxels": voxels, "depth_mask": depth_mask}
 
     @staticmethod
     def load_mesh(mesh_path, scale):
 
-        verts, faces = obj_loader(mesh_path)
+        verts, faces, _, _ = obj_loader(mesh_path)
 
         mesh = HoppeMesh(verts * scale, faces)
 
@@ -544,10 +544,9 @@ class IFDataset:
         else:
             alpha = 1.0
 
-        mesh = trimesh.Trimesh(
-            verts,
-            self.mesh_cached[data_dict['dataset']][data_dict['subject']].faces,
-            process=True)
+        mesh = trimesh.Trimesh(verts,
+                               self.mesh_cached[data_dict['dataset']][data_dict['subject']].faces,
+                               process=True)
         mesh.visual.vertex_colors = [128.0, 128.0, 128.0, alpha * 255.0]
         vis_list.append(mesh)
 

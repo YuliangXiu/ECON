@@ -45,24 +45,24 @@ import tinyobjloader
 
 
 def create_grid_points_from_xyz_bounds(bound, res):
-    
+
     min_x, max_x, min_y, max_y, min_z, max_z = bound
     x = torch.linspace(min_x, max_x, res)
     y = torch.linspace(min_y, max_y, res)
     z = torch.linspace(min_z, max_z, res)
     X, Y, Z = torch.meshgrid(x, y, z, indexing='ij')
-   
-    return torch.stack([X,Y,Z],dim=-1)
+
+    return torch.stack([X, Y, Z], dim=-1)
 
 
 def create_grid_points_from_xy_bounds(bound, res):
-    
+
     min_x, max_x, min_y, max_y = bound
     x = torch.linspace(min_x, max_x, res)
     y = torch.linspace(min_y, max_y, res)
     X, Y = torch.meshgrid(x, y, indexing='ij')
-   
-    return torch.stack([X,Y],dim=-1)
+
+    return torch.stack([X, Y], dim=-1)
 
 
 def mesh_remove_vid_fid(mesh, init_mask, vid, fid):
@@ -121,6 +121,109 @@ def rot6d_to_rotmat(x):
     return torch.stack((b1, b2, b3), dim=-1)
 
 
+def cross(triangles):
+    """
+    Returns the cross product of two edges from input triangles
+    Parameters
+    --------------
+    triangles: (n, 3, 3) float
+      Vertices of triangles
+    Returns
+    --------------
+    crosses : (n, 3) float
+      Cross product of two edge vectors
+    """
+    vectors = np.diff(triangles, axis=1)
+    crosses = np.cross(vectors[:, 0], vectors[:, 1])
+    return crosses
+
+
+def tri_area(triangles=None, crosses=None, sum=False):
+    """
+    Calculates the sum area of input triangles
+    Parameters
+    ----------
+    triangles : (n, 3, 3) float
+      Vertices of triangles
+    crosses : (n, 3) float or None
+      As a speedup don't re- compute cross products
+    sum : bool
+      Return summed area or individual triangle area
+    Returns
+    ----------
+    area : (n,) float or float
+      Individual or summed area depending on `sum` argument
+    """
+    if crosses is None:
+        crosses = cross(triangles)
+    area = (np.sum(crosses**2, axis=1)**.5) * .5
+    if sum:
+        return np.sum(area)
+    return area
+
+
+def sample_surface(triangles, count, area=None):
+    """
+    Sample the surface of a mesh, returning the specified
+    number of points
+    For individual triangle sampling uses this method:
+    http://mathworld.wolfram.com/TrianglePointPicking.html
+    Parameters
+    ---------
+    triangles : (n, 3, 3) float
+      Vertices of triangles
+    count : int
+      Number of points to return
+    Returns
+    ---------
+    samples : (count, 3) float
+      Points in space on the surface of mesh
+    face_index : (count,) int
+      Indices of faces for each sampled point
+    """
+
+    # len(mesh.faces) float, array of the areas
+    # of each face of the mesh
+    if area is None:
+        area = tri_area(triangles)
+
+    # total area (float)
+    area_sum = np.sum(area)
+    # cumulative area (len(mesh.faces))
+    area_cum = np.cumsum(area)
+    face_pick = np.random.random(count) * area_sum
+    face_index = np.searchsorted(area_cum, face_pick)
+
+    # pull triangles into the form of an origin + 2 vectors
+    tri_origins = triangles[:, 0]
+    tri_vectors = triangles[:, 1:].copy()
+    tri_vectors -= np.tile(tri_origins, (1, 2)).reshape((-1, 2, 3))
+
+    # pull the vectors for the faces we are going to sample from
+    tri_origins = tri_origins[face_index]
+    tri_vectors = tri_vectors[face_index]
+
+    # randomly generate two 0-1 scalar components to multiply edge vectors by
+    random_lengths = np.random.random((len(tri_vectors), 2, 1))
+
+    # points will be distributed on a quadrilateral if we use 2 0-1 samples
+    # if the two scalar components sum less than 1.0 the point will be
+    # inside the triangle, so we find vectors longer than 1.0 and
+    # transform them to be inside the triangle
+    random_test = random_lengths.sum(axis=1).reshape(-1) > 1.0
+    random_lengths[random_test] -= 1.0
+    random_lengths = np.abs(random_lengths)
+
+    # multiply triangle edge vectors by the random lengths and sum
+    sample_vector = (tri_vectors * random_lengths).sum(axis=1)
+
+    # finally, offset by the origin to generate
+    # (n,3) points in space on the triangle
+    samples = torch.tensor(sample_vector + tri_origins).float()
+
+    return samples, face_index
+
+
 def obj_loader(path):
     # Create reader.
     reader = tinyobjloader.ObjReader()
@@ -128,49 +231,44 @@ def obj_loader(path):
     # Load .obj(and .mtl) using default configuration
     ret = reader.ParseFromFile(path)
 
-    if ret == False:
-        print("Failed to load : ", path)
-        return None
-
     # note here for wavefront obj, #v might not equal to #vt, same as #vn.
     attrib = reader.GetAttrib()
-    verts = np.array(attrib.vertices).reshape(-1, 3)
+    v = np.array(attrib.vertices).reshape(-1, 3)
+    vt = np.array(attrib.texcoords).reshape(-1, 2)
 
     shapes = reader.GetShapes()
     tri = shapes[0].mesh.numpy_indices().reshape(-1, 9)
-    faces = tri[:, [0, 3, 6]]
+    f_v = tri[:, [0, 3, 6]]
+    f_vt = tri[:, [2, 5, 8]]
 
-    return verts, faces
+    face_uvs = vt[f_vt].mean(axis=1)  #[m, 2]
+    vert_uvs = np.zeros((v.shape[0], 2), dtype=np.float32)  #[n, 2]
+    vert_uvs[f_v.reshape(-1)] = vt[f_vt.reshape(-1)]
+
+    return v, f_v, vert_uvs, face_uvs
 
 
 class HoppeMesh:
 
-    def __init__(self, verts, faces):
+    def __init__(self, verts, faces, uvs=None, texture=None):
         """
         The HoppeSDF calculates signed distance towards a predefined oriented point cloud
         http://hhoppe.com/recon.pdf
         For clean and high-resolution pcl data, this is the fastest and accurate approximation of sdf
-        :param points: pts
-        :param normals: normals
         """
+
         # self.device = torch.device("cuda:0")
-        self.trimesh = trimesh.Trimesh(verts, faces, process=True)
-        self.verts = torch.tensor(self.trimesh.vertices).float()
-        self.faces = torch.tensor(self.trimesh.faces).long()
-        self.vert_normals = compute_normal_batch(self.verts.unsqueeze(0), self.faces)
-        self.vert_normals = self.vert_normals[0].detach().cpu().numpy()
+        self.mesh = trimesh.Trimesh(verts, faces, process=False, maintains_order=True)
+        self.verts = torch.tensor(self.mesh.vertices).float()
+        self.faces = torch.tensor(self.mesh.faces).long()
+        self.vert_normals = torch.tensor(self.mesh.vertex_normals).float()
 
-    # def contains(self, points):
+        if (uvs is not None) and (texture is not None):
+            self.vertex_colors = trimesh.visual.color.uv_to_color(uvs, texture)
+            self.face_normals = torch.tensor(self.mesh.face_normals).float()
 
-    #     labels = check_sign(
-    #         self.verts.unsqueeze(0).to(self.device),
-    #         self.faces.to(self.device),
-    #         torch.tensor(points).float().to(self.device).unsqueeze(0),
-    #     )
-    #     return labels.cpu().squeeze(0).numpy()
-    
     def contains(self, points):
-    
+
         labels = check_sign(
             self.verts.unsqueeze(0),
             self.faces,
@@ -178,8 +276,21 @@ class HoppeMesh:
         )
         return labels.squeeze(0).numpy()
 
+    def get_colors(self, points, faces):
+        """
+        Get colors of surface points from texture image through 
+        barycentric interpolation.
+        - points: [n, 3]
+        - return: [n, 4] rgba
+        """
+        triangles = self.verts[faces]  #[n, 3, 3]
+        barycentric = trimesh.triangles.points_to_barycentric(triangles, points)  #[n, 3]
+        vert_colors = self.vertex_colors[faces]  #[n, 3, 4]
+        point_colors = torch.tensor((barycentric[:, :, None] * vert_colors).sum(axis=1)).float()
+        return point_colors
+
     def triangles(self):
-        return self.verts[self.faces]  # [n, 3, 3]
+        return self.verts[self.faces].numpy()  #[n, 3, 3]
 
 
 def tensor2variable(tensor, device):
@@ -490,11 +601,13 @@ def read_smpl_constants(folder):
     smpl_face_code = (smpl_vertex_code[smpl_faces[:, 0]] + smpl_vertex_code[smpl_faces[:, 1]] +
                       smpl_vertex_code[smpl_faces[:, 2]]) / 3.0
     smpl_tetras = (np.loadtxt(os.path.join(folder, "tetrahedrons.txt"), dtype=np.int32) - 1)
-    
-    return_dict = {"smpl_vertex_code": torch.tensor(smpl_vertex_code),
-                   "smpl_face_code": torch.tensor(smpl_face_code),
-                   "smpl_faces": torch.tensor(smpl_faces),
-                   "smpl_tetras": torch.tensor(smpl_tetras)}
+
+    return_dict = {
+        "smpl_vertex_code": torch.tensor(smpl_vertex_code),
+        "smpl_face_code": torch.tensor(smpl_face_code),
+        "smpl_faces": torch.tensor(smpl_faces),
+        "smpl_tetras": torch.tensor(smpl_tetras)
+    }
 
     return return_dict
 
@@ -666,6 +779,7 @@ def compute_normal(vertices, faces):
 
     return vert_norms, face_norms
 
+
 def face_vertices(vertices, faces):
     """
     :param vertices: [batch size, number of vertices, 3]
@@ -676,14 +790,14 @@ def face_vertices(vertices, faces):
     bs, nv = vertices.shape[:2]
     bs, nf = faces.shape[:2]
     device = vertices.device
-    faces = faces + (torch.arange(bs, dtype=torch.int32).to(device) *
-                     nv)[:, None, None]
+    faces = faces + (torch.arange(bs, dtype=torch.int32).to(device) * nv)[:, None, None]
     vertices = vertices.reshape((bs * nv, vertices.shape[-1]))
 
     return vertices[faces.long()]
 
+
 def compute_normal_batch(vertices, faces):
-    
+
     if faces.shape[0] != vertices.shape[0]:
         faces = faces.repeat(vertices.shape[0], 1, 1)
 
