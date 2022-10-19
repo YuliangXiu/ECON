@@ -81,6 +81,8 @@ class TexDataset(IFDataset):
                 self.datasets_dict[dataset]["scale"],
             "calib_path":
                 osp.join(self.root, render_folder, "calib", f"{rotation:03d}.txt"),
+            "tex_voxel_path":
+                osp.join(self.root, render_folder, "tex_voxels", f"{rotation:03d}.npz"),
             "image_path":
                 osp.join(self.root, render_folder, "render", f"{rotation:03d}.png"),
             "image_back_path":
@@ -89,6 +91,7 @@ class TexDataset(IFDataset):
 
         # load training data
         data_dict.update(self.load_calib(data_dict))
+        data_dict.update(self.load_colored_voxels(data_dict))
 
         data_dict.update({
             "image": self.image2tensor(data_dict["image_path"], 'rgb'),
@@ -103,6 +106,16 @@ class TexDataset(IFDataset):
 
         return data_dict
 
+    def load_calib(self, data_dict):
+
+        calib_data = np.loadtxt(data_dict["calib_path"], dtype=float)
+        extrinsic = calib_data[:4, :4]
+        intrinsic = calib_data[4:8, :4]
+        calib_mat = np.matmul(intrinsic, extrinsic)
+        calib = torch.from_numpy(calib_mat).float()
+
+        return {"calib": calib}
+
     @staticmethod
     def load_textured_mesh(mesh_path, scale, texture_path):
 
@@ -112,6 +125,14 @@ class TexDataset(IFDataset):
         mesh = HoppeMesh(verts * scale, faces, verts_uv, texture)
 
         return mesh
+
+    @staticmethod
+    def load_colored_voxels(data_dict):
+
+        tex_voxels_arr = np.load(data_dict["tex_voxel_path"], allow_pickle=True)["grid_pts_rgb"]
+        tex_voxels_tensor = (torch.tensor(tex_voxels_arr).float() - 0.5) * 2.0
+
+        return {"tex_voxels": tex_voxels_tensor}
 
     def get_sampling_color(self, data_dict):
 
@@ -126,7 +147,7 @@ class TexDataset(IFDataset):
         samples += mesh.face_normals[torch.tensor(face_index).long()] * offset.float()
 
         # Normalized to [-1, 1] rgb
-        colors = ((colors[:, 0:3] / 255.0) - 0.5) / 0.5
+        colors = ((colors[:, 0:3] / 255.0) - 0.5) * 2.0
 
         return {'samples_color': samples, 'labels_color': colors}
 
@@ -144,15 +165,20 @@ class TexDataset(IFDataset):
         pc = vedo.Points(points, r=15, c=np.float32(colors))
         vis_list.append(pc)
 
-        # create a voxels
-        from scipy.spatial import cKDTree as KDTree
-        mesh = self.mesh_cached[data_dict['dataset']][data_dict['subject']]
-        mesh_verts = projection(mesh.verts.numpy(), data_dict["calib"])
-        mesh_verts[:, 1] *= -1
-        kdtree = KDTree(mesh_verts)
-        _, grid_idx = kdtree.query(grid_pts)
-        grid_colors = mesh.vertex_colors[grid_idx, :3] / 255.
-        grid_pc = vedo.Points(grid_pts, r=10, c=np.float32(grid_colors))
+        # create a textured voxels
+
+        vol_res = 128
+
+        grid_pc = vedo.Volume(
+            (data_dict["tex_voxels"].view(vol_res, vol_res, vol_res, 3)[..., 0] > 0.).float().flip(
+                [1]).numpy(),
+            spacing=[
+                2.0 / 128.0,
+            ] * 3,
+            origin=[
+                -1.0,
+            ] * 3,
+            c='jet')
         vis_list.append(grid_pc)
 
         # create a picure
@@ -167,13 +193,14 @@ class TexDataset(IFDataset):
 
         vp.show(*vis_list, bg="white", axes=1.0, interactive=True)
 
+
 if __name__ == "__main__":
     from lib.common.config import cfg
     from tqdm import tqdm
 
     cfg.merge_from_file("./configs/train/IF-Geo.yaml")
     cfg.freeze()
-    
+
     grid_pts = create_grid_points_from_xyz_bounds((-1, 1) * 3, 16).view(-1, 3).numpy()
 
     split = "one"

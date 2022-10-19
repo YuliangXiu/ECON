@@ -113,9 +113,10 @@ class IFDataset:
                     pbar.set_description(f"Loading {dataset}-{split}-{subject}")
                     if dataset == "thuman2":
                         mesh_path = osp.join(self.datasets_dict[dataset]["mesh_dir"],
-                                            f"{subject}/{subject}.obj")
+                                             f"{subject}/{subject}.obj")
                     else:
-                        mesh_path = osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}.obj")
+                        mesh_path = osp.join(self.datasets_dict[dataset]["mesh_dir"],
+                                             f"{subject}.obj")
 
                     if subject not in self.mesh_cached[dataset].keys():
                         self.mesh_cached[dataset][subject] = self.load_mesh(
@@ -566,6 +567,8 @@ class IFDataset:
         mesh.visual.vertex_colors = [128.0, 128.0, 128.0, alpha * 255.0]
         vis_list.append(mesh)
 
+        vol_ratio = 2.0 / 128.0
+
         if "voxel_verts" in data_dict.keys():
 
             print(colored("voxel verts", "green"))
@@ -600,10 +603,25 @@ class IFDataset:
             self.voxelization.update_param(voxel_faces)
             voxel_verts[:, 1] *= -1
             vol = self.voxelization(voxel_verts.unsqueeze(0).to(torch.device("cuda:0")) / 2.0)
-            vis_list.append(vedo.Volume(vol[0, 0].detach().cpu().numpy()))
+            smpl_vol = vedo.Volume((vol[0, 0].flip([1]) > 0.).float().detach().cpu().numpy(),
+                                   spacing=[
+                                       vol_ratio,
+                                   ] * 3,
+                                   origin=[
+                                       -1.0,
+                                   ] * 3,
+                                   c='jet')
+            vis_list.append(smpl_vol)
 
         if "depth_voxels" in data_dict.keys():
-            depth_vol = vedo.Volume(data_dict["depth_voxels"].numpy())
+            depth_vol = vedo.Volume(data_dict["depth_voxels"].flip([1]).numpy(),
+                                    spacing=[
+                                        vol_ratio,
+                                    ] * 3,
+                                    origin=[
+                                        -1.0,
+                                    ] * 3,
+                                    c='jet')
             vis_list.append(depth_vol)
 
         if "smpl_verts" in data_dict.keys():
