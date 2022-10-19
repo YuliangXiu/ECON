@@ -16,25 +16,19 @@
 
 from lib.dataset.mesh_util import *
 from lib.dataset.IFDataset import IFDataset
-from termcolor import colored
 import os.path as osp
 import numpy as np
 from PIL import Image
-import os
-import kornia
-import trimesh
 import torch
-import torch.nn.functional as F
 import vedo
 from tqdm import tqdm
-import torchvision.transforms as transforms
 
 
 class TexDataset(IFDataset):
 
     def __init__(self, cfg, split="train", vis=False):
 
-        super().__init__(cfg, split, vis)
+        super().__init__(cfg, split, vis, cached=False)
 
         self.mesh_cached = {}
 
@@ -72,6 +66,7 @@ class TexDataset(IFDataset):
         rotation = self.rotations[rid]
         subject = self.subject_list[mid].split("/")[1]
         dataset = self.subject_list[mid].split("/")[0]
+
         render_folder = "/".join([dataset + f"_{self.opt.rotation_num}views", subject])
 
         # setup paths
@@ -100,7 +95,6 @@ class TexDataset(IFDataset):
             "image_back": self.image2tensor(data_dict["image_back_path"], 'rgb'),
         })
 
-        # data_dict.update(self.load_smpl(data_dict, self.vis))
         data_dict.update(self.get_sampling_color(data_dict))
 
         path_keys = [key for key in data_dict.keys() if "_path" in key or "_dir" in key]
@@ -145,10 +139,21 @@ class TexDataset(IFDataset):
         points = projection(data_dict["samples_color"], data_dict["calib"])
         points[:, 1] *= -1
         colors = (data_dict["labels_color"] + 1.0) * 0.5
-        
+
         # create a pointcloud
         pc = vedo.Points(points, r=15, c=np.float32(colors))
         vis_list.append(pc)
+
+        # create a voxels
+        from scipy.spatial import cKDTree as KDTree
+        mesh = self.mesh_cached[data_dict['dataset']][data_dict['subject']]
+        mesh_verts = projection(mesh.verts.numpy(), data_dict["calib"])
+        mesh_verts[:, 1] *= -1
+        kdtree = KDTree(mesh_verts)
+        _, grid_idx = kdtree.query(grid_pts)
+        grid_colors = mesh.vertex_colors[grid_idx, :3] / 255.
+        grid_pc = vedo.Points(grid_pts, r=10, c=np.float32(grid_colors))
+        vis_list.append(grid_pc)
 
         # create a picure
         img_pos = [1.0, -1.0]
@@ -162,17 +167,18 @@ class TexDataset(IFDataset):
 
         vp.show(*vis_list, bg="white", axes=1.0, interactive=True)
 
-
 if __name__ == "__main__":
     from lib.common.config import cfg
     from tqdm import tqdm
+
     cfg.merge_from_file("./configs/train/IF-Geo.yaml")
     cfg.freeze()
-    dataset = TexDataset(cfg, "one", True)
-    for data_dict in tqdm(dataset):
-        # for key in data_dict.keys():
-        #     if hasattr(data_dict[key], "shape"):
-        #         print(key, data_dict[key].shape)
+    
+    grid_pts = create_grid_points_from_xyz_bounds((-1, 1) * 3, 16).view(-1, 3).numpy()
 
+    split = "one"
+    dataset = TexDataset(cfg, split, True)
+    pbar = tqdm(dataset)
+    for data_dict in pbar:
+        pbar.set_description(f"{split}-{data_dict['dataset']}-{data_dict['subject']}")
         dataset.visualize_sampling3D(data_dict)
-        # break

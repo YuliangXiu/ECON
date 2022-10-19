@@ -327,45 +327,6 @@ if __name__ == "__main__":
 
             per_data_lst = []
 
-            if False:
-
-                # cloth recon
-                in_tensor.update(
-                    dataset.compute_vis_cmap(in_tensor["smpl_verts"], in_tensor["smpl_faces"]))
-
-                in_tensor.update({
-                    "smpl_norm":
-                        compute_normal_batch(in_tensor["smpl_verts"], in_tensor["smpl_faces"])
-                })
-
-                if cfg.net.prior_type == "pamir":
-                    in_tensor.update(
-                        dataset.compute_voxel_verts(
-                            optimed_pose,
-                            optimed_orient,
-                            optimed_betas,
-                            optimed_trans,
-                            data["scale"],
-                        ))
-
-                # BNI does not need IF output
-
-                with torch.no_grad():
-                    verts_pr, faces_pr, _ = model.test_single(in_tensor)
-
-                # ICON reconstruction w/o any optimization
-
-                recon_obj = trimesh.Trimesh(verts_pr, faces_pr, process=False, maintains_order=True)
-                recon_obj.export(
-                    os.path.join(args.out_dir, cfg.name, f"obj/{data['name']}_recon.obj"))
-
-                # Isotropic Explicit Remeshing for better geometry topology
-                verts_remesh, faces_remesh, remeshed_mesh = remesh(
-                    os.path.join(args.out_dir, cfg.name, f"obj/{data['name']}_recon.obj"),
-                    0.5,
-                    device,
-                )
-
             if args.BNI:
 
                 # replace ICON by SMPL to provide depth-prior and side surfaces

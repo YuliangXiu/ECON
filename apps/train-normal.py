@@ -61,7 +61,6 @@ if __name__ == "__main__":
                                  metrics="grey82")
     progress_bar = RichProgressBar(theme=theme)
 
-    profiler = AdvancedProfiler(dirpath=osp.join(cfg.results_path, cfg.name), filename="perf_logs")
 
     trainer_kwargs = {
         "accelerator": "cuda",
@@ -69,7 +68,6 @@ if __name__ == "__main__":
         "reload_dataloaders_every_n_epochs": 1,
         "sync_batchnorm": True,
         "benchmark": True,
-        "profiler": profiler,
         "logger": wandb_logger,
         "num_sanity_val_steps": cfg.num_sanity_val_steps,
         "limit_train_batches": cfg.dataset.train_bsize,

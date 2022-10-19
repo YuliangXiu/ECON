@@ -58,9 +58,10 @@ class IFDataModule(pl.LightningDataModule):
 
             dataset_dir = osp.join(self.cfg.root, dataset)
             for split in ["train", "val", "test"]:
-                self.data_size[split] += len(
-                    np.loadtxt(osp.join(dataset_dir, f"{split}.txt"),
-                               dtype=str)) * self.opt.rotation_num
+                split_txt = osp.join(dataset_dir, f"{split}.txt")
+                if osp.exists(split_txt) and osp.getsize(split_txt) > 0:
+                    self.data_size[split] += len(np.loadtxt(split_txt,
+                                                            dtype=str)) * self.opt.rotation_num
 
         print(self.data_size)
 

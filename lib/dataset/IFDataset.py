@@ -32,7 +32,7 @@ import torchvision.transforms as transforms
 
 class IFDataset:
 
-    def __init__(self, cfg, split="train", vis=False):
+    def __init__(self, cfg, split="train", vis=False, cached=True):
 
         self.split = split
         self.root = cfg.root
@@ -75,8 +75,10 @@ class IFDataset:
 
         if self.split == "train":
             self.rotations = np.arange(0, 360, 360 / self.opt.rotation_num).astype(np.int32)
-        else:
+        elif self.split == "test":
             self.rotations = range(0, 360, 120)
+        else:
+            self.rotations = [0]
 
         self.datasets_dict = {}
         self.mesh_cached = {}
@@ -103,19 +105,21 @@ class IFDataset:
                 {"subjects": np.loadtxt(osp.join(dataset_dir, f"{split}.txt"), dtype=str)})
 
             # pre-cached meshes
-            self.mesh_cached[dataset] = {}
-            pbar = tqdm(self.datasets_dict[dataset]["subjects"])
-            for subject in pbar:
-                subject = subject.split("/")[-1]
-                pbar.set_description(f"Loading {dataset}-{split}-{subject}")
-                if dataset == "thuman2":
-                    mesh_path = osp.join(self.datasets_dict[dataset]["mesh_dir"],
-                                         f"{subject}/{subject}.obj")
-                else:
-                    mesh_path = osp.join(self.datasets_dict[dataset]["mesh_dir"], f"/{subject}.obj")
-                scale = self.scales[dataset_id]
-                if subject not in self.mesh_cached[dataset].keys():
-                    self.mesh_cached[dataset][subject] = self.load_mesh(mesh_path, scale)
+            if cached:
+                self.mesh_cached[dataset] = {}
+                pbar = tqdm(self.datasets_dict[dataset]["subjects"])
+                for subject in pbar:
+                    subject = subject.split("/")[-1]
+                    pbar.set_description(f"Loading {dataset}-{split}-{subject}")
+                    if dataset == "thuman2":
+                        mesh_path = osp.join(self.datasets_dict[dataset]["mesh_dir"],
+                                            f"{subject}/{subject}.obj")
+                    else:
+                        mesh_path = osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}.obj")
+
+                    if subject not in self.mesh_cached[dataset].keys():
+                        self.mesh_cached[dataset][subject] = self.load_mesh(
+                            mesh_path, self.scales[dataset_id])
 
         self.subject_list = self.get_subject_list(split)
         self.smplx = SMPLX()
@@ -379,15 +383,26 @@ class IFDataset:
 
         smpl_param = np.load(data_dict["smpl_param"], allow_pickle=True)
 
-        gender = 'male'
+        if data_dict['dataset'] == "thuman2":
+            gender = 'male'
+            smpl_trans = smpl_param["transl"]
+        else:
+            gender = np.load(data_dict['smplx_param'], allow_pickle=True)['gender']
+            smpl_trans = smpl_param["translation"][0].numpy()
+
         smpl_pose = rotation_matrix_to_angle_axis(torch.as_tensor(
             smpl_param["full_pose"][0])).numpy()
-        smpl_betas = smpl_param["betas"]
+        smpl_betas = smpl_param["betas"].flatten()
+
+        if smpl_betas.shape[0] == 11:
+            age = 'kid'
+        else:
+            age = 'adult'
 
         smpl_path = osp.join(self.smplx.model_dir, f"smpl/SMPL_{gender.upper()}.pkl")
-        tetra_path = osp.join(self.smplx.tedra_dir, f"tetra_{gender}_adult_smpl.npz")
+        tetra_path = osp.join(self.smplx.tedra_dir, f"tetra_{gender}_{age}_smpl.npz")
 
-        smpl_model = TetraSMPLModel(smpl_path, tetra_path, "adult")
+        smpl_model = TetraSMPLModel(smpl_path, tetra_path, age)
 
         if sum(self.noise_scale) > 0.0:
             smpl_pose, smpl_betas = self.add_noise(
@@ -400,18 +415,19 @@ class IFDataset:
                 hashcode=(hash(f"{data_dict['subject']}_{data_dict['rotation']}")) % (10**8),
             )
 
-        smpl_model.set_params(pose=smpl_pose.reshape(-1, 3),
-                              beta=smpl_betas,
-                              trans=smpl_param["transl"])
+        smpl_model.set_params(pose=smpl_pose.reshape(-1, 3), beta=smpl_betas, trans=smpl_trans)
 
-        verts = (np.concatenate([smpl_model.verts, smpl_model.verts_added], axis=0) *
-                 smpl_param["scale"] +
-                 smpl_param["translation"]) * self.datasets_dict[data_dict["dataset"]]["scale"]
+        if data_dict['dataset'] == "thuman2":
+            verts = (np.concatenate([smpl_model.verts, smpl_model.verts_added], axis=0) *
+                     smpl_param["scale"] +
+                     smpl_param["translation"]) * self.datasets_dict[data_dict["dataset"]]["scale"]
+        else:
+            verts = np.concatenate([smpl_model.verts, smpl_model.verts_added], axis=0) * 100.0
 
-        faces = (np.loadtxt(
-            osp.join(self.smplx.tedra_dir, "tetrahedrons_male_adult.txt"),
+        faces = np.loadtxt(
+            osp.join(self.smplx.tedra_dir, f"tetrahedrons_{gender}_{age}.txt"),
             dtype=np.int32,
-        ) - 1)
+        ) - 1
 
         pad_v_num = int(8000 - verts.shape[0])
         pad_f_num = int(25100 - faces.shape[0])

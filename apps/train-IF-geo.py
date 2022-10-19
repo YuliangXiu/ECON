@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
     os.environ["WANDB_NOTEBOOK_NAME"] = osp.join(cfg.results_path, f"wandb")
     wandb_logger = pl_loggers.WandbLogger(
-        offline=False,
+        offline=True,
         project="IF-Geo",
         save_dir=cfg.results_path,
         name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}",

@@ -690,20 +690,18 @@ def barycentric_coordinates_of_projection(points, vertices):
     """
     # (p, q, u, v)
     v0, v1, v2 = vertices[:, 0], vertices[:, 1], vertices[:, 2]
-    p = points
 
-    q = v0
     u = v1 - v0
     v = v2 - v0
     n = torch.cross(u, v)
-    s = torch.sum(n * n, dim=1)
+    sb = torch.sum(n * n, dim=1)
     # If the triangle edges are collinear, cross-product is zero,
     # which makes "s" 0, which gives us divide by zero. So we
     # make the arbitrary choice to set s to epsv (=numpy.spacing(1)),
     # the closest thing to zero
-    s[s == 0] = 1e-6
-    oneOver4ASquared = 1.0 / s
-    w = p - q
+    sb[sb == 0] = 1e-6
+    oneOver4ASquared = 1.0 / sb
+    w = points - v0
     b2 = torch.sum(torch.cross(u, w) * n, dim=1) * oneOver4ASquared
     b1 = torch.sum(torch.cross(w, v) * n, dim=1) * oneOver4ASquared
     weights = torch.stack((1 - b1 - b2, b1, b2), dim=-1)

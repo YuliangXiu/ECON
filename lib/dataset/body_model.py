@@ -292,7 +292,7 @@ class TetraSMPLModel:
         if age == "kid":
             v_template_smil = np.load(
                 os.path.join(os.path.dirname(model_path),
-                             "smpl/smpl_kid_template.npy"))
+                             "smpl_kid_template.npy"))
             v_template_smil -= np.mean(v_template_smil, axis=0)
             v_template_diff = np.expand_dims(v_template_smil - self.v_template,
                                              axis=2)
