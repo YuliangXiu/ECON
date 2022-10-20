@@ -5,6 +5,7 @@ results_path: "./results"
 
 dataset:
   root: "./data/"
+  cached: True
   rotation_num: 36
   num_sample_geo: 10000
   num_sample_color: 10000
@@ -24,11 +25,12 @@ dataset:
   # types: ["3dpeople","axyz","renderpeople","renderpeople_p27","humanalloy"]
   # scales: [1.0, 100.0, 1.0, 1.0, 2.54000508001016]
 
-lr_G: 1e-4
+lr_G: 1e-5
 weight_decay: 0.0 
 momentum: 0.0
 batch_size: 12
 num_threads: 12
+devices: 1
 
 fast_dev: 0
 resume: False

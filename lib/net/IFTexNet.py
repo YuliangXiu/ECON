@@ -57,43 +57,43 @@ class IFTexNet(nn.Module):
         
         p_features = p.transpose(1, -1)
         p = p.unsqueeze(1).unsqueeze(1)
-        feature_0 = F.grid_sample(x, p, padding_mode='border')
+        feature_0 = F.grid_sample(x, p, padding_mode='border', align_corners = True)
         # print(feature_0.shape)
         # print(feature_0[:,:,:,0,0])
 
         net = self.actvn(self.conv_in(x))
         net = self.conv_in_bn(net)
-        feature_1 = F.grid_sample(net, p, padding_mode='border')
+        feature_1 = F.grid_sample(net, p, padding_mode='border', align_corners = True)
         net = self.maxpool(net)  # out 128
 
         net = self.actvn(self.conv_0(net))
         net = self.actvn(self.conv_0_1(net))
         net = self.conv0_1_bn(net)
-        feature_2 = F.grid_sample(net, p, padding_mode='border')
+        feature_2 = F.grid_sample(net, p, padding_mode='border', align_corners = True)
         net = self.maxpool(net)  # out 64
 
         net = self.actvn(self.conv_1(net))
         net = self.actvn(self.conv_1_1(net))
         net = self.conv1_1_bn(net)
-        feature_3 = F.grid_sample(net, p, padding_mode='border')
+        feature_3 = F.grid_sample(net, p, padding_mode='border', align_corners = True)
         net = self.maxpool(net)
 
         net = self.actvn(self.conv_2(net))
         net = self.actvn(self.conv_2_1(net))
         net = self.conv2_1_bn(net)
-        feature_4 = F.grid_sample(net, p, padding_mode='border')
+        feature_4 = F.grid_sample(net, p, padding_mode='border', align_corners = True)
         net = self.maxpool(net)
 
         net = self.actvn(self.conv_3(net))
         net = self.actvn(self.conv_3_1(net))
         net = self.conv3_1_bn(net)
-        feature_5 = F.grid_sample(net, p, padding_mode='border')
+        feature_5 = F.grid_sample(net, p, padding_mode='border', align_corners = True)
         net = self.maxpool(net)
 
         net = self.actvn(self.conv_4(net))
         net = self.actvn(self.conv_4_1(net))
         net = self.conv4_1_bn(net)
-        feature_6 = F.grid_sample(net, p, padding_mode='border')
+        feature_6 = F.grid_sample(net, p, padding_mode='border', align_corners = True)
 
         # here every channel corresponse to one feature.
 

@@ -68,12 +68,15 @@ class IFDataModule(pl.LightningDataModule):
     def setup(self, stage):
 
         if stage == "fit":
-            self.train_dataset = IFDataset(cfg=self.cfg, split="train")
-            self.val_dataset = IFDataset(cfg=self.cfg, split="val")
+            self.train_dataset = IFDataset(cfg=self.cfg,
+                                           split="train")
+            self.val_dataset = IFDataset(cfg=self.cfg, 
+                                         split="val")
 
         if stage == "test":
             self.cfg.merge_from_list(cfg_test_list)
-            self.test_dataset = IFDataset(cfg=self.cfg, split="test")
+            self.test_dataset = IFDataset(cfg=self.cfg,
+                                          split="test")
 
     def train_dataloader(self):
 

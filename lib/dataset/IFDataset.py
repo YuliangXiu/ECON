@@ -33,15 +33,17 @@ from torchvision import transforms
 
 class IFDataset:
 
-    def __init__(self, cfg, split="train", vis=False, cached=True):
+    def __init__(self, cfg, split="train", vis=False):
 
         self.split = split
         self.root = cfg.root
         self.bsize = cfg.batch_size
         self.overfit = cfg.overfit
+        self.cached = cfg.dataset.cached
 
         # for debug, only used in visualize_sampling3D
         self.vis = vis
+
         if self.vis:
             self.current_epoch = 0
         else:
@@ -106,8 +108,10 @@ class IFDataset:
                 {"subjects": np.loadtxt(osp.join(dataset_dir, f"{split}.txt"), dtype=str)})
 
             # pre-cached meshes
-            if cached:
-                self.mesh_cached[dataset] = {}
+            self.mesh_cached[dataset] = {}
+
+            if self.cached:
+                
                 pbar = tqdm(self.datasets_dict[dataset]["subjects"])
                 for subject in pbar:
                     subject = subject.split("/")[-1]
@@ -189,6 +193,8 @@ class IFDataset:
 
         if dataset == "thuman2":
             data_dict.update({
+                "mesh_path":
+                    osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}/{subject}.obj"),
                 "smplx_path":
                     osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}.obj"),
                 "smplx_param":
@@ -211,6 +217,8 @@ class IFDataset:
             data_dict.update({
                 "image_back_path":
                     osp.join(self.root, render_folder, "render", f"{rotation:03d}.png"),
+                "mesh_path":
+                    osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}.obj"),
                 "joint_path":
                     osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.npy"),
                 "smpl_path":
@@ -224,6 +232,8 @@ class IFDataset:
         else:
 
             data_dict.update({
+                "mesh_path":
+                    osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}.obj"),
                 "smplx_path":
                     osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}.obj"),
                 "smplx_param":
@@ -241,6 +251,11 @@ class IFDataset:
                         f"{subject}.pkl",
                     ),
             })
+
+        if subject not in self.mesh_cached[dataset].keys():
+
+            self.mesh_cached[dataset][subject] = self.load_mesh(data_dict["mesh_path"],
+                                                                data_dict["scale"])
 
         # load training data
         data_dict.update(self.load_calib(data_dict))

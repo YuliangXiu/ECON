@@ -23,6 +23,7 @@ _C = CN(new_allowed=True)
 _C.name = "default"
 _C.gpus = [0]
 _C.test_gpus = [1]
+_C.devices = 1
 _C.root = "./data/"
 _C.ckpt_dir = "./data/ckpt/"
 _C.resume_path = ""
@@ -127,6 +128,7 @@ _C.net.in_nml = ()
 
 _C.dataset = CN()
 _C.dataset.root = ""
+_C.dataset.cached = True
 _C.dataset.set_splits = [0.95, 0.04]
 _C.dataset.types = [
     "3dpeople",

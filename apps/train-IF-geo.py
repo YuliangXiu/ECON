@@ -15,7 +15,6 @@ from apps.IFGeo import IFGeo
 from lib.common.train_util import SubTrainer, load_networks
 from lib.common.config import get_cfg_defaults
 from lib.dataset.IFDataModule import IFDataModule, cfg_test_list, cfg_overfit_list
-from pytorch_lightning.profilers import AdvancedProfiler
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTheme
 from pytorch_lightning.callbacks import RichProgressBar
@@ -40,11 +39,10 @@ if __name__ == "__main__":
     os.makedirs(osp.join(cfg.ckpt_dir, cfg.name), exist_ok=True)
     os.makedirs(osp.join(cfg.results_path, "wandb"), exist_ok=True)
 
-    os.environ["WANDB_NOTEBOOK_NAME"] = osp.join(cfg.results_path, f"wandb")
     wandb_logger = pl_loggers.WandbLogger(
-        offline=True,
+        offline=False,
         project="IF-Geo",
-        save_dir=cfg.results_path,
+        save_dir=osp.join(cfg.results_path, "wandb"),
         name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}",
     )
 
@@ -72,11 +70,10 @@ if __name__ == "__main__":
                                  metrics="grey82")
     progress_bar = RichProgressBar(theme=theme)
 
-    profiler = AdvancedProfiler(dirpath=osp.join(cfg.results_path, cfg.name), filename="perf_logs")
-
     trainer_kwargs = {
-        "accelerator": "gpu",
-        "devices": 1,
+        "accelerator": "cuda",
+        "devices": cfg.devices,
+        # "strategy": "ddp_spawn",
         "reload_dataloaders_every_n_epochs": 0,
         "sync_batchnorm": True,
         "benchmark": True,
@@ -118,7 +115,8 @@ if __name__ == "__main__":
         cfg.merge_from_list(cfg_show_list)
 
     trainer = SubTrainer(**trainer_kwargs)
-    model = IFGeo(cfg, device=torch.device(f"cuda:{trainer.device_ids[0]}"))
+    model = IFGeo(cfg, device=torch.device(f"cuda:{trainer.device_ids[0]}")).to(
+        torch.device(f"cuda:{trainer.device_ids[0]}"))
 
     # load checkpoints
     load_networks(model, mlp_path=cfg.resume_path)

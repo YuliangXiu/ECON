@@ -173,7 +173,7 @@ class TexDataset(IFDataset):
         ] * 3 + [3]).flip([0, 2]) + 1.0) * 0.5
         tex_pts = F.grid_sample(tex_voxels.unsqueeze(0).permute(0, 4, 1, 2, 3),
                                 grid_pts.unsqueeze(0).unsqueeze(1).unsqueeze(1),
-                                padding_mode='border')[0, :, 0, 0].T
+                                padding_mode='border', align_corners = True)[0, :, 0, 0].T
 
         tex_pc = vedo.Points(grid_pts, r=15, c=np.float32(tex_pts))
         vis_list.append(tex_pc)

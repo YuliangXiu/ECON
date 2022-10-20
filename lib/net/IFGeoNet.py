@@ -10,12 +10,12 @@ class SelfAttention(torch.nn.Module):
 
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.conv = torch.nn.Conv3d(in_channels,
+        self.conv = nn.Conv3d(in_channels,
                                     out_channels,
                                     3,
                                     padding=1,
                                     padding_mode='replicate')
-        self.attention = torch.nn.Conv3d(in_channels,
+        self.attention = nn.Conv3d(in_channels,
                                          out_channels,
                                          kernel_size=3,
                                          padding=1,
@@ -105,8 +105,9 @@ class IFGeoNet(nn.Module):
         if "body_voxels" in batch.keys():
             x_smpl = batch["body_voxels"]
         else:
-            self.voxelization.update_param(batch["voxel_faces"])
-            x_smpl = self.voxelization(batch["voxel_verts"])[:, 0]  #[B, 128, 128, 128]
+            with torch.no_grad():
+                self.voxelization.update_param(batch["voxel_faces"])
+                x_smpl = self.voxelization(batch["voxel_verts"])[:, 0]  #[B, 128, 128, 128]
         
         p = orthogonal(batch["samples_geo"].permute(0, 2, 1),
                        batch["calib"]).permute(0, 2, 1)  #[2, 60000, 3]
@@ -118,13 +119,13 @@ class IFGeoNet(nn.Module):
         p = p.unsqueeze(1).unsqueeze(1)
 
         # partial inputs feature extraction
-        feature_0_partial = F.grid_sample(x, p, padding_mode='border')
+        feature_0_partial = F.grid_sample(x, p, padding_mode='border', align_corners = True)
         net_partial = self.actvn(self.conv_in_partial(x))
         net_partial = self.partial_conv_in_bn(net_partial)
         net_partial = self.maxpool(net_partial)  # out 64
 
         # smpl inputs feature extraction
-        feature_0_smpl = F.grid_sample(x_smpl, p, padding_mode='border')
+        # feature_0_smpl = F.grid_sample(x_smpl, p, padding_mode='border', align_corners = True)
         net_smpl = self.actvn(self.conv_in_smpl(x_smpl))
         net_smpl = self.smpl_conv_in_bn(net_smpl)
         net_smpl = self.maxpool(net_smpl)  # out 64
@@ -134,37 +135,37 @@ class IFGeoNet(nn.Module):
         net = self.actvn(self.conv_0_fusion(torch.concat([net_partial, net_smpl], dim=1)))
         net = self.actvn(self.conv_0_1_fusion(net))
         net = self.conv0_1_bn_fusion(net)
-        feature_1_fused = F.grid_sample(net, p, padding_mode='border')
+        feature_1_fused = F.grid_sample(net, p, padding_mode='border', align_corners = True)
         # net = self.maxpool(net)  # out 64
 
         net = self.actvn(self.conv_0(net))
         net = self.actvn(self.conv_0_1(net))
         net = self.conv0_1_bn(net)
-        feature_2 = F.grid_sample(net, p, padding_mode='border')
+        feature_2 = F.grid_sample(net, p, padding_mode='border', align_corners = True)
         net = self.maxpool(net)  # out 32
 
         net = self.actvn(self.conv_1(net))
         net = self.actvn(self.conv_1_1(net))
         net = self.conv1_1_bn(net)
-        feature_3 = F.grid_sample(net, p, padding_mode='border')
+        feature_3 = F.grid_sample(net, p, padding_mode='border', align_corners = True)
         net = self.maxpool(net)  # out 16
 
         net = self.actvn(self.conv_2(net))
         net = self.actvn(self.conv_2_1(net))
         net = self.conv2_1_bn(net)
-        feature_4 = F.grid_sample(net, p, padding_mode='border')
+        feature_4 = F.grid_sample(net, p, padding_mode='border', align_corners = True)
         net = self.maxpool(net)  # out 8
 
         net = self.actvn(self.conv_3(net))
         net = self.actvn(self.conv_3_1(net))
         net = self.conv3_1_bn(net)
-        feature_5 = F.grid_sample(net, p, padding_mode='border')
+        feature_5 = F.grid_sample(net, p, padding_mode='border', align_corners = True)
         net = self.maxpool(net)  # out 4
 
         net = self.actvn(self.conv_4(net))
         net = self.actvn(self.conv_4_1(net))
         net = self.conv4_1_bn(net)
-        feature_6 = F.grid_sample(net, p, padding_mode='border')  # out 2
+        feature_6 = F.grid_sample(net, p, padding_mode='border', align_corners = True)  # out 2
 
         # here every channel corresponse to one feature.
 

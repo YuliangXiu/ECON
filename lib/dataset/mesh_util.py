@@ -258,15 +258,15 @@ class HoppeMesh:
         """
 
         # self.device = torch.device("cuda:0")
-        self.mesh = trimesh.Trimesh(verts, faces, process=False, maintains_order=True)
-        self.verts = torch.tensor(self.mesh.vertices).float()
-        self.faces = torch.tensor(self.mesh.faces).long()
-        self.vert_normals = torch.tensor(self.mesh.vertex_normals).float()
+        mesh = trimesh.Trimesh(verts, faces, process=False, maintains_order=True)
+        self.verts = torch.tensor(verts).float()
+        self.faces = torch.tensor(faces).long()
+        self.vert_normals = torch.tensor(mesh.vertex_normals).float()
 
         if (uvs is not None) and (texture is not None):
             self.vertex_colors = trimesh.visual.color.uv_to_color(uvs, texture)
-            self.face_normals = torch.tensor(self.mesh.face_normals).float()
-
+            self.face_normals = torch.tensor(mesh.face_normals).float()
+        
     def contains(self, points):
 
         labels = check_sign(

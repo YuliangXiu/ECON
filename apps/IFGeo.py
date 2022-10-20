@@ -116,9 +116,10 @@ class IFGeo(pl.LightningModule):
     def training_step(self, batch, batch_idx):
 
         # cfg log
-        if not self.cfg.fast_dev and self.global_step == 0:
-            export_cfg(self.logger, osp.join(self.cfg.results_path, self.cfg.name), self.cfg)
-            self.logger.experiment.config.update(convert_to_dict(self.cfg))
+        if self.cfg.devices == 1:
+            if not self.cfg.fast_dev and self.global_step == 0:
+                export_cfg(self.logger, osp.join(self.cfg.results_path, self.cfg.name), self.cfg)
+                self.logger.experiment.config.update(convert_to_dict(self.cfg))
 
         self.netG.train()
 
@@ -141,12 +142,18 @@ class IFGeo(pl.LightningModule):
             "train/recall": recall.item(),
         }
 
-        self.log_dict(metrics_log, prog_bar=True, logger=True, on_step=True, on_epoch=False)
+        self.log_dict(metrics_log,
+                      prog_bar=True,
+                      logger=True,
+                      on_step=True,
+                      on_epoch=False,
+                      sync_dist=True)
 
-        if batch_idx % int(self.cfg.freq_show_train) == 0:
+        if self.cfg.devices == 1:
+            if batch_idx % int(self.cfg.freq_show_train) == 0:
 
-            with torch.no_grad():
-                self.render_func(batch, dataset="train", idx=self.global_step)
+                with torch.no_grad():
+                    self.render_func(batch, dataset="train", idx=self.global_step)
 
         return metrics_log
 
@@ -161,7 +168,12 @@ class IFGeo(pl.LightningModule):
             "train/avgacc": batch_mean(outputs, "train/acc"),
         }
 
-        self.log_dict(metrics_log, prog_bar=False, logger=True, on_step=False, on_epoch=True)
+        self.log_dict(metrics_log,
+                      prog_bar=False,
+                      logger=True,
+                      on_step=False,
+                      on_epoch=True,
+                      rank_zero_only=True)
 
     def validation_step(self, batch, batch_idx):
 
@@ -178,9 +190,10 @@ class IFGeo(pl.LightningModule):
             use_sdf=self.cfg.sdf,
         )
 
-        if batch_idx % int(self.cfg.freq_show_val) == 0:
-            with torch.no_grad():
-                self.render_func(batch, dataset="val", idx=batch_idx)
+        if self.cfg.devices == 1:
+            if batch_idx % int(self.cfg.freq_show_val) == 0:
+                with torch.no_grad():
+                    self.render_func(batch, dataset="val", idx=batch_idx)
 
         metrics_log = {
             "val/loss": error_G,
@@ -190,7 +203,12 @@ class IFGeo(pl.LightningModule):
             "val/recall": recall,
         }
 
-        self.log_dict(metrics_log, prog_bar=True, logger=False, on_step=True, on_epoch=False)
+        self.log_dict(metrics_log,
+                      prog_bar=True,
+                      logger=False,
+                      on_step=True,
+                      on_epoch=False,
+                      sync_dist=True)
 
         return metrics_log
 
@@ -205,13 +223,18 @@ class IFGeo(pl.LightningModule):
             "val/avgrecall": batch_mean(outputs, "val/recall"),
         }
 
-        self.log_dict(metrics_log, prog_bar=False, logger=True, on_step=False, on_epoch=True)
+        self.log_dict(metrics_log,
+                      prog_bar=False,
+                      logger=True,
+                      on_step=False,
+                      on_epoch=True,
+                      rank_zero_only=True)
 
     def test_step(self, batch, batch_idx):
 
         self.netG.eval()
         self.netG.training = False
-        
+
         # export paths
         mesh_name = batch["subject"][0]
         mesh_rot = batch["rotation"][0].item()
@@ -307,8 +330,8 @@ class IFGeo(pl.LightningModule):
                         image_pred,
                         np.concatenate([
                             resize_img(batch["image"], height),
-                            resize_img(batch["depth_F"]*batch["depth_mask"], height),
-                            resize_img(batch["depth_B"]*batch["depth_mask"], height),
+                            resize_img(batch["depth_F"] * batch["depth_mask"], height),
+                            resize_img(batch["depth_B"] * batch["depth_mask"], height),
                             resize_img(batch["image_back"], height)
                         ],
                                        axis=1),
