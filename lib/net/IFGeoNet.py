@@ -102,8 +102,12 @@ class IFGeoNet(nn.Module):
 
     def forward(self, batch):
         
-        self.voxelization.update_param(batch["voxel_faces"])
-        x_smpl = self.voxelization(batch["voxel_verts"])[:, 0]  #[B, 128, 128, 128]
+        if "body_voxels" in batch.keys():
+            x_smpl = batch["body_voxels"]
+        else:
+            self.voxelization.update_param(batch["voxel_faces"])
+            x_smpl = self.voxelization(batch["voxel_verts"])[:, 0]  #[B, 128, 128, 128]
+        
         p = orthogonal(batch["samples_geo"].permute(0, 2, 1),
                        batch["calib"]).permute(0, 2, 1)  #[2, 60000, 3]
         x = batch["depth_voxels"]  #[B, 128, 128, 128]

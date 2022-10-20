@@ -34,6 +34,8 @@ from lib.common.config import cfg
 from lib.common.render import Render
 from lib.dataset.body_model import TetraSMPLModel
 from lib.dataset.mesh_util import get_visibility, SMPLX
+import torch.nn.functional as F
+from torchvision import transforms
 import os.path as osp
 import os
 import torch
@@ -55,6 +57,7 @@ class TestDataset:
         self.hps_type = cfg["hps_type"]
         self.smpl_type = "smpl" if cfg["hps_type"] != "pixie" else "smplx"
         self.smpl_gender = "neutral"
+        self.vol_res = cfg["vol_res"]
 
         self.device = device
 
@@ -112,7 +115,7 @@ class TestDataset:
             # settings.show = True # uncommit this to show the original BEV predictions
             self.hps = bev.BEV(settings)
 
-        print(colored(f"Using {self.hps_type} as HPS Estimator\n", "green"))
+        print(colored(f"Using -- {self.hps_type} -- as HPS Estimator\n", "green"))
 
         self.render = Render(size=512, device=device)
 
@@ -129,6 +132,25 @@ class TestDataset:
             "smpl_vis": smpl_vis.to(self.device),
             "smpl_cmap": smpl_cmap.to(self.device),
             "smpl_verts": smpl_verts,
+        }
+
+    def depth_to_voxel(self, data_dict):
+
+        data_dict["depth_F"] = transforms.Resize(self.vol_res)(data_dict["depth_F"])
+        data_dict["depth_B"] = transforms.Resize(self.vol_res)(data_dict["depth_B"])
+
+        depth_mask = (~torch.isnan(data_dict['depth_F']))
+        depth_FB = torch.cat([data_dict['depth_F'], data_dict['depth_B']], dim=0)
+        depth_FB[:, ~depth_mask[0]] = 0.
+        index_z = ((depth_FB + 1.) * 0.5 * self.vol_res).round().clip(0, self.vol_res -
+                                                                      1).long().permute(1, 2, 0)
+        index_mask = index_z[..., 0] == torch.tensor(self.vol_res * 0.5).long()
+        voxels = F.one_hot(index_z[..., 0], self.vol_res) + F.one_hot(index_z[..., 1], self.vol_res)
+        voxels[index_mask] *= 0
+        voxels = torch.flip(voxels, [2]).permute(2, 0, 1).float()  #[x-2, y-0, z-1]
+
+        return {
+            "depth_voxels": voxels.flip([0,]).unsqueeze(0).to(self.device),
         }
 
     def compute_voxel_verts(self, body_pose, global_orient, betas, trans, scale):
@@ -369,7 +391,8 @@ if __name__ == "__main__":
         verts_lst = in_tensor["body_verts"] + in_tensor["BNI_verts"]
         faces_lst = in_tensor["body_faces"] + in_tensor["BNI_faces"]
         dataset.render.load_meshes(verts_lst, faces_lst)
-        dataset.render.get_rendered_video_multi(in_tensor, osp.join(result_dir, "ECON-MultiPerson.mp4"))
+        dataset.render.get_rendered_video_multi(in_tensor,
+                                                osp.join(result_dir, "ECON-MultiPerson.mp4"))
 
         # # test different kinds of renderers
         # dataset.render.load_meshes(in_tensor["body_verts"][0], in_tensor["body_faces"][0])

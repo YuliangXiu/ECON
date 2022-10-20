@@ -121,7 +121,7 @@ if __name__ == "__main__":
     model = IFGeo(cfg, device=torch.device(f"cuda:{trainer.device_ids[0]}"))
 
     # load checkpoints
-    load_networks(cfg, model, mlp_path=cfg.resume_path)
+    load_networks(model, mlp_path=cfg.resume_path)
 
     if not cfg.test_mode:
         trainer.fit(model=model, datamodule=datamodule)

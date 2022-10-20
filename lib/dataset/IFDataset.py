@@ -16,6 +16,7 @@
 
 from lib.renderer.mesh import load_fit_body
 from lib.dataset.mesh_util import *
+from lib.common.voxelize import VoxelGrid
 from termcolor import colored
 import os.path as osp
 import numpy as np
@@ -27,7 +28,7 @@ import torch
 import torch.nn.functional as F
 import vedo
 from tqdm import tqdm
-import torchvision.transforms as transforms
+from torchvision import transforms
 
 
 class IFDataset:
@@ -565,7 +566,7 @@ class IFDataset:
                                self.mesh_cached[data_dict['dataset']][data_dict['subject']].faces,
                                process=True)
         mesh.visual.vertex_colors = [128.0, 128.0, 128.0, alpha * 255.0]
-        vis_list.append(mesh)
+        # vis_list.append(mesh)
 
         vol_ratio = 2.0 / 128.0
 
@@ -582,7 +583,7 @@ class IFDataset:
                 maintain_order=True,
             )
             voxel.visual.vertex_colors = [0.0, 128.0, 0.0, alpha * 255.0]
-            vis_list.append(voxel)
+            # vis_list.append(voxel)
 
             # voxelization
             from lib.net.voxelize import Voxelization
@@ -611,7 +612,7 @@ class IFDataset:
                                        -1.0,
                                    ] * 3,
                                    c='jet')
-            vis_list.append(smpl_vol)
+            # vis_list.append(smpl_vol)
 
         if "depth_voxels" in data_dict.keys():
             depth_vol = vedo.Volume(data_dict["depth_voxels"].flip([1]).numpy(),
@@ -636,7 +637,22 @@ class IFDataset:
                 maintain_order=True,
             )
             smplx.visual.vertex_colors = [128.0, 128.0, 0.0, alpha * 255.0]
-            vis_list.append(smplx)
+            # vis_list.append(smplx)
+
+        occupancies = VoxelGrid.from_mesh(smplx, 128, loc=[
+            0,
+        ] * 3, scale=2.0).data.transpose(2, 1, 0)
+        occupancies = np.flip(occupancies, axis=(1,))
+
+        smpl_occ = vedo.Volume(np.flip(occupancies, axis=1),
+                               spacing=[
+                                   vol_ratio,
+                               ] * 3,
+                               origin=[
+                                   -1.0,
+                               ] * 3,
+                               c='jet')
+        # vis_list.append(smpl_occ)
 
         if mode != 'kpt':
             # create a pointcloud

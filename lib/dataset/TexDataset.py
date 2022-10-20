@@ -91,7 +91,7 @@ class TexDataset(IFDataset):
 
         # load training data
         data_dict.update(self.load_calib(data_dict))
-        data_dict.update(self.load_colored_voxels(data_dict))
+        data_dict.update(self.load_tex_voxels(data_dict))
 
         data_dict.update({
             "image": self.image2tensor(data_dict["image_path"], 'rgb'),
@@ -127,7 +127,7 @@ class TexDataset(IFDataset):
         return mesh
 
     @staticmethod
-    def load_colored_voxels(data_dict):
+    def load_tex_voxels(data_dict):
 
         tex_voxels_arr = np.load(data_dict["tex_voxel_path"], allow_pickle=True)["grid_pts_rgb"]
         tex_voxels_tensor = (torch.tensor(tex_voxels_arr).float() - 0.5) * 2.0
@@ -166,20 +166,17 @@ class TexDataset(IFDataset):
         vis_list.append(pc)
 
         # create a textured voxels
-
+        grid_pts = create_grid_points_from_xyz_bounds((-1, 1) * 3, 16).view(-1, 3)
         vol_res = 128
+        tex_voxels = (data_dict["tex_voxels"].view([
+            vol_res,
+        ] * 3 + [3]).flip([0, 2]) + 1.0) * 0.5
+        tex_pts = F.grid_sample(tex_voxels.unsqueeze(0).permute(0, 4, 1, 2, 3),
+                                grid_pts.unsqueeze(0).unsqueeze(1).unsqueeze(1),
+                                padding_mode='border')[0, :, 0, 0].T
 
-        grid_pc = vedo.Volume(
-            (data_dict["tex_voxels"].view(vol_res, vol_res, vol_res, 3)[..., 0] > 0.).float().flip(
-                [1]).numpy(),
-            spacing=[
-                2.0 / 128.0,
-            ] * 3,
-            origin=[
-                -1.0,
-            ] * 3,
-            c='jet')
-        vis_list.append(grid_pc)
+        tex_pc = vedo.Points(grid_pts, r=15, c=np.float32(tex_pts))
+        vis_list.append(tex_pc)
 
         # create a picure
         img_pos = [1.0, -1.0]
@@ -200,8 +197,6 @@ if __name__ == "__main__":
 
     cfg.merge_from_file("./configs/train/IF-Geo.yaml")
     cfg.freeze()
-
-    grid_pts = create_grid_points_from_xyz_bounds((-1, 1) * 3, 16).view(-1, 3).numpy()
 
     split = "one"
     dataset = TexDataset(cfg, split, True)

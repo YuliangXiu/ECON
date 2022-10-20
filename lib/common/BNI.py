@@ -1,5 +1,5 @@
-from lib.common.BNI_utils import (depth2arr, tensor2arr,
-                                  verts_inverse_transform,
+from lib.common.BNI_utils import (verts_inverse_transform,
+                                  depth_inverse_transform,
                                   bilateral_normal_integration,
                                   mean_value_cordinates, find_contour,
                                   depth2png, dispCorres, repeat_pts,
@@ -37,6 +37,9 @@ class BNI:
 
         self.F_B_surface = None
         self.F_B_trimesh = None
+        self.F_depth = None
+        self.B_depth = None
+        
         self.device = device
         self.export_dir = dir_path
 
@@ -118,7 +121,7 @@ class BNI:
 
     def extract_surface(self, idx):
 
-        F_verts, F_faces = bilateral_normal_integration(
+        F_verts, F_faces, F_depth = bilateral_normal_integration(
             normal_map=self.normal_front,
             normal_mask=self.mask,
             k=self.k,
@@ -128,7 +131,7 @@ class BNI:
             label="Front",
         )
 
-        B_verts, B_faces = bilateral_normal_integration(
+        B_verts, B_faces, B_depth = bilateral_normal_integration(
             normal_map=self.normal_back,
             normal_mask=self.mask,
             k=self.k,
@@ -140,6 +143,9 @@ class BNI:
 
         F_verts = verts_inverse_transform(F_verts, self.scale)
         B_verts = verts_inverse_transform(B_verts, self.scale)
+        
+        self.F_depth = depth_inverse_transform(F_depth, self.scale)
+        self.B_depth = depth_inverse_transform(B_depth, self.scale)
 
         F_B_verts = torch.cat((F_verts, B_verts), dim=0)
         F_B_faces = torch.cat((F_faces, B_faces + F_faces.max() + 1), dim=0)

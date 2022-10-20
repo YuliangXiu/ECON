@@ -177,6 +177,17 @@ def verts_inverse_transform(t, depth_scale):
     return t_copy
 
 
+def depth_inverse_transform(t, depth_scale):
+
+    t_copy = t.clone()
+    t_copy -= torch.tensor(depth_scale)
+    t_copy /= torch.tensor(-2.0)
+    t_copy -= depth_scale * 0.5
+    t_copy /= depth_scale * 0.5
+
+    return t_copy
+
+
 # BNI related
 
 
@@ -460,5 +471,7 @@ def bilateral_normal_integration(
         faces = np.concatenate((faces[:, [1, 2, 3]], faces[:, [1, 3, 4]]), axis=0)
 
     vertices, faces = remove_stretched_faces(vertices, faces)
+    
 
-    return torch.as_tensor(vertices), torch.as_tensor(faces).long()
+    return torch.as_tensor(vertices), torch.as_tensor(faces).long(), torch.as_tensor(
+        depth_map).float()

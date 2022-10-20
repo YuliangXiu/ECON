@@ -122,7 +122,7 @@ if __name__ == "__main__":
     trainer = SubTrainer(**trainer_kwargs)
 
     # load checkpoints
-    load_networks(cfg, model, mlp_path=cfg.resume_path, normal_path=cfg.normal_path)
+    load_networks(model, mlp_path=cfg.resume_path, normal_path=cfg.normal_path)
 
     if not cfg.test_mode:
         trainer.fit(model=model, datamodule=datamodule)

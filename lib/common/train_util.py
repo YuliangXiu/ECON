@@ -134,10 +134,10 @@ def load_normal_networks(model, normal_path):
     del pretrained_dict
     del model_dict
 
-    print(f"Resume Normal weights from {normal_path}")
+    print(colored(f"Resume Normal weights from {normal_path}", "green"))
 
 
-def load_networks(cfg, model, mlp_path, normal_path=None):
+def load_networks(model, mlp_path, normal_path=None):
 
     model_dict = model.state_dict()
     main_dict = {}

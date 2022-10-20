@@ -27,7 +27,7 @@ _C.root = "./data/"
 _C.ckpt_dir = "./data/ckpt/"
 _C.resume_path = ""
 _C.normal_path = ""
-_C.corr_path = ""
+_C.ifnet_path = ""
 _C.results_path = "./data/results/"
 _C.projection_mode = "orthogonal"
 _C.num_views = 1
@@ -67,6 +67,8 @@ _C.freq_show_train = 0.1
 _C.freq_show_val = 0.2
 _C.freq_eval = 0.5
 _C.accu_grad_batch = 4
+
+_C.vol_res = 128
 
 _C.test_items = ["sv", "mv", "mv-fusion", "hybrid", "dc-pred", "gt"]
 

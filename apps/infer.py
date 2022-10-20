@@ -30,15 +30,16 @@ import os
 
 from termcolor import colored
 from tqdm.auto import tqdm
-from apps.ICON import ICON
+from apps.Normal import Normal
+from apps.IFGeo import IFGeo
 from lib.common.cloth_extraction import extract_cloth
 from lib.common.config import cfg
-from lib.common.render import image2vid
-from lib.common.train_util import init_loss
-from lib.renderer.mesh import compute_normal_batch
+from kaolin.ops.conversions import voxelgrids_to_trianglemeshes
+from lib.common.train_util import init_loss, load_normal_networks, load_networks
 from lib.common.BNI import BNI
 from lib.dataset.TestDataset import TestDataset
 from lib.dataset.mesh_util import *
+from lib.common.voxelize import VoxelGrid
 
 torch.backends.cudnn.benchmark = True
 
@@ -48,18 +49,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-gpu", "--gpu_device", type=int, default=0)
-    parser.add_argument("-colab", action="store_true")
     parser.add_argument("-loop_smpl", "--loop_smpl", type=int, default=100)
     parser.add_argument("-patience", "--patience", type=int, default=5)
     parser.add_argument("-vis_freq", "--vis_freq", type=int, default=1000)
-    parser.add_argument("-loop_cloth", "--loop_cloth", type=int, default=100)
-    parser.add_argument("-hps_type", "--hps_type", type=str, default="pymaf")
+    parser.add_argument("-hps_type", "--hps_type", type=str, default="pixie")
     parser.add_argument("-export_video", action="store_true")
-    parser.add_argument("-BNI", action="store_true")
+    parser.add_argument("-BNI", action="store_false")
     parser.add_argument("-in_dir", "--in_dir", type=str, default="./examples")
     parser.add_argument("-out_dir", "--out_dir", type=str, default="./results")
     parser.add_argument("-seg_dir", "--seg_dir", type=str, default=None)
-    parser.add_argument("-cfg", "--config", type=str, default="./configs/icon-filter.yaml")
+    parser.add_argument("-cfg", "--config", type=str, default="./configs/bni.yaml")
 
     args = parser.parse_args()
 
@@ -70,16 +69,23 @@ if __name__ == "__main__":
 
     # setting for testing on in-the-wild images
     cfg_show_list = [
-        "test_gpus", [args.gpu_device], "mcube_res", 256, "clean_mesh", True, "test_mode", True,
+        "test_gpus", [args.gpu_device], "mcube_res", 512, "clean_mesh", True, "test_mode", True,
         "batch_size", 1
     ]
 
     cfg.merge_from_list(cfg_show_list)
     cfg.freeze()
 
-    # load model and dataloader
-    model = ICON(cfg)
-    model = load_checkpoint(model, cfg)
+    # load model
+    normal_model = Normal(cfg).to(device)
+    load_normal_networks(normal_model, cfg.normal_path)
+
+    # load IFGeo model
+    ifnet_model = IFGeo(cfg, device).to(device)
+    load_networks(ifnet_model, mlp_path=cfg.ifnet_path)
+
+    normal_model.netG.eval()
+    ifnet_model.netG.eval()
 
     # SMPLX object
     SMPLX_object = SMPLX()
@@ -87,9 +93,9 @@ if __name__ == "__main__":
     dataset_param = {
         "image_dir": args.in_dir,
         "seg_dir": args.seg_dir,
-        "colab": args.colab,
         "use_seg": True,  # w/ or w/o segmentation
         "hps_type": args.hps_type,  # pymaf/pare/pixie
+        "vol_res": cfg.vol_res,
     }
 
     if args.hps_type == "pixie" and "pamir" in args.config:
@@ -221,7 +227,7 @@ if __name__ == "__main__":
             T_mask_F, T_mask_B = dataset.render.get_image(type="mask")
 
             with torch.no_grad():
-                in_tensor["normal_F"], in_tensor["normal_B"] = model.netG.normal_filter(in_tensor)
+                in_tensor["normal_F"], in_tensor["normal_B"] = normal_model.netG(in_tensor)
 
             diff_F_smpl = torch.abs(in_tensor["T_normal_F"] - in_tensor["normal_F"])
             diff_B_smpl = torch.abs(in_tensor["T_normal_B"] - in_tensor["normal_B"])
@@ -382,6 +388,37 @@ if __name__ == "__main__":
 
                     BNI_object.extract_surface(idx)
 
+                    # mesh completion via IF-net
+
+                    in_tensor["depth_F"] = BNI_object.F_depth.unsqueeze(0)
+                    in_tensor["depth_B"] = BNI_object.B_depth.unsqueeze(0)
+
+                    in_tensor.update(dataset.depth_to_voxel(in_tensor))
+
+                    occupancies = VoxelGrid.from_mesh(side_mesh,
+                                                      cfg.vol_res,
+                                                      loc=[
+                                                          0,
+                                                      ] * 3,
+                                                      scale=2.0).data.transpose(2, 1, 0)
+                    occupancies = np.flip(occupancies, axis=1)
+
+                    in_tensor["body_voxels"] = torch.tensor(
+                        occupancies.copy()).float().unsqueeze(0).to(device)
+
+                    sdf = ifnet_model.reconEngine(netG=ifnet_model.netG, batch=in_tensor)
+                    verts_IF, faces_IF = ifnet_model.reconEngine.export_mesh(sdf)
+
+                    if ifnet_model.clean_mesh_flag:
+                        verts_IF, faces_IF = clean_mesh(verts_IF, faces_IF)
+
+                    verts_IF -= (ifnet_model.resolutions[-1] - 1) / 2.0
+                    verts_IF /= (ifnet_model.resolutions[-1] - 1) / 2.0
+
+                    trimesh.Trimesh(verts_IF.cpu(), faces_IF.cpu()).show()
+                    import ipdb
+                    ipdb.set_trace()
+
                     # Possion Fusion between SMPLX and BNI
                     # 1. keep the faces invisible to front+back cameras
                     # 2. keep the front-FLAME+MANO faces
@@ -448,7 +485,7 @@ if __name__ == "__main__":
 
             # always export visualized video regardless of the cloth refinment
             if args.export_video:
-                
+
                 torch.cuda.empty_cache()
 
                 # visualize the final results in self-rotation mode
