@@ -33,7 +33,7 @@ class PointFeat:
         self.verts = verts
         self.triangles = face_vertices(self.verts, self.faces)
 
-    def query(self, points, feats={}, z_align=False):
+    def query(self, points, feats={}):
 
         # points [B, N, 3]
         # feats {'feat_name': [B, N, C]}
@@ -85,13 +85,9 @@ class PointFeat:
             pts2shoot_normals = pts2shoot_normals / torch.norm(
                 pts2shoot_normals, dim=-1, keepdim=True)
 
-            if z_align:
-                z_axis = torch.tensor([0, 0, 1]).to(self.device)
-                angles = (pts2shoot_normals * z_axis).sum(dim=-1).abs()
-            else:
-                shoot_normals = ((closest_normals * bary_weights[:, :, None]).sum(1).unsqueeze(0))
-                shoot_normals = shoot_normals / torch.norm(shoot_normals, dim=-1, keepdim=True)
-                angles = (pts2shoot_normals * shoot_normals).sum(dim=-1).abs()
+            shoot_normals = ((closest_normals * bary_weights[:, :, None]).sum(1).unsqueeze(0))
+            shoot_normals = shoot_normals / torch.norm(shoot_normals, dim=-1, keepdim=True)
+            angles = (pts2shoot_normals * shoot_normals).sum(dim=-1).abs()
 
             return (torch.sqrt(residues), angles)
 

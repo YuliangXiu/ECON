@@ -119,24 +119,22 @@ def face_hand_removal(full_mesh, hand_mesh, face_mesh, device):
     return full_mesh
 
 
-def overlap_removal(full_mesh, bni_mesh, device, eyeball_mask=None):
+def overlap_removal(full_mesh, vis_mask, bni_mesh, device):
 
     from lib.dataset.PointFeat import PointFeat
+
+    vis_mask = vis_mask.to(device)
 
     bni_extractor = PointFeat(
         torch.tensor(bni_mesh.vertices).unsqueeze(0).to(device),
         torch.tensor(bni_mesh.faces).unsqueeze(0).to(device))
 
-    (face_dist,
-     face_cos) = bni_extractor.query(torch.tensor(full_mesh.vertices).unsqueeze(0).to(device),
-                                     {"smpl_nsdf": None},
-                                     z_align=True)
+    (face_dist, _) = bni_extractor.query(
+        torch.tensor(full_mesh.vertices).unsqueeze(0).to(device), {"smpl_nsdf": None})
 
-    BNI_face_verts_mask = ~torch.logical_and(face_cos > 0.7, face_dist < 3e-2).flatten()
+    vert_mask = ~((face_dist < 4e-2) * (vis_mask)).flatten()
+    BNI_faces_mask = vert_mask[full_mesh.faces].all(dim=1)
 
-    BNI_faces_mask = BNI_face_verts_mask[full_mesh.faces].any(dim=1)
-    if eyeball_mask is not None:
-        BNI_faces_mask *= eyeball_mask
     full_mesh.update_faces(BNI_faces_mask.detach().cpu())
     full_mesh.remove_unreferenced_vertices()
     full_mesh = clean_floats(full_mesh)
@@ -401,10 +399,10 @@ def remesh(obj, obj_path):
     ms = pymeshlab.MeshSet()
     ms.load_new_mesh(obj_path)
     ms.meshing_decimation_quadric_edge_collapse(targetfacenum=20000)
-    ms.apply_coord_laplacian_smoothing()
+    # ms.apply_coord_laplacian_smoothing()
     ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.Percentage(1.0), adaptive=True)
-    ms.save_current_mesh(obj_path[:-4] + "_remesh.obj")
-    polished_mesh = trimesh.load_mesh(obj_path[:-4] + "_remesh.obj")
+    ms.save_current_mesh(obj_path)
+    polished_mesh = trimesh.load_mesh(obj_path)
 
     return polished_mesh
 

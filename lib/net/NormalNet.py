@@ -16,6 +16,7 @@
 
 from lib.net.FBNet import define_G
 from lib.net.net_util import init_net, VGGLoss, IDMRFLoss
+from lib.net.GANLoss import GANLoss
 from lib.net.HGFilters import *
 from lib.net.BasePIFuNet import BasePIFuNet
 import torch
@@ -44,8 +45,9 @@ class NormalNet(BasePIFuNet):
         self.opt = cfg.net
 
         if self.training:
-            # self.vgg_loss = VGGLoss()
-            self.mrf_loss = IDMRFLoss()
+            self.vgg_loss = VGGLoss()
+            # self.mrf_loss = IDMRFLoss()
+            self.gan_loss = GANLoss(self.opt)
 
         self.in_nmlF = [
             item[0] for item in self.opt.in_nml if "_F" in item[0] or item[0] == "image"
@@ -102,6 +104,7 @@ class NormalNet(BasePIFuNet):
         # [-1,1] to [0,1]
         tgt_F = (tgt_F + 1.0) * 0.5
         tgt_B = (tgt_B + 1.0) * 0.5
+
         prd_F = (prd_F + 1.0) * 0.5
         prd_B = (prd_B + 1.0) * 0.5
 
@@ -109,17 +112,27 @@ class NormalNet(BasePIFuNet):
         l1_B_loss = self.l1_loss(prd_B, tgt_B)
 
         # vgg_F_loss = self.vgg_loss(prd_F, tgt_F)
-        # vgg_B_loss = self.vgg_loss(prd_B, tgt_B)
+        vgg_B_loss = self.vgg_loss(prd_B, tgt_B)
 
-        scale_factor = 0.5
-        mrf_F_loss = self.mrf_loss(
-            F.interpolate(prd_F, scale_factor=scale_factor, mode='bicubic', align_corners=True),
-            F.interpolate(tgt_F, scale_factor=scale_factor, mode='bicubic', align_corners=True))
-        mrf_B_loss = self.mrf_loss(
-            F.interpolate(prd_B, scale_factor=scale_factor, mode='bicubic', align_corners=True),
-            F.interpolate(tgt_B, scale_factor=scale_factor, mode='bicubic', align_corners=True))
+        # scale_factor = 0.5
+        # mrf_F_loss = self.mrf_loss(
+        #     F.interpolate(prd_F, scale_factor=scale_factor, mode='bicubic', align_corners=True),
+        #     F.interpolate(tgt_F, scale_factor=scale_factor, mode='bicubic', align_corners=True))
+        # mrf_B_loss = self.mrf_loss(
+        #     F.interpolate(prd_B, scale_factor=scale_factor, mode='bicubic', align_corners=True),
+        #     F.interpolate(tgt_B, scale_factor=scale_factor, mode='bicubic', align_corners=True))
 
-        # total_loss = [5.0 * l1_F_loss + 1e-3 * mrf_F_loss, 5.0 * l1_B_loss + 1e-3 * mrf_B_loss]
-        total_loss = [5.0 * l1_F_loss + 1e-3 * mrf_F_loss, 1e-3 * mrf_B_loss]
+        loss_gan, log_dict = self.gan_loss({"norm_real": tgt_B, "norm_fake": prd_B})
+
+        total_loss = [5.0 * l1_F_loss, 1.0 * l1_B_loss + 1e-3 * loss_gan + 1e3 * vgg_B_loss]
+
+        log_dict.update({
+            "l1_F_loss": l1_F_loss.item(),
+            "l1_B_loss": l1_B_loss.item(),
+            "vgg_B_loss": vgg_B_loss.item() * 1e3
+        })
+        log_dict["disc_loss"] *= 1e-3
+
+        total_loss.append(log_dict)
 
         return total_loss

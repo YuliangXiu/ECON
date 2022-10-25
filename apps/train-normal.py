@@ -63,9 +63,10 @@ if __name__ == "__main__":
 
 
     trainer_kwargs = {
-        "accelerator": "cuda",
-        "devices": 1,
-        "reload_dataloaders_every_n_epochs": 1,
+        "accelerator": "gpu",
+        "devices": cfg.devices,
+        "strategy": "ddp_spawn",
+        "reload_dataloaders_every_n_epochs": 0,
         "sync_batchnorm": True,
         "benchmark": True,
         "logger": wandb_logger,

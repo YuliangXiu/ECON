@@ -15,15 +15,17 @@ dataset:
   scales: [1.0, 100.0, 1.0, 1.0, 2.54000508001016, 100.0]
 
 net:
+  use_gan: True
   in_nml: (('image',3), ('T_normal_F',3), ('T_normal_B',3))
 
-lr_N: 1e-4
+lr_Gen: 1e-4
+lr_Dis: 1e-3
 weight_decay: 0.0 
 momentum: 0.0
-batch_size: 2
-num_threads: 12
-gpus: [0]
-test_gpus: [0]
+
+batch_size: 3
+num_threads: 3
+devices: 6
 
 fast_dev: 0
 resume: False

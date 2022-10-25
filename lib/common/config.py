@@ -38,6 +38,8 @@ _C.sdf_clip = 5.0
 _C.lr_G = 1e-3
 _C.lr_C = 1e-3
 _C.lr_N = 2e-4
+_C.lr_Gen = 2e-4
+_C.lr_Dis = 2e-4
 _C.weight_decay = 0.0
 _C.momentum = 0.0
 _C.optim = "RMSprop"
@@ -125,8 +127,17 @@ _C.net.use_filter = True
 _C.net.use_cc = False
 _C.net.use_PE = False
 _C.net.use_IGR = False
+_C.net.use_gan = False
 _C.net.in_geo = ()
 _C.net.in_nml = ()
+
+_C.net.gan = CN()
+_C.net.gan.dim_detail = 64
+_C.net.gan.lambda_gan = 1
+_C.net.gan.lambda_grad = 10
+_C.net.gan.lambda_recon = 10
+_C.net.gan.d_reg_every = 16
+_C.net.gan.img_res = 512
 
 _C.dataset = CN()
 _C.dataset.root = ""
