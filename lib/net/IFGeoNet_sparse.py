@@ -1,6 +1,6 @@
-from pickle import TRUE
 import torch
 import torch.nn as nn
+import torchsparse.nn as spnn
 import torch.nn.functional as F
 from lib.net.voxelize import Voxelization
 from lib.net.geometry import orthogonal
@@ -11,19 +11,13 @@ class SelfAttention(torch.nn.Module):
 
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.conv = nn.Conv3d(in_channels,
+        self.conv = spnn.Conv3d(in_channels,
                                     out_channels,
-                                    3,
-                                    padding=1,
-                                    padding_mode='replicate')
-        self.attention = nn.Conv3d(in_channels,
+                                    3)
+        self.attention = spnn.Conv3d(in_channels,
                                          out_channels,
                                          kernel_size=3,
-                                         padding=1,
-                                         padding_mode='replicate',
                                          bias=False)
-        with torch.no_grad():
-            self.attention.weight.copy_(torch.zeros_like(self.attention.weight))
 
     def forward(self, x):
         features = self.conv(x)
@@ -36,41 +30,33 @@ class IFGeoNet(nn.Module):
     def __init__(self, cfg, device, hidden_dim=256):
         super(IFGeoNet, self).__init__()
 
-        self.conv_in_partial = nn.Conv3d(1, 16, 3, padding=1,
-                                         padding_mode='replicate')  # out: 256 ->m.p. 128
+        self.conv_in_partial = spnn.Conv3d(1, 16, 3)  # out: 256 ->m.p. 128
 
-        self.conv_in_smpl = nn.Conv3d(1, 4, 3, padding=1,
-                                      padding_mode='replicate')  # out: 256 ->m.p. 128
+        self.conv_in_smpl = spnn.Conv3d(1, 4, 3)  # out: 256 ->m.p. 128
 
         self.SA = SelfAttention(4, 4)
-        self.conv_0_fusion = nn.Conv3d(16 + 4, 32, 3, padding=1,
-                                       padding_mode='replicate')  # out: 128
-        self.conv_0_1_fusion = nn.Conv3d(32, 32, 3, padding=1,
-                                         padding_mode='replicate')  # out: 128 ->m.p. 64
+        self.conv_0_fusion = spnn.Conv3d(16 + 4, 32, 3)  # out: 128
+        self.conv_0_1_fusion = spnn.Conv3d(32, 32, 3)  # out: 128 ->m.p. 64
 
-        self.conv_0 = nn.Conv3d(32, 32, 3, padding=1, padding_mode='replicate')  # out: 128
-        self.conv_0_1 = nn.Conv3d(32, 32, 3, padding=1,
-                                  padding_mode='replicate')  # out: 128 ->m.p. 64
+        self.conv_0 = spnn.Conv3d(32, 32, 3)  # out: 128
+        self.conv_0_1 = spnn.Conv3d(32, 32, 3)  # out: 128 ->m.p. 64
 
-        self.conv_1 = nn.Conv3d(32, 64, 3, padding=1, padding_mode='replicate')  # out: 64
-        self.conv_1_1 = nn.Conv3d(64, 64, 3, padding=1,
-                                  padding_mode='replicate')  # out: 64 -> mp 32
+        self.conv_1 = spnn.Conv3d(32, 64, 3)  # out: 64
+        self.conv_1_1 = spnn.Conv3d(64, 64, 3)  # out: 64 -> mp 32
 
-        self.conv_2 = nn.Conv3d(64, 128, 3, padding=1, padding_mode='replicate')  # out: 32
-        self.conv_2_1 = nn.Conv3d(128, 128, 3, padding=1,
-                                  padding_mode='replicate')  # out: 32 -> mp 16
-        self.conv_3 = nn.Conv3d(128, 128, 3, padding=1, padding_mode='replicate')  # out: 16
-        self.conv_3_1 = nn.Conv3d(128, 128, 3, padding=1,
-                                  padding_mode='replicate')  # out: 16 -> mp 8
-        self.conv_4 = nn.Conv3d(128, 128, 3, padding=1, padding_mode='replicate')  # out: 8
-        self.conv_4_1 = nn.Conv3d(128, 128, 3, padding=1, padding_mode='replicate')  # out: 8
+        self.conv_2 = spnn.Conv3d(64, 128, 3)  # out: 32
+        self.conv_2_1 = spnn.Conv3d(128, 128, 3)  # out: 32 -> mp 16
+        self.conv_3 = spnn.Conv3d(128, 128, 3)  # out: 16
+        self.conv_3_1 = spnn.Conv3d(128, 128, 3)  # out: 16 -> mp 8
+        self.conv_4 = spnn.Conv3d(128, 128, 3)  # out: 8
+        self.conv_4_1 = spnn.Conv3d(128, 128, 3)  # out: 8
 
         feature_size = (1 + 32 + 32 + 64 + 128 + 128 + 128) + 3
         self.fc_0 = nn.Conv1d(feature_size, hidden_dim * 2, 1)
         self.fc_1 = nn.Conv1d(hidden_dim * 2, hidden_dim, 1)
         self.fc_2 = nn.Conv1d(hidden_dim, hidden_dim, 1)
         self.fc_out = nn.Conv1d(hidden_dim, 1, 1)
-        self.actvn = nn.ReLU(True)
+        self.actvn = spnn.ReLU()
 
         self.maxpool = nn.MaxPool3d(2)
 
@@ -121,6 +107,8 @@ class IFGeoNet(nn.Module):
 
         # partial inputs feature extraction
         feature_0_partial = F.grid_sample(x, p, padding_mode='border', align_corners = True)
+        
+        import ipdb; ipdb.set_trace()
         net_partial = self.actvn(self.conv_in_partial(x))
         net_partial = self.partial_conv_in_bn(net_partial)
         net_partial = self.maxpool(net_partial)  # out 64

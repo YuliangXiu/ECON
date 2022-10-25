@@ -25,7 +25,7 @@ class PointFeat:
         # 2. fill mouth holes with 30 more faces
 
         if verts.shape[1] == 10475:
-            faces = faces[:, ~SMPLX().smplx_eyeball_fid]
+            faces = faces[:, ~SMPLX().smplx_eyeball_fid_mask]
             mouth_faces = (torch.as_tensor(SMPLX().smplx_mouth_fid).unsqueeze(0).repeat(
                 self.Bsize, 1, 1).to(self.device))
             self.faces = torch.cat([faces, mouth_faces], dim=1).long()
@@ -33,7 +33,7 @@ class PointFeat:
         self.verts = verts
         self.triangles = face_vertices(self.verts, self.faces)
 
-    def query(self, points, feats={}):
+    def query(self, points, feats={}, z_align=False):
 
         # points [B, N, 3]
         # feats {'feat_name': [B, N, C]}
@@ -80,14 +80,18 @@ class PointFeat:
                                                                     None].expand(-1, -1, 3,
                                                                                  3)).view(-1, 3, 3)
             shoot_verts = ((closest_triangles * bary_weights[:, :, None]).sum(1).unsqueeze(0))
-            shoot_normals = ((closest_normals * bary_weights[:, :, None]).sum(1).unsqueeze(0))
 
-            shoot_normals = shoot_normals / torch.norm(shoot_normals, dim=-1, keepdim=True)
             pts2shoot_normals = points - shoot_verts
             pts2shoot_normals = pts2shoot_normals / torch.norm(
                 pts2shoot_normals, dim=-1, keepdim=True)
 
-            angles = (pts2shoot_normals * shoot_normals).sum(dim=-1)
+            if z_align:
+                z_axis = torch.tensor([0, 0, 1]).to(self.device)
+                angles = (pts2shoot_normals * z_axis).sum(dim=-1).abs()
+            else:
+                shoot_normals = ((closest_normals * bary_weights[:, :, None]).sum(1).unsqueeze(0))
+                shoot_normals = shoot_normals / torch.norm(shoot_normals, dim=-1, keepdim=True)
+                angles = (pts2shoot_normals * shoot_normals).sum(dim=-1).abs()
 
             return (torch.sqrt(residues), angles)
 

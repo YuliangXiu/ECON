@@ -58,6 +58,8 @@ _C.optim_body = False
 _C.mcube_res = 256
 _C.clean_mesh = True
 _C.remesh = False
+_C.body_overlap_thres = 1.0
+_C.cloth_overlap_thres = 1.0
 
 _C.batch_size = 4
 _C.num_threads = 8

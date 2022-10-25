@@ -34,7 +34,6 @@ from apps.Normal import Normal
 from apps.IFGeo import IFGeo
 from lib.common.cloth_extraction import extract_cloth
 from lib.common.config import cfg
-from kaolin.ops.conversions import voxelgrids_to_trianglemeshes
 from lib.common.train_util import init_loss, load_normal_networks, load_networks
 from lib.common.BNI import BNI
 from lib.dataset.TestDataset import TestDataset
@@ -69,7 +68,7 @@ if __name__ == "__main__":
 
     # setting for testing on in-the-wild images
     cfg_show_list = [
-        "test_gpus", [args.gpu_device], "mcube_res", 512, "clean_mesh", True, "test_mode", True,
+        "test_gpus", [args.gpu_device], "mcube_res", 512, "clean_mesh", False, "test_mode", True,
         "batch_size", 1
     ]
 
@@ -245,8 +244,10 @@ if __name__ == "__main__":
             losses["silhouette"]["value"] = diff_S.mean()
 
             # for loose clothing, reply more on landmarks
-            diff_ratio = diff_S.sum() / diff_S.shape.numel()
-            if diff_ratio > 0.15:
+            cloth_overlap = diff_S.sum() / torch.nonzero(gt_arr).shape[0]
+            body_overlap = (gt_arr * smpl_arr).sum() / torch.nonzero(smpl_arr).shape[0]
+
+            if cloth_overlap > cfg.cloth_overlap_thres:
                 losses["joint"]["weight"] = 5e1
 
             # Weighted sum of the losses
@@ -295,6 +296,7 @@ if __name__ == "__main__":
             torch.Tensor([data["img_raw"], rgb_norm_F, rgb_norm_B]).permute(0, 3, 1, 2) / 255.,
             img_overlap_path)
 
+        smpl_obj_lst = []
         for idx in range(N_body):
 
             smpl_obj = trimesh.Trimesh(
@@ -304,6 +306,7 @@ if __name__ == "__main__":
                 maintains_order=True,
             )
             smpl_obj.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_smpl_{idx:02d}.obj")
+            smpl_obj_lst.append(smpl_obj)
 
         smpl_info = {
             "betas": optimed_betas,
@@ -329,71 +332,63 @@ if __name__ == "__main__":
         # ------------------------------------------------------------------------------------------------------------------
         # clothing refinement
 
-        if True:
+        per_data_lst = []
 
-            per_data_lst = []
+        if args.BNI:
 
-            if args.BNI:
-
-                # replace ICON by SMPL to provide depth-prior and side surfaces
-                verts_remesh = in_tensor["smpl_verts"].detach() * torch.tensor([1.0, -1.0, 1.0],
+            batch_smpl_verts = in_tensor["smpl_verts"].detach() * torch.tensor([1.0, -1.0, 1.0],
                                                                                device=device)
-                faces_remesh = in_tensor["smpl_faces"].detach()
+            batch_smpl_faces = in_tensor["smpl_faces"].detach()
 
-                # rendering depth map for BNI
-                in_tensor["verts_pr"] = verts_remesh
-                in_tensor["faces_pr"] = faces_remesh
+            in_tensor["depth_F"], in_tensor["depth_B"] = dataset.render_depth(
+                batch_smpl_verts, batch_smpl_faces)
 
-                in_tensor["depth_F"], in_tensor["depth_B"] = dataset.render_depth(
-                    verts_remesh, faces_remesh)
+            per_loop_lst = []
 
-                (xy, z) = verts_remesh.split([2, 1], dim=-1)
-                F_vis = get_visibility(xy, z, faces_remesh[..., [0, 2, 1]])
-                B_vis = get_visibility(xy, -z, faces_remesh)
+            in_tensor["BNI_verts"] = []
+            in_tensor["BNI_faces"] = []
+            in_tensor["body_verts"] = []
+            in_tensor["body_faces"] = []
 
-                per_loop_lst = []
+            pbar_body = tqdm(range(N_body))
 
-                in_tensor["BNI_verts"] = []
-                in_tensor["BNI_faces"] = []
-                in_tensor["body_verts"] = []
-                in_tensor["body_faces"] = []
+            for idx in pbar_body:
 
-                pbar_body = tqdm(range(N_body))
+                pbar_body.set_description(f"Body {idx:02d}")
 
-                for idx in pbar_body:
+                side_mesh = smpl_obj_lst[idx].copy()
+                face_mesh = smpl_obj_lst[idx].copy()
+                hand_mesh = smpl_obj_lst[idx].copy()
 
-                    pbar_body.set_description(f"Body {idx:02d}")
+                # save normals, depths and masks
+                BNI_dict = save_normal_tensor(
+                    in_tensor,
+                    idx,
+                    os.path.join(args.out_dir, cfg.name, f"BNI/{data['name']}_{idx}"),
+                )
 
-                    side_mesh = trimesh.Trimesh(verts_remesh.cpu()[idx],
-                                                faces_remesh.cpu()[0],
-                                                process=False,
-                                                maintains_order=True)
+                # BNI process
+                BNI_object = BNI(dir_path=os.path.join(args.out_dir, cfg.name, "BNI"),
+                                 name=data["name"],
+                                 BNI_dict=BNI_dict,
+                                 device=device,
+                                 mvc=False)
 
-                    face_mesh = side_mesh.copy()
-                    hand_mesh = side_mesh.copy()
+                BNI_object.extract_surface(idx)
 
-                    # save normals, depths and masks
-                    BNI_dict = save_normal_tensor(
-                        in_tensor,
-                        idx,
-                        os.path.join(args.out_dir, cfg.name, f"BNI/{data['name']}_{idx}"),
-                    )
+                # requires shape completion when low overlap
+                # replace SMPL by completed mesh as side_mesh
 
-                    # BNI process
-                    BNI_object = BNI(dir_path=os.path.join(args.out_dir, cfg.name, "BNI"),
-                                     name=data["name"],
-                                     BNI_dict=BNI_dict,
-                                     device=device,
-                                     mvc=False)
+                if body_overlap < cfg.body_overlap_thres:
 
-                    BNI_object.extract_surface(idx)
+                    print(colored(f"Low overlap: {body_overlap:.2f}, shape completion\n", "red"))
 
                     # mesh completion via IF-net
-
-                    in_tensor["depth_F"] = BNI_object.F_depth.unsqueeze(0)
-                    in_tensor["depth_B"] = BNI_object.B_depth.unsqueeze(0)
-
-                    in_tensor.update(dataset.depth_to_voxel(in_tensor))
+                    in_tensor.update(
+                        dataset.depth_to_voxel({
+                            "depth_F": BNI_object.F_depth.unsqueeze(0),
+                            "depth_B": BNI_object.B_depth.unsqueeze(0)
+                        }))
 
                     occupancies = VoxelGrid.from_mesh(side_mesh,
                                                       cfg.vol_res,
@@ -406,8 +401,9 @@ if __name__ == "__main__":
                     in_tensor["body_voxels"] = torch.tensor(
                         occupancies.copy()).float().unsqueeze(0).to(device)
 
-                    sdf = ifnet_model.reconEngine(netG=ifnet_model.netG, batch=in_tensor)
-                    verts_IF, faces_IF = ifnet_model.reconEngine.export_mesh(sdf)
+                    with torch.no_grad():
+                        sdf = ifnet_model.reconEngine(netG=ifnet_model.netG, batch=in_tensor)
+                        verts_IF, faces_IF = ifnet_model.reconEngine.export_mesh(sdf)
 
                     if ifnet_model.clean_mesh_flag:
                         verts_IF, faces_IF = clean_mesh(verts_IF, faces_IF)
@@ -415,60 +411,62 @@ if __name__ == "__main__":
                     verts_IF -= (ifnet_model.resolutions[-1] - 1) / 2.0
                     verts_IF /= (ifnet_model.resolutions[-1] - 1) / 2.0
 
-                    trimesh.Trimesh(verts_IF.cpu(), faces_IF.cpu()).show()
-                    import ipdb
-                    ipdb.set_trace()
+                    side_mesh = trimesh.Trimesh(verts_IF, faces_IF)
+                    side_mesh_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_side.obj"
+                    side_mesh = remesh(side_mesh, side_mesh_path)
 
-                    # Possion Fusion between SMPLX and BNI
-                    # 1. keep the faces invisible to front+back cameras
-                    # 2. keep the front-FLAME+MANO faces
-                    # 3. remove eyeball faces
+                # Possion Fusion between SMPLX and BNI
+                # 1. keep the faces invisible to front+back cameras
+                # 2. keep the front-FLAME+MANO faces
+                # 3. remove eyeball faces
 
-                    face_hand_vid = np.concatenate(
-                        [SMPLX_object.smplx_front_flame_vid, SMPLX_object.smplx_mano_vid])
+                side_verts = torch.tensor(side_mesh.vertices).float().to(device).unsqueeze(0)
+                side_faces = torch.tensor(side_mesh.faces).long().to(device).unsqueeze(0)
 
-                    # face+hand w/ side
-                    verts_mask = (1.0 - F_vis[idx]) * (1.0 - B_vis[idx])
-                    side_mesh = mesh_remove_vid_fid(side_mesh, verts_mask, face_hand_vid,
-                                                    ~SMPLX_object.smplx_eyeball_fid)
+                if body_overlap < cfg.body_overlap_thres:
+                    # remove overlap parts
+                    side_mesh = overlap_removal(side_mesh, BNI_object.F_B_trimesh, device)
+                else:
+                    # remove visible parts and eyeballs
+                    side_mesh = overlap_removal(side_mesh, BNI_object.F_B_trimesh, device,
+                                                ~SMPLX_object.smplx_eyeball_fid_mask)
 
-                    # only face
-                    face_mesh = mesh_remove_vid_fid(face_mesh, torch.zeros_like(verts_mask),
-                                                    SMPLX_object.smplx_front_flame_vid,
-                                                    ~SMPLX_object.smplx_eyeball_fid)
+                # only face
+                front_flame_vertex_mask = torch.zeros(face_mesh.vertices.shape[0],)
+                front_flame_vertex_mask[SMPLX_object.smplx_front_flame_vid] = 1.0
+                face_mesh = apply_vertex_mask(face_mesh, front_flame_vertex_mask)
 
-                    # only hands
-                    hand_vid_mask = torch.zeros_like(verts_mask)
-                    hand_vid_mask[SMPLX_object.smplx_mano_vid] = 1.0
-                    hand_fid_mask = hand_vid_mask[hand_mesh.faces].any(dim=1)
-                    hand_mesh.update_faces(hand_fid_mask)
-                    hand_mesh.remove_unreferenced_vertices()
+                # only hands
+                mano_vertex_mask = torch.zeros(hand_mesh.vertices.shape[0],)
+                mano_vertex_mask[SMPLX_object.smplx_mano_vid] = 1.0
+                hand_mesh = apply_vertex_mask(hand_mesh, mano_vertex_mask)
 
-                    side_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_side.obj")
+                # replace BNI with SMPLX on hands and face
+                BNI_object.F_B_trimesh = face_hand_removal(BNI_object.F_B_trimesh, hand_mesh,
+                                                           face_mesh, device)
+                side_mesh = face_hand_removal(side_mesh, hand_mesh, face_mesh, device)
 
-                    # replace BNI with SMPLX on hands and face
+                BNI_object.F_B_trimesh.export(
+                    f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_BNI.obj")
 
-                    BNI_object.F_B_trimesh = face_hand_removal(BNI_object.F_B_trimesh, hand_mesh,
-                                                               face_mesh, device)
+                side_mesh.export(
+                    f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_side_final.obj")
 
-                    BNI_object.F_B_trimesh.export(
-                        f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_BNI.obj")
+                final_mesh = poisson(
+                    sum([side_mesh, BNI_object.F_B_trimesh, hand_mesh, face_mesh]),
+                    f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_combine.obj",
+                    10,
+                )
 
-                    final_mesh = possion(
-                        sum([side_mesh, BNI_object.F_B_trimesh]),
-                        f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_combine.obj",
-                        10,
-                    )
+                dataset.render.load_meshes(final_mesh.vertices, final_mesh.faces)
+                rotate_recon_lst = dataset.render.get_image(cam_type="four")
+                per_loop_lst.extend([data['image'][idx:idx + 1]] + rotate_recon_lst)
 
-                    dataset.render.load_meshes(final_mesh.vertices, final_mesh.faces)
-                    rotate_recon_lst = dataset.render.get_image(cam_type="four")
-                    per_loop_lst.extend([data['image'][idx:idx + 1]] + rotate_recon_lst)
-
-                    # for video rendering
-                    in_tensor["BNI_verts"].append(torch.tensor(final_mesh.vertices).float())
-                    in_tensor["BNI_faces"].append(torch.tensor(final_mesh.faces).long())
-                    in_tensor["body_verts"].append(verts_remesh.cpu()[idx].float())
-                    in_tensor["body_faces"].append(faces_remesh.cpu()[0].long())
+                # for video rendering
+                in_tensor["BNI_verts"].append(torch.tensor(final_mesh.vertices).float())
+                in_tensor["BNI_faces"].append(torch.tensor(final_mesh.faces).long())
+                in_tensor["body_verts"].append(side_verts.cpu().float())
+                in_tensor["body_faces"].append(side_faces.cpu().long())
 
             # always export visualized png regardless of the cloth refinment
 

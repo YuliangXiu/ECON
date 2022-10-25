@@ -1,7 +1,7 @@
 name: bni
 ckpt_dir: "./data/ckpt/"
-normal_path: "./data/ckpt/normal/mrf.ckpt"
-ifnet_path: "./data/ckpt/IF-Geo/last.ckpt"
+normal_path: "./data/ckpt/normal/mrf-v2.ckpt"
+ifnet_path: "./data/ckpt/IF-Geo/last-256.ckpt"
 results_path: "./results"
 
 net:
@@ -11,6 +11,8 @@ test_mode: True
 batch_size: 1
 
 # user defined
-vol_res: 128
+vol_res: 256
 mcube_res: 512    # occupancy field resolution, higher --> more details
 clean_mesh: False # if True, will remove floating pieces
+cloth_overlap_thres: 0.50
+body_overlap_thres: 0.98

@@ -43,7 +43,7 @@ if __name__ == "__main__":
         offline=False,
         project="IF-Geo",
         save_dir=osp.join(cfg.results_path, "wandb"),
-        name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}",
+        name=f"{cfg.name}-{cfg.dataset.voxel_res}-{'-'.join(cfg.dataset.types)}",
     )
 
     if cfg.overfit:

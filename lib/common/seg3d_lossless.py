@@ -128,6 +128,7 @@ class Seg3dLossless(nn.Module):
                                            out_channels=1,
                                            kernel_size=9)
 
+    @torch.no_grad()
     def batch_eval(self, coords, **kwargs):
         """
         coords: in the coordinates of last resolution
@@ -150,12 +151,14 @@ class Seg3dLossless(nn.Module):
         ), "query_func should return a occupancy with shape of [bz, C, N]"
         return occupancys
 
+    @torch.no_grad()
     def forward(self, **kwargs):
         if self.faster:
             return self._forward_faster(**kwargs)
         else:
             return self._forward(**kwargs)
 
+    @torch.no_grad()
     def _forward_faster(self, **kwargs):
         """
         In faster mode, we make following changes to exchange accuracy for speed:
@@ -277,6 +280,7 @@ class Seg3dLossless(nn.Module):
 
         return occupancys[0, 0]
 
+    @torch.no_grad()
     def _forward(self, **kwargs):
         """
         output occupancy field would be:
@@ -522,6 +526,7 @@ class Seg3dLossless(nn.Module):
 
         plot_mask3D(final[0, 0].to("cpu"), title, (x, y, z), **kwargs)
 
+    @torch.no_grad()
     def find_vertices(self, sdf, direction="front"):
         """
         - direction: "front" | "back" | "left" | "right"
@@ -582,6 +587,7 @@ class Seg3dLossless(nn.Module):
 
         return X, Y, Z, norm
 
+    @torch.no_grad()
     def render_normal(self, resolution, X, Y, Z, norm):
         image = torch.ones((1, 3, resolution, resolution),
                            dtype=torch.float32).to(norm.device)
@@ -590,6 +596,7 @@ class Seg3dLossless(nn.Module):
         image[0, :, Y, X] = color.t()
         return image
 
+    @torch.no_grad()
     def display(self, sdf):
 
         # render
@@ -607,6 +614,7 @@ class Seg3dLossless(nn.Module):
 
         return np.uint8(image)
 
+    @torch.no_grad()
     def export_mesh(self, occupancys):
 
         final = occupancys[1:, 1:, 1:].contiguous()

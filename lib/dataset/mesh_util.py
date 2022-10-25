@@ -65,10 +65,25 @@ def create_grid_points_from_xy_bounds(bound, res):
     return torch.stack([X, Y], dim=-1)
 
 
-def mesh_remove_vid_fid(mesh, init_mask, vid, fid):
+def apply_face_mask(mesh, face_mask):
 
-    init_mask[vid] = 1.0
-    faces_mask = init_mask[mesh.faces].any(dim=1) * torch.tensor(fid)
+    mesh.update_faces(face_mask)
+    mesh.remove_unreferenced_vertices()
+
+    return mesh
+
+
+def apply_vertex_mask(mesh, vertex_mask):
+
+    faces_mask = vertex_mask[mesh.faces].any(dim=1)
+    mesh = apply_face_mask(mesh, faces_mask)
+
+    return mesh
+
+
+def apply_vertex_face_mask(mesh, vertex_mask, face_mask):
+
+    faces_mask = vertex_mask[mesh.faces].any(dim=1) * torch.tensor(face_mask)
     mesh.update_faces(faces_mask)
     mesh.remove_unreferenced_vertices()
 
@@ -97,6 +112,31 @@ def face_hand_removal(full_mesh, hand_mesh, face_mesh, device):
     BNI_verts_mask = torch.logical_and(BNI_face_verts_mask, BNI_hand_verts_mask)
 
     BNI_faces_mask = BNI_verts_mask[full_mesh.faces].any(dim=1)
+    full_mesh.update_faces(BNI_faces_mask.detach().cpu())
+    full_mesh.remove_unreferenced_vertices()
+    full_mesh = clean_floats(full_mesh)
+
+    return full_mesh
+
+
+def overlap_removal(full_mesh, bni_mesh, device, eyeball_mask=None):
+
+    from lib.dataset.PointFeat import PointFeat
+
+    bni_extractor = PointFeat(
+        torch.tensor(bni_mesh.vertices).unsqueeze(0).to(device),
+        torch.tensor(bni_mesh.faces).unsqueeze(0).to(device))
+
+    (face_dist,
+     face_cos) = bni_extractor.query(torch.tensor(full_mesh.vertices).unsqueeze(0).to(device),
+                                     {"smpl_nsdf": None},
+                                     z_align=True)
+
+    BNI_face_verts_mask = ~torch.logical_and(face_cos > 0.7, face_dist < 3e-2).flatten()
+
+    BNI_faces_mask = BNI_face_verts_mask[full_mesh.faces].any(dim=1)
+    if eyeball_mask is not None:
+        BNI_faces_mask *= eyeball_mask
     full_mesh.update_faces(BNI_faces_mask.detach().cpu())
     full_mesh.remove_unreferenced_vertices()
     full_mesh = clean_floats(full_mesh)
@@ -266,7 +306,7 @@ class HoppeMesh:
         if (uvs is not None) and (texture is not None):
             self.vertex_colors = trimesh.visual.color.uv_to_color(uvs, texture)
             self.face_normals = torch.tensor(mesh.face_normals).float()
-        
+
     def contains(self, points):
 
         labels = check_sign(
@@ -355,18 +395,18 @@ def mesh_edge_loss(meshes, target_length: float = 0.0):
     return loss_all
 
 
-def remesh(obj_path, perc, device):
+def remesh(obj, obj_path):
 
+    obj.export(obj_path)
     ms = pymeshlab.MeshSet()
     ms.load_new_mesh(obj_path)
+    ms.meshing_decimation_quadric_edge_collapse(targetfacenum=20000)
     ms.apply_coord_laplacian_smoothing()
-    ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.Percentage(perc), adaptive=True)
-    ms.save_current_mesh(obj_path.replace("recon", "remesh"))
-    polished_mesh = trimesh.load_mesh(obj_path.replace("recon", "remesh"))
-    verts_pr = torch.tensor(polished_mesh.vertices).float().unsqueeze(0).to(device)
-    faces_pr = torch.tensor(polished_mesh.faces).long().unsqueeze(0).to(device)
+    ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.Percentage(1.0), adaptive=True)
+    ms.save_current_mesh(obj_path[:-4] + "_remesh.obj")
+    polished_mesh = trimesh.load_mesh(obj_path[:-4] + "_remesh.obj")
 
-    return verts_pr, faces_pr, polished_mesh
+    return polished_mesh
 
 
 def save_normal_tensor(in_tensor, idx, png_path):
@@ -429,30 +469,41 @@ def save_normal_tensor(in_tensor, idx, png_path):
         process=False,
         maintains_order=True,
     )
-    recon_obj = trimesh.Trimesh(
-        verts_transform(in_tensor["verts_pr"].detach().cpu()[idx], depth_scale),
-        in_tensor["faces_pr"].detach().cpu()[0],
-        process=False,
-        maintains_order=True,
-    )
 
     smpl_obj.export(png_path + "_smpl.obj")
-    recon_obj.export(png_path + "_recon.obj")
 
     return BNI_dict
 
 
-def possion(mesh, obj_path, depth=10):
+# def poisson(mesh, obj_path, depth=10):
 
-    mesh.export(obj_path)
-    ms = pymeshlab.MeshSet(verbose=False)
-    ms.load_new_mesh(obj_path)
-    ms.set_verbosity(False)
-    ms.surface_reconstruction_screened_poisson(depth=depth, preclean=True)
-    ms.set_current_mesh(1)
-    ms.save_current_mesh(obj_path)
+#     # meshlab poisson
+#     mesh.export(obj_path)
+#     ms = pymeshlab.MeshSet(verbose=False)
+#     ms.load_new_mesh(obj_path)
+#     ms.set_verbosity(False)
+#     ms.surface_reconstruction_screened_poisson(depth=depth, preclean=True)
+#     ms.set_current_mesh(1)
+#     ms.save_current_mesh(obj_path)
 
-    new_meshes = trimesh.load(obj_path)
+#     new_meshes = trimesh.load(obj_path)
+#     new_mesh_lst = new_meshes.split(only_watertight=False)
+#     comp_num = [new_mesh.vertices.shape[0] for new_mesh in new_mesh_lst]
+#     final_mesh = new_mesh_lst[comp_num.index(max(comp_num))]
+#     final_mesh.export(obj_path)
+
+#     return final_mesh
+
+
+def poisson(mesh, obj_path, depth=10):
+
+    # pypoisson
+
+    from pypoisson import poisson_reconstruction
+
+    faces, vertices = poisson_reconstruction(mesh.vertices, mesh.vertex_normals, depth=depth)
+
+    new_meshes = trimesh.Trimesh(vertices, faces)
     new_mesh_lst = new_meshes.split(only_watertight=False)
     comp_num = [new_mesh.vertices.shape[0] for new_mesh in new_mesh_lst]
     final_mesh = new_mesh_lst[comp_num.index(max(comp_num))]
@@ -962,7 +1013,7 @@ class SMPLX:
         self.smpl_verts = np.load(self.smpl_verts_path)
         self.smpl_faces = np.load(self.smpl_faces_path)
 
-        self.smplx_eyeball_fid = np.load(self.smplx_eyeball_fid_path)
+        self.smplx_eyeball_fid_mask = np.load(self.smplx_eyeball_fid_path)
         self.smplx_mouth_fid = np.load(self.smplx_fill_mouth_fid_path)
         self.smplx_mano_vid_dict = np.load(self.smplx_mano_vid_path, allow_pickle=True)
         self.smplx_mano_vid = np.concatenate(
