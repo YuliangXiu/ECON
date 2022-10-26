@@ -16,7 +16,6 @@ import os
 import os.path as osp
 import argparse
 
-from pytorch_lightning.profilers import AdvancedProfiler
 from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTheme
 from pytorch_lightning.callbacks import RichProgressBar
@@ -50,9 +49,9 @@ if __name__ == "__main__":
         auto_insert_metric_name=False,
         verbose=False,
         save_weights_only=True,
-        monitor="val/avgloss",
+        monitor="val/avg-loss",
         mode="min",
-        filename="Normal-epoch={epoch:02d}-val_avgloss={val/avgloss:.2f}",
+        filename="Normal-epoch={epoch:02d}-val_avgloss={val/avg-loss:.2f}",
     )
 
     # customized progress_bar
@@ -66,6 +65,7 @@ if __name__ == "__main__":
         "accelerator": "gpu",
         "devices": cfg.devices,
         "strategy": "ddp_spawn",
+        "detect_anomaly": True,
         "reload_dataloaders_every_n_epochs": 0,
         "sync_batchnorm": True,
         "benchmark": True,

@@ -339,238 +339,230 @@ if __name__ == "__main__":
 
         per_data_lst = []
 
-        if args.BNI:
+        batch_smpl_verts = in_tensor["smpl_verts"].detach() * torch.tensor([1.0, -1.0, 1.0],
+                                                                           device=device)
+        batch_smpl_faces = in_tensor["smpl_faces"].detach()
 
-            batch_smpl_verts = in_tensor["smpl_verts"].detach() * torch.tensor([1.0, -1.0, 1.0],
-                                                                               device=device)
-            batch_smpl_faces = in_tensor["smpl_faces"].detach()
+        in_tensor["depth_F"], in_tensor["depth_B"] = dataset.render_depth(
+            batch_smpl_verts, batch_smpl_faces)
 
-            in_tensor["depth_F"], in_tensor["depth_B"] = dataset.render_depth(
-                batch_smpl_verts, batch_smpl_faces)
+        per_loop_lst = []
 
-            per_loop_lst = []
+        in_tensor["BNI_verts"] = []
+        in_tensor["BNI_faces"] = []
+        in_tensor["body_verts"] = []
+        in_tensor["body_faces"] = []
 
-            in_tensor["BNI_verts"] = []
-            in_tensor["BNI_faces"] = []
-            in_tensor["body_verts"] = []
-            in_tensor["body_faces"] = []
+        pbar_body = tqdm(range(N_body))
 
-            pbar_body = tqdm(range(N_body))
+        for idx in pbar_body:
 
-            for idx in pbar_body:
+            pbar_body.set_description(f"Body {idx:02d}")
 
-                pbar_body.set_description(f"Body {idx:02d}")
+            side_mesh = smpl_obj_lst[idx].copy()
+            face_mesh = smpl_obj_lst[idx].copy()
+            hand_mesh = smpl_obj_lst[idx].copy()
 
-                side_mesh = smpl_obj_lst[idx].copy()
-                face_mesh = smpl_obj_lst[idx].copy()
-                hand_mesh = smpl_obj_lst[idx].copy()
+            # save normals, depths and masks
+            BNI_dict = save_normal_tensor(
+                in_tensor,
+                idx,
+                os.path.join(args.out_dir, cfg.name, f"BNI/{data['name']}_{idx}"),
+            )
 
-                # save normals, depths and masks
-                BNI_dict = save_normal_tensor(
-                    in_tensor,
-                    idx,
-                    os.path.join(args.out_dir, cfg.name, f"BNI/{data['name']}_{idx}"),
-                )
+            # BNI process
+            BNI_object = BNI(dir_path=os.path.join(args.out_dir, cfg.name, "BNI"),
+                             name=data["name"],
+                             BNI_dict=BNI_dict,
+                             device=device,
+                             mvc=False)
 
-                # BNI process
-                BNI_object = BNI(dir_path=os.path.join(args.out_dir, cfg.name, "BNI"),
-                                 name=data["name"],
-                                 BNI_dict=BNI_dict,
-                                 device=device,
-                                 mvc=False)
+            BNI_object.extract_surface(idx)
 
-                BNI_object.extract_surface(idx)
+            side_mesh = apply_face_mask(side_mesh, ~SMPLX_object.smplx_eyeball_fid_mask)
+            side_verts = torch.tensor(side_mesh.vertices).float()
+            side_faces = torch.tensor(side_mesh.faces).long()
 
-                side_mesh = apply_face_mask(side_mesh, ~SMPLX_object.smplx_eyeball_fid_mask)
+            in_tensor["body_verts"].append(side_verts)
+            in_tensor["body_faces"].append(side_faces)
+
+            # requires shape completion when low overlap
+            # replace SMPL by completed mesh as side_mesh
+
+            if body_overlap[idx] < cfg.body_overlap_thres:
+
+                print(colored(f"Low overlap: {body_overlap[idx]:.2f}, shape completion\n", "green"))
+
+                # mesh completion via IF-net
+                in_tensor.update(
+                    dataset.depth_to_voxel({
+                        "depth_F": BNI_object.F_depth.unsqueeze(0),
+                        "depth_B": BNI_object.B_depth.unsqueeze(0)
+                    }))
+
+                occupancies = VoxelGrid.from_mesh(side_mesh, cfg.vol_res, loc=[
+                    0,
+                ] * 3, scale=2.0).data.transpose(2, 1, 0)
+                occupancies = np.flip(occupancies, axis=1)
+
+                in_tensor["body_voxels"] = torch.tensor(
+                    occupancies.copy()).float().unsqueeze(0).to(device)
+
+                with torch.no_grad():
+                    sdf = ifnet_model.reconEngine(netG=ifnet_model.netG, batch=in_tensor)
+                    verts_IF, faces_IF = ifnet_model.reconEngine.export_mesh(sdf)
+
+                if ifnet_model.clean_mesh_flag:
+                    verts_IF, faces_IF = clean_mesh(verts_IF, faces_IF)
+
+                verts_IF -= (ifnet_model.resolutions[-1] - 1) / 2.0
+                verts_IF /= (ifnet_model.resolutions[-1] - 1) / 2.0
+
+                side_mesh = trimesh.Trimesh(verts_IF, faces_IF)
+                side_mesh_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_IF.obj"
+                side_mesh = remesh(side_mesh, side_mesh_path)
+
                 side_verts = torch.tensor(side_mesh.vertices).float()
                 side_faces = torch.tensor(side_mesh.faces).long()
+            else:
+                print(colored("High overlap, use SMPL-X body\n", "green"))
 
-                in_tensor["body_verts"].append(side_verts)
-                in_tensor["body_faces"].append(side_faces)
+            # Possion Fusion between SMPLX and BNI
+            # 1. keep the faces invisible to front+back cameras
+            # 2. keep the front-FLAME+MANO faces
+            # 3. remove eyeball faces
 
-                # requires shape completion when low overlap
-                # replace SMPL by completed mesh as side_mesh
+            side_verts = side_verts.to(device)
+            side_faces = side_faces.to(device)
 
-                if body_overlap[idx] < cfg.body_overlap_thres:
+            (xy, z) = side_verts.split([2, 1], dim=-1)
+            F_vis = get_visibility(xy, z, side_faces[..., [0, 2, 1]], img_res=2**8)
+            B_vis = get_visibility(xy, -z, side_faces, img_res=2**8)
 
-                    print(
-                        colored(f"Low overlap: {body_overlap[idx]:.2f}, shape completion\n",
-                                "green"))
+            side_mesh = overlap_removal(side_mesh, torch.logical_or(F_vis, B_vis),
+                                        BNI_object.F_B_trimesh, device)
 
-                    # mesh completion via IF-net
-                    in_tensor.update(
-                        dataset.depth_to_voxel({
-                            "depth_F": BNI_object.F_depth.unsqueeze(0),
-                            "depth_B": BNI_object.B_depth.unsqueeze(0)
-                        }))
+            # only face
+            front_flame_vertex_mask = torch.zeros(face_mesh.vertices.shape[0],)
+            front_flame_vertex_mask[SMPLX_object.smplx_front_flame_vid] = 1.0
+            face_mesh = apply_vertex_mask(face_mesh, front_flame_vertex_mask)
 
-                    occupancies = VoxelGrid.from_mesh(side_mesh,
-                                                      cfg.vol_res,
-                                                      loc=[
-                                                          0,
-                                                      ] * 3,
-                                                      scale=2.0).data.transpose(2, 1, 0)
-                    occupancies = np.flip(occupancies, axis=1)
+            # only hands
+            mano_vertex_mask = torch.zeros(hand_mesh.vertices.shape[0],)
+            mano_vertex_mask[SMPLX_object.smplx_mano_vid] = 1.0
+            hand_mesh = apply_vertex_mask(hand_mesh, mano_vertex_mask)
 
-                    in_tensor["body_voxels"] = torch.tensor(
-                        occupancies.copy()).float().unsqueeze(0).to(device)
+            # remove hand/face neighbor triangles
+            BNI_object.F_B_trimesh = face_hand_removal(BNI_object.F_B_trimesh, hand_mesh, face_mesh,
+                                                       device)
 
-                    with torch.no_grad():
-                        sdf = ifnet_model.reconEngine(netG=ifnet_model.netG, batch=in_tensor)
-                        verts_IF, faces_IF = ifnet_model.reconEngine.export_mesh(sdf)
+            full_lst = [BNI_object.F_B_trimesh]
 
-                    if ifnet_model.clean_mesh_flag:
-                        verts_IF, faces_IF = clean_mesh(verts_IF, faces_IF)
+            if body_overlap[idx] < cfg.body_overlap_thres:
+                side_mesh = face_hand_removal(side_mesh, hand_mesh, face_mesh, device)
 
-                    verts_IF -= (ifnet_model.resolutions[-1] - 1) / 2.0
-                    verts_IF /= (ifnet_model.resolutions[-1] - 1) / 2.0
+            full_lst += [side_mesh, hand_mesh, face_mesh]
 
-                    side_mesh = trimesh.Trimesh(verts_IF, faces_IF)
-                    side_mesh_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_IF.obj"
-                    side_mesh = remesh(side_mesh, side_mesh_path)
+            # export intermediate meshes
+            BNI_object.F_B_trimesh.export(
+                f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_BNI.obj")
 
-                    side_verts = torch.tensor(side_mesh.vertices).float()
-                    side_faces = torch.tensor(side_mesh.faces).long()
+            side_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_side.obj")
+
+            sum([hand_mesh, face_mesh
+                ]).export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_hand_face.obj")
+
+            final_mesh = poisson(
+                sum(full_lst),
+                f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_full.obj",
+                8,
+            )
+
+            dataset.render.load_meshes(final_mesh.vertices, final_mesh.faces)
+            rotate_recon_lst = dataset.render.get_image(cam_type="four")
+            per_loop_lst.extend([data['image'][idx:idx + 1]] + rotate_recon_lst)
+
+            # for video rendering
+            in_tensor["BNI_verts"].append(torch.tensor(final_mesh.vertices).float())
+            in_tensor["BNI_faces"].append(torch.tensor(final_mesh.faces).long())
+
+        # always export visualized png regardless of the cloth refinment
+
+        per_data_lst.append(get_optim_grid_image(per_loop_lst, None, nrow=5, type="cloth"))
+
+        # visualize the final result
+        per_data_lst[-1].save(os.path.join(args.out_dir, cfg.name, f"png/{data['name']}_cloth.png"))
+
+        os.makedirs(os.path.join(args.out_dir, cfg.name, "vid"), exist_ok=True)
+        in_tensor["uncrop_param"] = data["uncrop_param"]
+        in_tensor["img_raw"] = data["img_raw"]
+        torch.save(in_tensor, os.path.join(args.out_dir, cfg.name, "vid/in_tensor.pt"))
+
+        # always export visualized video regardless of the cloth refinment
+        if args.export_video:
+
+            torch.cuda.empty_cache()
+
+            # visualize the final results in self-rotation mode
+            verts_lst = in_tensor["body_verts"] + in_tensor["BNI_verts"]
+            faces_lst = in_tensor["body_faces"] + in_tensor["BNI_faces"]
+
+            # self-rotated video
+            dataset.render.load_meshes(verts_lst, faces_lst)
+            dataset.render.get_rendered_video_multi(
+                in_tensor,
+                os.path.join(args.out_dir, cfg.name, f"vid/{data['name']}_cloth.mp4"),
+            )
+
+        # garment extraction from deepfashion images
+        if not (args.seg_dir is None):
+            if final_mesh is not None:
+                recon_obj = final_mesh.copy()
+
+            os.makedirs(os.path.join(args.out_dir, cfg.name, "clothes"), exist_ok=True)
+            os.makedirs(
+                os.path.join(args.out_dir, cfg.name, "clothes", "info"),
+                exist_ok=True,
+            )
+            for seg in data["segmentations"]:
+                # These matrices work for PyMaf, not sure about the other hps type
+                K = np.array([
+                    [1.0000, 0.0000, 0.0000, 0.0000],
+                    [0.0000, 1.0000, 0.0000, 0.0000],
+                    [0.0000, 0.0000, -0.5000, 0.0000],
+                    [-0.0000, -0.0000, 0.5000, 1.0000],
+                ]).T
+
+                R = np.array([[-1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, -1.0]])
+
+                t = np.array([[-0.0, -0.0, 100.0]])
+                clothing_obj = extract_cloth(recon_obj, seg, K, R, t, smpl_obj)
+                if clothing_obj is not None:
+                    cloth_type = seg["type"].replace(" ", "_")
+                    cloth_info = {
+                        "betas": optimed_betas,
+                        "body_pose": optimed_pose,
+                        "global_orient": optimed_orient,
+                        "pose2rot": False,
+                        "clothing_type": cloth_type,
+                    }
+
+                    file_id = f"{data['name']}_{cloth_type}"
+                    with open(
+                            os.path.join(
+                                args.out_dir,
+                                cfg.name,
+                                "clothes",
+                                "info",
+                                f"{file_id}_info.pkl",
+                            ),
+                            "wb",
+                    ) as fp:
+                        pickle.dump(cloth_info, fp)
+
+                    clothing_obj.export(
+                        os.path.join(args.out_dir, cfg.name, "clothes", f"{file_id}.obj"))
                 else:
-                    print(colored("High overlap, use SMPL-X body\n", "green"))
-
-                # Possion Fusion between SMPLX and BNI
-                # 1. keep the faces invisible to front+back cameras
-                # 2. keep the front-FLAME+MANO faces
-                # 3. remove eyeball faces
-
-                side_verts = side_verts.to(device)
-                side_faces = side_faces.to(device)
-
-                (xy, z) = side_verts.split([2, 1], dim=-1)
-                F_vis = get_visibility(xy, z, side_faces[..., [0, 2, 1]], img_res=2**8)
-                B_vis = get_visibility(xy, -z, side_faces, img_res=2**8)
-
-                side_mesh = overlap_removal(side_mesh, torch.logical_or(F_vis, B_vis),
-                                            BNI_object.F_B_trimesh, device)
-
-                # only face
-                front_flame_vertex_mask = torch.zeros(face_mesh.vertices.shape[0],)
-                front_flame_vertex_mask[SMPLX_object.smplx_front_flame_vid] = 1.0
-                face_mesh = apply_vertex_mask(face_mesh, front_flame_vertex_mask)
-
-                # only hands
-                mano_vertex_mask = torch.zeros(hand_mesh.vertices.shape[0],)
-                mano_vertex_mask[SMPLX_object.smplx_mano_vid] = 1.0
-                hand_mesh = apply_vertex_mask(hand_mesh, mano_vertex_mask)
-
-                # remove hand/face neighbor triangles
-                BNI_object.F_B_trimesh = face_hand_removal(BNI_object.F_B_trimesh, hand_mesh,
-                                                           face_mesh, device)
-
-                full_lst = [BNI_object.F_B_trimesh]
-
-                if body_overlap[idx] < cfg.body_overlap_thres:
-                    side_mesh = face_hand_removal(side_mesh, hand_mesh, face_mesh, device)
-                    
-                full_lst += [side_mesh, hand_mesh, face_mesh]
-
-                # export intermediate meshes
-                BNI_object.F_B_trimesh.export(
-                    f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_BNI.obj")
-
-                side_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_side.obj")
-
-                sum([hand_mesh, face_mesh
-                    ]).export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_hand_face.obj")
-
-                final_mesh = poisson(
-                    sum(full_lst),
-                    f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_full.obj",
-                    8,
-                )
-
-                dataset.render.load_meshes(final_mesh.vertices, final_mesh.faces)
-                rotate_recon_lst = dataset.render.get_image(cam_type="four")
-                per_loop_lst.extend([data['image'][idx:idx + 1]] + rotate_recon_lst)
-
-                # for video rendering
-                in_tensor["BNI_verts"].append(torch.tensor(final_mesh.vertices).float())
-                in_tensor["BNI_faces"].append(torch.tensor(final_mesh.faces).long())
-
-            # always export visualized png regardless of the cloth refinment
-
-            per_data_lst.append(get_optim_grid_image(per_loop_lst, None, nrow=5, type="cloth"))
-
-            # visualize the final result
-            per_data_lst[-1].save(
-                os.path.join(args.out_dir, cfg.name, f"png/{data['name']}_cloth.png"))
-
-            os.makedirs(os.path.join(args.out_dir, cfg.name, "vid"), exist_ok=True)
-            in_tensor["uncrop_param"] = data["uncrop_param"]
-            in_tensor["img_raw"] = data["img_raw"]
-            torch.save(in_tensor, os.path.join(args.out_dir, cfg.name, "vid/in_tensor.pt"))
-
-            # always export visualized video regardless of the cloth refinment
-            if args.export_video:
-
-                torch.cuda.empty_cache()
-
-                # visualize the final results in self-rotation mode
-                verts_lst = in_tensor["body_verts"] + in_tensor["BNI_verts"]
-                faces_lst = in_tensor["body_faces"] + in_tensor["BNI_faces"]
-
-                # self-rotated video
-                dataset.render.load_meshes(verts_lst, faces_lst)
-                dataset.render.get_rendered_video_multi(
-                    in_tensor,
-                    os.path.join(args.out_dir, cfg.name, f"vid/{data['name']}_cloth.mp4"),
-                )
-
-            # garment extraction from deepfashion images
-            if not (args.seg_dir is None):
-                if final_mesh is not None:
-                    recon_obj = final_mesh.copy()
-
-                os.makedirs(os.path.join(args.out_dir, cfg.name, "clothes"), exist_ok=True)
-                os.makedirs(
-                    os.path.join(args.out_dir, cfg.name, "clothes", "info"),
-                    exist_ok=True,
-                )
-                for seg in data["segmentations"]:
-                    # These matrices work for PyMaf, not sure about the other hps type
-                    K = np.array([
-                        [1.0000, 0.0000, 0.0000, 0.0000],
-                        [0.0000, 1.0000, 0.0000, 0.0000],
-                        [0.0000, 0.0000, -0.5000, 0.0000],
-                        [-0.0000, -0.0000, 0.5000, 1.0000],
-                    ]).T
-
-                    R = np.array([[-1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, -1.0]])
-
-                    t = np.array([[-0.0, -0.0, 100.0]])
-                    clothing_obj = extract_cloth(recon_obj, seg, K, R, t, smpl_obj)
-                    if clothing_obj is not None:
-                        cloth_type = seg["type"].replace(" ", "_")
-                        cloth_info = {
-                            "betas": optimed_betas,
-                            "body_pose": optimed_pose,
-                            "global_orient": optimed_orient,
-                            "pose2rot": False,
-                            "clothing_type": cloth_type,
-                        }
-
-                        file_id = f"{data['name']}_{cloth_type}"
-                        with open(
-                                os.path.join(
-                                    args.out_dir,
-                                    cfg.name,
-                                    "clothes",
-                                    "info",
-                                    f"{file_id}_info.pkl",
-                                ),
-                                "wb",
-                        ) as fp:
-                            pickle.dump(cloth_info, fp)
-
-                        clothing_obj.export(
-                            os.path.join(args.out_dir, cfg.name, "clothes", f"{file_id}.obj"))
-                    else:
-                        print(
-                            f"Unable to extract clothing of type {seg['type']} from image {data['name']}"
-                        )
+                    print(
+                        f"Unable to extract clothing of type {seg['type']} from image {data['name']}"
+                    )

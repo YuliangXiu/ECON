@@ -111,7 +111,7 @@ class IFDataset:
             self.mesh_cached[dataset] = {}
 
             if self.cached:
-                
+
                 pbar = tqdm(self.datasets_dict[dataset]["subjects"])
                 for subject in pbar:
                     subject = subject.split("/")[-1]
@@ -312,15 +312,16 @@ class IFDataset:
     def depth_to_voxel(self, data_dict):
 
         depth_mask = (data_dict['depth_F'] != 0.).float()
-        depth_mask = kornia.augmentation.RandomErasing(p=1.0,
-                                                       scale=(0.01, 0.2),
-                                                       ratio=(0.3, 3.3),
-                                                       keepdim=True)(depth_mask)
+        for s in np.arange(0.01, 0.2, 0.05):
+            depth_mask *= kornia.augmentation.RandomErasing(p=1.0,
+                                                            scale=s,
+                                                            ratio=(0.3, 3.3),
+                                                            keepdim=True)(depth_mask)
 
         depth_FB = torch.cat([data_dict['depth_F'], -data_dict['depth_B']], dim=0) * depth_mask
-        index_z = ((depth_FB + 1.) * 0.5 * self.vol_res).round().clip(0, self.vol_res -
-                                                                      1).long().permute(1, 2, 0)
-        index_mask = index_z[..., 0] == torch.tensor(self.vol_res * 0.5).long()
+        index_z = (((depth_FB + 1.) * 0.5 * self.vol_res).round() - 1).clip(
+            0, self.vol_res - 1).long().permute(1, 2, 0)
+        index_mask = index_z[..., 0] == torch.tensor(self.vol_res * 0.5 - 1).long()
         if index_z.max() >= self.vol_res - 1:
             print(data_dict["subject"])
         voxels = F.one_hot(index_z[..., 0], self.vol_res) + F.one_hot(index_z[..., 1], self.vol_res)

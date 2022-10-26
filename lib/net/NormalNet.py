@@ -14,13 +14,13 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-from lib.net.FBNet import define_G
-from lib.net.net_util import init_net, VGGLoss, IDMRFLoss
-from lib.net.GANLoss import GANLoss
-from lib.net.HGFilters import *
+from lib.net.FBNet import define_G, define_D, VGGLoss, GANLoss, IDMRFLoss
+from lib.net.net_util import init_net
 from lib.net.BasePIFuNet import BasePIFuNet
+
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class NormalNet(BasePIFuNet):
@@ -36,18 +36,27 @@ class NormalNet(BasePIFuNet):
         5. During training, error is calculated on all stacks.
     """
 
-    def __init__(self, cfg, error_term=nn.SmoothL1Loss()):
+    def __init__(self, cfg):
 
-        super(NormalNet, self).__init__(error_term=error_term)
-
-        self.l1_loss = nn.SmoothL1Loss()
+        super(NormalNet, self).__init__()
 
         self.opt = cfg.net
 
+        self.F_losses = [item[0] for item in self.opt.front_losses]
+        self.B_losses = [item[0] for item in self.opt.back_losses]
+        self.F_losses_ratio = [item[1] for item in self.opt.front_losses]
+        self.B_losses_ratio = [item[1] for item in self.opt.back_losses]
+        self.ALL_losses = self.F_losses + self.B_losses
+
         if self.training:
-            self.vgg_loss = VGGLoss()
-            # self.mrf_loss = IDMRFLoss()
-            self.gan_loss = GANLoss(self.opt)
+            if 'vgg' in self.ALL_losses:
+                self.vgg_loss = VGGLoss()
+            if ('gan' in self.ALL_losses) or ('gan_feat' in self.ALL_losses):
+                self.gan_loss = GANLoss(use_lsgan=True)
+            if 'mrf' in self.ALL_losses:
+                self.mrf_loss = IDMRFLoss()
+            if 'l1' in self.ALL_losses:
+                self.l1_loss = nn.SmoothL1Loss()
 
         self.in_nmlF = [
             item[0] for item in self.opt.in_nml if "_F" in item[0] or item[0] == "image"
@@ -62,6 +71,9 @@ class NormalNet(BasePIFuNet):
 
         self.netF = define_G(self.in_nmlF_dim, 3, 64, "global", 4, 9, 1, 3, "instance")
         self.netB = define_G(self.in_nmlB_dim, 3, 64, "global", 4, 9, 1, 3, "instance")
+
+        if ('gan' in self.ALL_losses):
+            self.netD = define_D(3, 64, 3, 'instance', False, 2, 'gan_feat' in self.ALL_losses)
 
         init_net(self)
 
@@ -79,17 +91,13 @@ class NormalNet(BasePIFuNet):
         nmlB = self.netB(torch.cat(inB_list, dim=1))
 
         # ||normal|| == 1
-        nmlF = nmlF / torch.norm(nmlF, dim=1, keepdim=True)
-        nmlB = nmlB / torch.norm(nmlB, dim=1, keepdim=True)
+        nmlF_normalized = nmlF / torch.norm(nmlF, dim=1, keepdim=True)
+        nmlB_normalized = nmlB / torch.norm(nmlB, dim=1, keepdim=True)
 
         # output: float_arr [-1,1] with [B, C, H, W]
-
         mask = ((in_tensor["image"].abs().sum(dim=1, keepdim=True) != 0.0).detach().float())
 
-        nmlF = nmlF * mask
-        nmlB = nmlB * mask
-
-        return nmlF, nmlB
+        return nmlF_normalized * mask, nmlB_normalized * mask
 
     def get_norm_error(self, prd_F, prd_B, tgt):
         """calculate normal loss
@@ -101,38 +109,65 @@ class NormalNet(BasePIFuNet):
 
         tgt_F, tgt_B = tgt["normal_F"], tgt["normal_B"]
 
-        # [-1,1] to [0,1]
-        tgt_F = (tgt_F + 1.0) * 0.5
-        tgt_B = (tgt_B + 1.0) * 0.5
+        # netF, netB, netD
+        total_loss = {"netF": 0.0, "netB": 0.0, "netD": 0.0}
 
-        prd_F = (prd_F + 1.0) * 0.5
-        prd_B = (prd_B + 1.0) * 0.5
+        if 'l1' in self.F_losses:
+            l1_F_loss = self.l1_loss(prd_F, tgt_F)
+            total_loss["netF"] += self.F_losses_ratio[self.F_losses.index('l1')] * l1_F_loss
+            total_loss["l1_F"] = self.F_losses_ratio[self.F_losses.index('l1')] * l1_F_loss
+        if 'l1' in self.B_losses:
+            l1_B_loss = self.l1_loss(prd_B, tgt_B)
+            total_loss["netB"] += self.B_losses_ratio[self.B_losses.index('l1')] * l1_B_loss
+            total_loss["l1_B"] = self.B_losses_ratio[self.B_losses.index('l1')] * l1_B_loss
 
-        l1_F_loss = self.l1_loss(prd_F, tgt_F)
-        l1_B_loss = self.l1_loss(prd_B, tgt_B)
+        if 'vgg' in self.F_losses:
+            vgg_F_loss = self.vgg_loss(prd_F, tgt_F)
+            total_loss["netF"] += self.F_losses_ratio[self.F_losses.index('vgg')] * vgg_F_loss
+            total_loss["vgg_F"] = self.F_losses_ratio[self.F_losses.index('vgg')] * vgg_F_loss
+        if 'vgg' in self.B_losses:
+            vgg_B_loss = self.vgg_loss(prd_B, tgt_B)
+            total_loss["netB"] += self.B_losses_ratio[self.B_losses.index('vgg')] * vgg_B_loss
+            total_loss["vgg_B"] = self.B_losses_ratio[self.B_losses.index('vgg')] * vgg_B_loss
 
-        # vgg_F_loss = self.vgg_loss(prd_F, tgt_F)
-        vgg_B_loss = self.vgg_loss(prd_B, tgt_B)
+        scale_factor = 0.5
+        if 'mrf' in self.F_losses:
+            mrf_F_loss = self.mrf_loss(
+                F.interpolate(prd_F, scale_factor=scale_factor, mode='bicubic', align_corners=True),
+                F.interpolate(tgt_F, scale_factor=scale_factor, mode='bicubic', align_corners=True))
+            total_loss["netF"] += self.F_losses_ratio[self.F_losses.index('mrf')] * mrf_F_loss
+            total_loss["mrf_F"] = self.F_losses_ratio[self.F_losses.index('mrf')] * mrf_F_loss
+        if 'mrf' in self.B_losses:
+            mrf_B_loss = self.mrf_loss(
+                F.interpolate(prd_B, scale_factor=scale_factor, mode='bicubic', align_corners=True),
+                F.interpolate(tgt_B, scale_factor=scale_factor, mode='bicubic', align_corners=True))
+            total_loss["netB"] += self.B_losses_ratio[self.B_losses.index('mrf')] * mrf_B_loss
+            total_loss["mrf_B"] = self.B_losses_ratio[self.B_losses.index('mrf')] * mrf_B_loss
 
-        # scale_factor = 0.5
-        # mrf_F_loss = self.mrf_loss(
-        #     F.interpolate(prd_F, scale_factor=scale_factor, mode='bicubic', align_corners=True),
-        #     F.interpolate(tgt_F, scale_factor=scale_factor, mode='bicubic', align_corners=True))
-        # mrf_B_loss = self.mrf_loss(
-        #     F.interpolate(prd_B, scale_factor=scale_factor, mode='bicubic', align_corners=True),
-        #     F.interpolate(tgt_B, scale_factor=scale_factor, mode='bicubic', align_corners=True))
+        if 'gan' in self.ALL_losses:
 
-        loss_gan, log_dict = self.gan_loss({"norm_real": (tgt_B * 2.0)-1.0, "norm_fake": (prd_B*2.0)-1.0})
+            pred_fake = self.netD.forward(prd_B)
+            pred_real = self.netD.forward(tgt_B)
+            loss_D_fake = self.gan_loss(pred_fake, False)
+            loss_D_real = self.gan_loss(pred_real, True)
+            loss_G_fake = self.gan_loss(pred_fake, True)
 
-        total_loss = [5.0 * l1_F_loss, 1.0 * l1_B_loss + 1e-3 * loss_gan + 1e3 * vgg_B_loss]
+            total_loss["netD"] += 0.5 * (
+                loss_D_fake + loss_D_real) * self.B_losses_ratio[self.B_losses.index('gan')]
+            total_loss["D_fake"] = loss_D_fake * self.B_losses_ratio[self.B_losses.index('gan')]
+            total_loss["D_real"] = loss_D_real * self.B_losses_ratio[self.B_losses.index('gan')]
 
-        log_dict.update({
-            "l1_F_loss": l1_F_loss.item(),
-            "l1_B_loss": l1_B_loss.item(),
-            "vgg_B_loss": vgg_B_loss.item() * 1e3
-        })
-        log_dict["disc_loss"] *= 1e-3
+            total_loss["netB"] += loss_G_fake * self.B_losses_ratio[self.B_losses.index('gan')]
+            total_loss["G_fake"] = loss_G_fake * self.B_losses_ratio[self.B_losses.index('gan')]
 
-        total_loss.append(log_dict)
+            if 'gan_feat' in self.ALL_losses:
+                loss_G_GAN_Feat = 0
+                for i in range(2):
+                    for j in range(len(pred_fake[i]) - 1):
+                        loss_G_GAN_Feat += self.l1_loss(pred_fake[i][j], pred_real[i][j])
+                total_loss["netB"] += loss_G_GAN_Feat * self.B_losses_ratio[self.B_losses.index(
+                    'gan_feat')]
+                total_loss["G_GAN_Feat"] = loss_G_GAN_Feat * self.B_losses_ratio[
+                    self.B_losses.index('gan_feat')]
 
         return total_loss

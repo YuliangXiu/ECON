@@ -35,11 +35,9 @@ _C.num_views = 1
 _C.sdf = False
 _C.sdf_clip = 5.0
 
-_C.lr_G = 1e-3
-_C.lr_C = 1e-3
-_C.lr_N = 2e-4
-_C.lr_Gen = 2e-4
-_C.lr_Dis = 2e-4
+_C.lr_netF = 1e-3
+_C.lr_netB = 1e-3
+_C.lr_netG = 1e-3
 _C.weight_decay = 0.0
 _C.momentum = 0.0
 _C.optim = "RMSprop"
@@ -130,6 +128,8 @@ _C.net.use_IGR = False
 _C.net.use_gan = False
 _C.net.in_geo = ()
 _C.net.in_nml = ()
+_C.net.front_losses = ()
+_C.net.back_losses = ()
 
 _C.net.gan = CN()
 _C.net.gan.dim_detail = 64

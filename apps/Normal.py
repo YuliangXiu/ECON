@@ -1,10 +1,8 @@
 from lib.net import NormalNet
-from pytorch_lightning.utilities.distributed import rank_zero_only
 from lib.common.train_util import convert_to_dict, export_cfg, batch_mean
 import torch
 import numpy as np
 import os.path as osp
-from torch import nn
 from skimage.transform import resize
 import pytorch_lightning as pl
 
@@ -15,15 +13,20 @@ class Normal(pl.LightningModule):
         super(Normal, self).__init__()
         self.cfg = cfg
         self.batch_size = self.cfg.batch_size
-        self.lr_Gen = self.cfg.lr_Gen
-        self.lr_Dis = self.cfg.lr_Dis
+        self.lr_F = self.cfg.lr_netF
+        self.lr_B = self.cfg.lr_netB
+        self.lr_D = self.cfg.lr_netD
         self.overfit = cfg.overfit
+
+        self.F_losses = [item[0] for item in self.cfg.net.front_losses]
+        self.B_losses = [item[0] for item in self.cfg.net.back_losses]
+        self.ALL_losses = self.F_losses + self.B_losses
 
         self.automatic_optimization = False
 
         self.schedulers = []
 
-        self.netG = NormalNet(self.cfg, error_term=nn.SmoothL1Loss())
+        self.netG = NormalNet(self.cfg)
 
         self.in_nml = [item[0] for item in cfg.net.in_nml]
 
@@ -31,21 +34,13 @@ class Normal(pl.LightningModule):
     def configure_optimizers(self):
 
         # set optimizer
-        weight_decay = self.cfg.weight_decay
+        optim_params_N_F = [{"params": self.netG.netF.parameters(), "lr": self.lr_F}]
+        optim_params_N_B = [{"params": self.netG.netB.parameters(), "lr": self.lr_B}]
+        optim_params_N_D = [{"params": self.netG.netD.parameters(), "lr": self.lr_D}]
 
-        optim_params_N_F = [{"params": self.netG.netF.parameters(), "lr": self.lr_Gen}]
-        optim_params_N_B = [{"params": self.netG.netB.parameters(), "lr": self.lr_Gen}]
-
-        if self.cfg.net.use_gan:
-            optim_params_N_B.append({
-                "params": self.netG.gan_loss.parameters(),
-                "lr": self.lr_Dis,
-                "betas": (0, 0.99)
-            })
-
-        optimizer_N_F = torch.optim.Adam(optim_params_N_F, lr=self.lr_Gen, weight_decay=weight_decay)
-
-        optimizer_N_B = torch.optim.Adam(optim_params_N_B, lr=self.lr_Gen, weight_decay=weight_decay)
+        optimizer_N_F = torch.optim.Adam(optim_params_N_F, lr=self.lr_F, betas=(0.5, 0.999))
+        optimizer_N_B = torch.optim.Adam(optim_params_N_B, lr=self.lr_B, betas=(0.5, 0.999))
+        optimizer_N_D = torch.optim.Adam(optim_params_N_D, lr=self.lr_D, betas=(0.5, 0.999))
 
         scheduler_N_F = torch.optim.lr_scheduler.MultiStepLR(optimizer_N_F,
                                                              milestones=self.cfg.schedule,
@@ -55,8 +50,12 @@ class Normal(pl.LightningModule):
                                                              milestones=self.cfg.schedule,
                                                              gamma=self.cfg.gamma)
 
-        self.schedulers = [scheduler_N_F, scheduler_N_B]
-        optims = [optimizer_N_F, optimizer_N_B]
+        scheduler_N_D = torch.optim.lr_scheduler.MultiStepLR(optimizer_N_D,
+                                                             milestones=self.cfg.schedule,
+                                                             gamma=self.cfg.gamma)
+
+        self.schedulers = [scheduler_N_F, scheduler_N_B, scheduler_N_D]
+        optims = [optimizer_N_F, optimizer_N_B, optimizer_N_D]
 
         return optims, self.schedulers
 
@@ -96,17 +95,22 @@ class Normal(pl.LightningModule):
         in_tensor.update(FB_tensor)
 
         preds_F, preds_B = self.netG(in_tensor)
-        error_NF, error_NB, log_dict = self.netG.get_norm_error(preds_F, preds_B, FB_tensor)
+        error_dict = self.netG.get_norm_error(preds_F, preds_B, FB_tensor)
 
-        (opt_nf, opt_nb) = self.optimizers()
+        (opt_F, opt_B, opt_D) = self.optimizers()
 
-        opt_nf.zero_grad()
-        self.manual_backward(error_NF)
-        opt_nf.step()
+        opt_F.zero_grad()
+        self.manual_backward(error_dict["netF"])
 
-        opt_nb.zero_grad()
-        self.manual_backward(error_NB)
-        opt_nb.step()
+        opt_B.zero_grad()
+        self.manual_backward(error_dict["netB"], retain_graph=True)
+
+        opt_D.zero_grad()
+        self.manual_backward(error_dict["netD"])
+
+        opt_F.step()
+        opt_B.step()
+        opt_D.step()
 
         if batch_idx > 0 and batch_idx % int(self.cfg.freq_show_train) == 0 and self.cfg.devices == 1:
 
@@ -117,10 +121,10 @@ class Normal(pl.LightningModule):
                 self.render_func(in_tensor, "train", self.global_step)
 
         # metrics processing
-        metrics_log = {"loss": 0.5 * (error_NF + error_NB)}
+        metrics_log = {"loss": error_dict["netF"] + error_dict["netB"] + error_dict["netD"]}
 
-        for key in log_dict.keys():
-            metrics_log["train/" + key] = log_dict[key]
+        for key in error_dict.keys():
+            metrics_log["train/loss_" + key] = error_dict[key].item()
 
         self.log_dict(metrics_log,
                       prog_bar=True,
@@ -141,7 +145,7 @@ class Normal(pl.LightningModule):
             else:
                 stage = "train"
                 loss_name = key
-            metrics_log[f"{stage}/avg{loss_name}"] = batch_mean(outputs, key)
+            metrics_log[f"{stage}/avg-{loss_name}"] = batch_mean(outputs, key)
 
         self.log_dict(metrics_log,
                       prog_bar=False,
@@ -164,7 +168,7 @@ class Normal(pl.LightningModule):
         in_tensor.update(FB_tensor)
 
         preds_F, preds_B = self.netG(in_tensor)
-        error_NF, error_NB, log_dict = self.netG.get_norm_error(preds_F, preds_B, FB_tensor)
+        error_dict = self.netG.get_norm_error(preds_F, preds_B, FB_tensor)
 
         if batch_idx % int(self.cfg.freq_show_train) == 0 and self.cfg.devices == 1:
 
@@ -174,20 +178,20 @@ class Normal(pl.LightningModule):
                 self.render_func(in_tensor, "val", batch_idx)
 
         # metrics processing
-        metrics_log = {"val/loss": 0.5 * (error_NF + error_NB)}
+        metrics_log = {"val/loss": error_dict["netF"] + error_dict["netB"] + error_dict["netD"]}
 
-        for key in log_dict.keys():
-            metrics_log["val/" + key] = log_dict[key]
+        for key in error_dict.keys():
+            metrics_log["val/" + key] = error_dict[key].item()
 
         return metrics_log
 
     def validation_epoch_end(self, outputs):
-        
+
         # metrics processing
         metrics_log = {}
         for key in outputs[0].keys():
             [stage, loss_name] = key.split("/")
-            metrics_log[f"{stage}/avg{loss_name}"] = batch_mean(outputs, key)
+            metrics_log[f"{stage}/avg-{loss_name}"] = batch_mean(outputs, key)
 
         self.log_dict(metrics_log,
                       prog_bar=False,

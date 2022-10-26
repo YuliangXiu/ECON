@@ -142,15 +142,18 @@ class TestDataset:
         depth_mask = (~torch.isnan(data_dict['depth_F']))
         depth_FB = torch.cat([data_dict['depth_F'], data_dict['depth_B']], dim=0)
         depth_FB[:, ~depth_mask[0]] = 0.
-        index_z = ((depth_FB + 1.) * 0.5 * self.vol_res).round().clip(0, self.vol_res -
-                                                                      1).long().permute(1, 2, 0)
-        index_mask = index_z[..., 0] == torch.tensor(self.vol_res * 0.5).long()
+        # Important: index_long = depth_value - 1
+        index_z = (((depth_FB + 1.) * 0.5 * self.vol_res).round() - 1).clip(
+            0, self.vol_res - 1).long().permute(1, 2, 0)
+        index_mask = index_z[..., 0] == torch.tensor(self.vol_res * 0.5 - 1).long()
         voxels = F.one_hot(index_z[..., 0], self.vol_res) + F.one_hot(index_z[..., 1], self.vol_res)
         voxels[index_mask] *= 0
         voxels = torch.flip(voxels, [2]).permute(2, 0, 1).float()  #[x-2, y-0, z-1]
 
         return {
-            "depth_voxels": voxels.flip([0,]).unsqueeze(0).to(self.device),
+            "depth_voxels": voxels.flip([
+                0,
+            ]).unsqueeze(0).to(self.device),
         }
 
     def compute_voxel_verts(self, body_pose, global_orient, betas, trans, scale):

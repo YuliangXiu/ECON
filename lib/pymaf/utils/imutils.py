@@ -1,4 +1,5 @@
 import cv2
+import mediapipe as mp
 import torch
 import numpy as np
 import torch.nn.functional as F
@@ -43,8 +44,6 @@ def load_img(img_file):
 
 def get_keypoints(image):
 
-    import mediapipe as mp
-
     def collect_xyv(x):
         lmk = x.landmark
         all_lmks = []
@@ -52,14 +51,13 @@ def get_keypoints(image):
             all_lmks.append(torch.Tensor([lmk[i].x, lmk[i].y, lmk[i].z, lmk[i].visibility]))
         return torch.stack(all_lmks).view(-1, 4)
 
-    with mp.solutions.holistic.Holistic(
+    mp_holistic = mp.solutions.holistic
+    with mp_holistic.Holistic(
             static_image_mode=True,
             model_complexity=2,
-            enable_segmentation=False,
-            refine_face_landmarks=True,
     ) as holistic:
         results = holistic.process(image)
-
+    
     return collect_xyv(results.pose_landmarks)
 
 
@@ -75,7 +73,6 @@ def expand_bbox(bbox, width, height, ratio=0.1):
     bbox[2] = min(bbox[2] + bbox_width * ratio, width)
 
     return bbox
-
 
 def remove_floats(mask):
 
@@ -152,8 +149,8 @@ def process_image(img_file, use_seg, hps_type, input_res=512, device=None, seg_p
                                              center[idx], scale[idx], [input_res, input_res])
 
         img_rembg = remove(img_crop[:, :, :4])
-        img_mask = torch.tensor(remove_floats(img_rembg[:, :, 3] > 200))
-
+        img_mask = torch.tensor(1.0-cv2.blur(1.0-remove_floats(img_rembg[:, :, 3] > 200), (3,3)))
+        
         # required image tensors / arrays
         img_icon = image_to_icon_tensor(img_rembg[:, :, :3]) * img_mask  # [-1,1]
         img_hps = (img_icon + 1.0) * 0.5  # [0,1]

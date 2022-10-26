@@ -15,13 +15,13 @@ dataset:
   scales: [1.0, 100.0, 1.0, 1.0, 2.54000508001016, 100.0]
 
 net:
-  use_gan: True
+  front_losses: (('l1', 1.0), ('vgg', 1.0))
+  back_losses: (('l1', 1.0), ('vgg', 1.0), ('gan', 1.0), ('gan_feat', 10.0))
   in_nml: (('image',3), ('T_normal_F',3), ('T_normal_B',3))
 
-lr_Gen: 1e-4
-lr_Dis: 1e-4
-weight_decay: 0.0 
-momentum: 0.0
+lr_netF: 1e-4
+lr_netB: 1e-4
+lr_netD: 1e-4
 
 batch_size: 3
 num_threads: 3
