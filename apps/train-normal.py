@@ -37,7 +37,7 @@ if __name__ == "__main__":
     os.makedirs(osp.join(cfg.results_path, "wandb"), exist_ok=True)
 
     wandb_logger = pl_loggers.WandbLogger(
-        offline=True,
+        offline=False,
         project="Norm-Pred",
         save_dir=osp.join(cfg.results_path, "wandb"),
         name=f"{cfg.name}-{'-'.join(cfg.dataset.types)}",

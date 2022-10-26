@@ -426,7 +426,7 @@ if __name__ == "__main__":
                     verts_IF /= (ifnet_model.resolutions[-1] - 1) / 2.0
 
                     side_mesh = trimesh.Trimesh(verts_IF, faces_IF)
-                    side_mesh_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_side.obj"
+                    side_mesh_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_IF.obj"
                     side_mesh = remesh(side_mesh, side_mesh_path)
 
                     side_verts = torch.tensor(side_mesh.vertices).float()
@@ -462,7 +462,13 @@ if __name__ == "__main__":
                 # remove hand/face neighbor triangles
                 BNI_object.F_B_trimesh = face_hand_removal(BNI_object.F_B_trimesh, hand_mesh,
                                                            face_mesh, device)
-                side_mesh = face_hand_removal(side_mesh, hand_mesh, face_mesh, device)
+
+                full_lst = [BNI_object.F_B_trimesh]
+
+                if body_overlap[idx] < cfg.body_overlap_thres:
+                    side_mesh = face_hand_removal(side_mesh, hand_mesh, face_mesh, device)
+                    
+                full_lst += [side_mesh, hand_mesh, face_mesh]
 
                 # export intermediate meshes
                 BNI_object.F_B_trimesh.export(
@@ -474,7 +480,7 @@ if __name__ == "__main__":
                     ]).export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_hand_face.obj")
 
                 final_mesh = poisson(
-                    sum([side_mesh, BNI_object.F_B_trimesh, hand_mesh, face_mesh]),
+                    sum(full_lst),
                     f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_full.obj",
                     8,
                 )

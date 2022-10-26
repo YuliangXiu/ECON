@@ -122,7 +122,7 @@ class NormalNet(BasePIFuNet):
         #     F.interpolate(prd_B, scale_factor=scale_factor, mode='bicubic', align_corners=True),
         #     F.interpolate(tgt_B, scale_factor=scale_factor, mode='bicubic', align_corners=True))
 
-        loss_gan, log_dict = self.gan_loss({"norm_real": tgt_B, "norm_fake": prd_B})
+        loss_gan, log_dict = self.gan_loss({"norm_real": (tgt_B * 2.0)-1.0, "norm_fake": (prd_B*2.0)-1.0})
 
         total_loss = [5.0 * l1_F_loss, 1.0 * l1_B_loss + 1e-3 * loss_gan + 1e3 * vgg_B_loss]
 

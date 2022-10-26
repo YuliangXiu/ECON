@@ -107,9 +107,8 @@ def face_hand_removal(full_mesh, hand_mesh, face_mesh, device):
     (hand_dist, _) = hand_extractor.query(
         torch.tensor(full_mesh.vertices).unsqueeze(0).to(device), {"smpl_nsdf": None})
 
-    BNI_face_verts_mask = ~torch.logical_and(face_cos > 0.5, face_dist < 3e-2).flatten()
-    BNI_hand_verts_mask = ~(hand_dist < 4e-2).flatten()
-    BNI_verts_mask = torch.logical_and(BNI_face_verts_mask, BNI_hand_verts_mask)
+    BNI_verts_mask = torch.logical_and(~(face_dist < 3e-2).flatten(), 
+                                       ~(hand_dist < 4e-2).flatten())
 
     BNI_faces_mask = BNI_verts_mask[full_mesh.faces].any(dim=1)
     full_mesh.update_faces(BNI_faces_mask.detach().cpu())

@@ -19,7 +19,7 @@ net:
   in_nml: (('image',3), ('T_normal_F',3), ('T_normal_B',3))
 
 lr_Gen: 1e-4
-lr_Dis: 1e-3
+lr_Dis: 1e-4
 weight_decay: 0.0 
 momentum: 0.0
 
