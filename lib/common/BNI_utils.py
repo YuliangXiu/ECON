@@ -428,7 +428,7 @@ def bilateral_normal_integration(
     pbar = tqdm(range(max_iter))
 
     for i in pbar:
-
+        
         depth_diff = M @ (z_prior - z)
         depth_diff[depth_diff == 0] = cp.nan
         offset = cp.nanmean(depth_diff)
@@ -448,7 +448,7 @@ def bilateral_normal_integration(
         energy_list.append(energy)
         relative_energy = cp.abs(energy - energy_old) / energy_old
         pbar.set_description(
-            f"BNI[{label}] steps --- {i+1}/{max_iter} energy: {energy} relative energy: {relative_energy:.3e}"
+            f"BNI[{label}] steps --- {i+1}/{max_iter} energy: {energy:.2f}"
         )
         if relative_energy < tol:
             break

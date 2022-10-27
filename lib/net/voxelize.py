@@ -91,7 +91,6 @@ class Voxelization(nn.Module):
         sigma,
         smooth_kernel_size,
         batch_size,
-        device,
     ):
         super(Voxelization, self).__init__()
         assert len(smpl_face_indices.shape) == 2
@@ -103,7 +102,7 @@ class Voxelization(nn.Module):
         self.sigma = sigma
         self.smooth_kernel_size = smooth_kernel_size
         self.batch_size = batch_size
-        self.device = device
+        self.device = None
 
         self.smpl_vertex_code = smpl_vertex_code
         self.smpl_face_code = smpl_face_code
@@ -111,7 +110,9 @@ class Voxelization(nn.Module):
         self.smpl_tetraderon_indices = smpl_tetraderon_indices
 
     def update_param(self, voxel_faces):
-        
+
+        self.device = voxel_faces.device
+
         self.smpl_tetraderon_indices = voxel_faces
 
         smpl_vertex_code_batch = torch.tile(self.smpl_vertex_code, (self.batch_size, 1, 1))
@@ -155,18 +156,16 @@ class Voxelization(nn.Module):
     def vertices_to_faces(self, vertices):
         assert vertices.ndimension() == 3
         bs, nv = vertices.shape[:2]
-        device = vertices.device
         face = (self.smpl_face_indices_batch +
-                (torch.arange(bs, dtype=torch.int32).to(device) * nv)[:, None, None])
+                (torch.arange(bs, dtype=torch.int32).to(self.device) * nv)[:, None, None])
         vertices_ = vertices.reshape((bs * nv, 3))
         return vertices_[face.long()]
 
     def vertices_to_tetrahedrons(self, vertices):
         assert vertices.ndimension() == 3
         bs, nv = vertices.shape[:2]
-        device = vertices.device
         tets = (self.smpl_tetraderon_indices_batch +
-                (torch.arange(bs, dtype=torch.int32).to(device) * nv)[:, None, None])
+                (torch.arange(bs, dtype=torch.int32).to(self.device) * nv)[:, None, None])
         vertices_ = vertices.reshape((bs * nv, 3))
         return vertices_[tets.long()]
 

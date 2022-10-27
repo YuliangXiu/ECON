@@ -1,4 +1,4 @@
-name: normal
+name: normal-nogan
 ckpt_dir: "./data/ckpt/"
 resume_path: "./data/ckpt/normal/last.ckpt"
 results_path: "./results"
@@ -16,7 +16,7 @@ dataset:
 
 net:
   front_losses: (('l1', 1.0), ('vgg', 1.0))
-  back_losses: (('l1', 1.0), ('vgg', 1.0), ('gan', 1.0), ('gan_feat', 10.0))
+  back_losses: (('l1', 1.0), ('vgg', 1.0), ('mrf', 0.001))
   in_nml: (('image',3), ('T_normal_F',3), ('T_normal_B',3))
 
 lr_netF: 1e-4

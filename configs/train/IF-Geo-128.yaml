@@ -1,6 +1,6 @@
 name: IF-Geo
 ckpt_dir: "./data/ckpt/"
-resume_path: "./data/ckpt/IF-Geo/last.ckpt"
+resume_path: "./data/ckpt/IF-Geo/last-128.ckpt"
 results_path: "./results"
 
 dataset:
@@ -9,7 +9,7 @@ dataset:
   rotation_num: 36
   num_sample_geo: 10000
   num_sample_color: 10000
-  sigma_geo: 2.0
+  sigma_geo: 5.0
   sigma_color: 0.0
   train_bsize: 1.0
   val_bsize: 1.0
@@ -20,22 +20,22 @@ dataset:
   noise_scale: [0.0, 0.0]
   voxel_res: 128
   prior_type: 'SMPL'  #['SMPL', 'Joint']
-  types: ["thuman2"]
-  scales: [100.0]
-  # types: ["3dpeople","axyz","renderpeople","renderpeople_p27","humanalloy"]
-  # scales: [1.0, 100.0, 1.0, 1.0, 2.54000508001016]
+  # types: ["thuman2"]
+  # scales: [100.0]
+  types: ["3dpeople","axyz","renderpeople","renderpeople_p27","humanalloy","thuman2"]
+  scales: [1.0, 100.0, 1.0, 1.0, 2.54000508001016, 100.0]
 
-lr_G: 1e-5
+lr_G: 1e-4
 weight_decay: 0.0 
 momentum: 0.0
 batch_size: 10
 num_threads: 10
-devices: 1
+devices: 6
 
 fast_dev: 0
 resume: False
 test_mode: False
-mcube_res: 256
+mcube_res: 128
 clean_mesh: True
 num_sanity_val_steps: 1
 
@@ -44,9 +44,9 @@ optim: RMSprop
 
 # training (batch=4, set=agora, rot-6)
 overfit: False
-num_epoch: 10
+num_epoch: 20
 freq_show_train: 0.1
 freq_show_val: 0.3
 freq_plot: 0.01
 freq_eval: 0.2
-schedule: [8]
+schedule: [16]

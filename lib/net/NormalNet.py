@@ -110,7 +110,7 @@ class NormalNet(BasePIFuNet):
         tgt_F, tgt_B = tgt["normal_F"], tgt["normal_B"]
 
         # netF, netB, netD
-        total_loss = {"netF": 0.0, "netB": 0.0, "netD": 0.0}
+        total_loss = {"netF": 0.0, "netB": 0.0}
 
         if 'l1' in self.F_losses:
             l1_F_loss = self.l1_loss(prd_F, tgt_F)
@@ -145,6 +145,8 @@ class NormalNet(BasePIFuNet):
             total_loss["mrf_B"] = self.B_losses_ratio[self.B_losses.index('mrf')] * mrf_B_loss
 
         if 'gan' in self.ALL_losses:
+            
+            total_loss["netD"] = 0.0
 
             pred_fake = self.netD.forward(prd_B)
             pred_real = self.netD.forward(tgt_B)

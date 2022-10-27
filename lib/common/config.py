@@ -37,7 +37,8 @@ _C.sdf_clip = 5.0
 
 _C.lr_netF = 1e-3
 _C.lr_netB = 1e-3
-_C.lr_netG = 1e-3
+_C.lr_netD = 1e-3
+_C.lr_G = 1e-3
 _C.weight_decay = 0.0
 _C.momentum = 0.0
 _C.optim = "RMSprop"

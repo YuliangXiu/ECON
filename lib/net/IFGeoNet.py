@@ -33,7 +33,7 @@ class SelfAttention(torch.nn.Module):
 
 class IFGeoNet(nn.Module):
 
-    def __init__(self, cfg, device, hidden_dim=256):
+    def __init__(self, cfg, hidden_dim=256):
         super(IFGeoNet, self).__init__()
 
         self.conv_in_partial = nn.Conv3d(1, 16, 3, padding=1,
@@ -96,7 +96,6 @@ class IFGeoNet(nn.Module):
             sigma=0.05,
             smooth_kernel_size=7,
             batch_size=cfg.batch_size,
-            device=device,
         )
         
         self.l1_loss = nn.SmoothL1Loss()

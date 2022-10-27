@@ -15,10 +15,8 @@
 # Contact: ps-license@tuebingen.mpg.de
 
 from lib.common.seg3d_lossless import Seg3dLossless
-from lib.dataset.Evaluator import Evaluator
 from lib.net.IFGeoNet import IFGeoNet
 from lib.common.train_util import *
-from lib.common.render import Render
 import torch
 import wandb
 import numpy as np
@@ -30,7 +28,7 @@ torch.backends.cudnn.benchmark = True
 
 class IFGeo(pl.LightningModule):
 
-    def __init__(self, cfg, device):
+    def __init__(self, cfg):
         super(IFGeo, self).__init__()
 
         self.cfg = cfg
@@ -42,9 +40,7 @@ class IFGeo(pl.LightningModule):
         self.clean_mesh_flag = cfg.clean_mesh
         self.overfit = cfg.overfit
 
-        self.netG = IFGeoNet(cfg, device)
-
-        self.evaluator = Evaluator(device)
+        self.netG = IFGeoNet(cfg)
 
         self.resolutions = (np.logspace(
             start=5,
@@ -63,14 +59,11 @@ class IFGeo(pl.LightningModule):
             resolutions=self.resolutions,
             align_corners=True,
             balance_value=0.50,
-            device=device,
             visualize=False,
             debug=False,
             use_cuda_impl=False,
             faster=True,
         )
-
-        self.render = Render(size=512, device=device)
 
         self.export_dir = None
         self.result_eval = {}
@@ -126,20 +119,9 @@ class IFGeo(pl.LightningModule):
         preds_G = self.netG(batch)
         error_G = self.netG.compute_loss(preds_G, batch["labels_geo"])
 
-        acc, iou, prec, recall = self.evaluator.calc_acc(
-            preds_G.flatten(),
-            batch["labels_geo"].flatten(),
-            0.5,
-            use_sdf=self.cfg.sdf,
-        )
-
         # metrics processing
         metrics_log = {
             "loss": error_G,
-            "train/acc": acc.item(),
-            "train/iou": iou.item(),
-            "train/prec": prec.item(),
-            "train/recall": recall.item(),
         }
 
         self.log_dict(metrics_log,
@@ -162,10 +144,6 @@ class IFGeo(pl.LightningModule):
         # metrics processing
         metrics_log = {
             "train/avgloss": batch_mean(outputs, "loss"),
-            "train/avgiou": batch_mean(outputs, "train/iou"),
-            "train/avgprec": batch_mean(outputs, "train/prec"),
-            "train/avgrecall": batch_mean(outputs, "train/recall"),
-            "train/avgacc": batch_mean(outputs, "train/acc"),
         }
 
         self.log_dict(metrics_log,
@@ -183,13 +161,6 @@ class IFGeo(pl.LightningModule):
         preds_G = self.netG(batch)
         error_G = self.netG.compute_loss(preds_G, batch["labels_geo"])
 
-        acc, iou, prec, recall = self.evaluator.calc_acc(
-            preds_G.flatten(),
-            batch["labels_geo"].flatten(),
-            0.5,
-            use_sdf=self.cfg.sdf,
-        )
-
         if self.cfg.devices == 1:
             if batch_idx % int(self.cfg.freq_show_val) == 0:
                 with torch.no_grad():
@@ -197,10 +168,6 @@ class IFGeo(pl.LightningModule):
 
         metrics_log = {
             "val/loss": error_G,
-            "val/acc": acc,
-            "val/iou": iou,
-            "val/prec": prec,
-            "val/recall": recall,
         }
 
         self.log_dict(metrics_log,
@@ -217,10 +184,6 @@ class IFGeo(pl.LightningModule):
         # metrics processing
         metrics_log = {
             "val/avgloss": batch_mean(outputs, "val/loss"),
-            "val/avgacc": batch_mean(outputs, "val/acc"),
-            "val/avgiou": batch_mean(outputs, "val/iou"),
-            "val/avgprec": batch_mean(outputs, "val/prec"),
-            "val/avgrecall": batch_mean(outputs, "val/recall"),
         }
 
         self.log_dict(metrics_log,
@@ -230,75 +193,6 @@ class IFGeo(pl.LightningModule):
                       on_epoch=True,
                       rank_zero_only=True)
 
-    def test_step(self, batch, batch_idx):
-
-        self.netG.eval()
-        self.netG.training = False
-
-        # export paths
-        mesh_name = batch["subject"][0]
-        mesh_rot = batch["rotation"][0].item()
-
-        self.export_dir = osp.join(
-            self.cfg.results_path,
-            self.cfg.name,
-            "-".join(self.cfg.dataset.types),
-            mesh_name,
-        )
-        os.makedirs(self.export_dir, exist_ok=True)
-
-        with torch.no_grad():
-            sdf = self.reconEngine(netG=self.netG, batch=batch)
-
-        verts_pr, faces_pr = self.reconEngine.export_mesh(sdf)
-
-        if self.clean_mesh_flag:
-            verts_pr, faces_pr = clean_mesh(verts_pr, faces_pr)
-
-        verts_gt = batch["verts"][0]
-        faces_gt = batch["faces"][0]
-
-        self.result_eval.update({
-            "verts_gt": verts_gt,
-            "faces_gt": faces_gt,
-            "verts_pr": verts_pr,
-            "faces_pr": faces_pr,
-            "recon_size": (self.resolutions[-1] - 1.0),
-            "calib": batch["calib"][0],
-        })
-
-        self.evaluator.set_mesh(self.result_eval)
-        chamfer, p2s = self.evaluator.calculate_chamfer_p2s(num_samples=1000)
-        nc = self.evaluator.calculate_normal_consist(osp.join(self.export_dir,
-                                                              f"{mesh_rot}_nc.png"))
-
-        test_log = {"chamfer": chamfer, "p2s": p2s, "NC": nc}
-
-        self.log_dict(test_log, prog_bar=True, logger=False, on_step=True, on_epoch=False)
-
-        return test_log
-
-    def test_epoch_end(self, outputs):
-
-        accu_outputs = accumulate(
-            outputs,
-            rot_num=3,
-            split={
-                "cape-easy": (0, 50),
-                "cape-hard": (50, 100)
-            },
-        )
-
-        print(colored(self.cfg.name, "green"))
-        print(colored(self.cfg.dataset.noise_scale, "green"))
-
-        self.log_dict(accu_outputs, prog_bar=False, logger=True, on_step=False, on_epoch=True)
-
-        np.save(
-            osp.join(self.export_dir, "../test_results.npy"),
-            accu_outputs,
-            allow_pickle=True,
-        )
 
     def render_func(self, batch, dataset="title", idx=0):
 

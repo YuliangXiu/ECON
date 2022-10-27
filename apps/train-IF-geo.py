@@ -20,6 +20,7 @@ from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTh
 from pytorch_lightning.callbacks import RichProgressBar
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.strategies import DDPSpawnStrategy
 
 if __name__ == "__main__":
 
@@ -71,9 +72,9 @@ if __name__ == "__main__":
     progress_bar = RichProgressBar(theme=theme)
 
     trainer_kwargs = {
-        "accelerator": "cuda",
+        "accelerator": "gpu",
         "devices": cfg.devices,
-        # "strategy": "ddp_spawn",
+        "strategy": DDPSpawnStrategy(find_unused_parameters=False),
         "reload_dataloaders_every_n_epochs": 0,
         "sync_batchnorm": True,
         "benchmark": True,
@@ -98,8 +99,8 @@ if __name__ == "__main__":
         train_len = datamodule.data_size["train"]
         val_len = datamodule.data_size["val"]
         trainer_kwargs.update({
-            "log_every_n_steps": int(cfg.freq_plot * train_len // cfg.batch_size),
-            "val_check_interval": int(cfg.freq_eval * train_len / cfg.batch_size),
+            "log_every_n_steps": int(cfg.freq_plot * train_len // cfg.batch_size // cfg.devices),
+            "val_check_interval": int(cfg.freq_eval * train_len // cfg.batch_size // cfg.devices),
         })
 
         if cfg.overfit:
@@ -107,21 +108,18 @@ if __name__ == "__main__":
         else:
             cfg_show_list = [
                 "freq_show_train",
-                cfg.freq_show_train * train_len // cfg.batch_size,
+                cfg.freq_show_train * train_len // cfg.batch_size // cfg.devices,
                 "freq_show_val",
-                max(cfg.freq_show_val * val_len // cfg.batch_size, 1.0),
+                max(cfg.freq_show_val * val_len // cfg.batch_size // cfg.devices, 1.0),
             ]
 
         cfg.merge_from_list(cfg_show_list)
 
     trainer = SubTrainer(**trainer_kwargs)
-    model = IFGeo(cfg, device=torch.device(f"cuda:{trainer.device_ids[0]}")).to(
-        torch.device(f"cuda:{trainer.device_ids[0]}"))
+    model = IFGeo(cfg)
 
     # load checkpoints
     load_networks(model, mlp_path=cfg.resume_path)
 
     if not cfg.test_mode:
         trainer.fit(model=model, datamodule=datamodule)
-
-    # trainer.test(model=model, datamodule=datamodule)

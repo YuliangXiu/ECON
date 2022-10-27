@@ -117,7 +117,7 @@ class TestDataset:
 
         print(colored(f"Using -- {self.hps_type} -- as HPS Estimator\n", "green"))
 
-        self.render = Render(size=512, device=device)
+        self.render = Render(size=512, device=self.device)
 
     def __len__(self):
         return len(self.subject_list)
@@ -216,6 +216,7 @@ class TestDataset:
         arr_dict.update({
             "name": img_name,
             "image": arr_dict["img_icon"].to(self.device),
+            "mask": arr_dict["img_mask"].to(self.device),
         })
 
         with torch.no_grad():

@@ -30,7 +30,7 @@ class BNI:
         self.depth_mask = BNI_dict["depth_mask"]
 
         # hparam
-        self.k = 4
+        self.k = 2
         self.lambda1 = 1e-4
         self._DEFAULT_MIN_TRIANGLE_AREA = 5e-3
         self.name = name

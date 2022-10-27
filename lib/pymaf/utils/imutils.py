@@ -57,7 +57,7 @@ def get_keypoints(image):
             model_complexity=2,
     ) as holistic:
         results = holistic.process(image)
-    
+
     return collect_xyv(results.pose_landmarks)
 
 
@@ -73,6 +73,7 @@ def expand_bbox(bbox, width, height, ratio=0.1):
     bbox[2] = min(bbox[2] + bbox_width * ratio, width)
 
     return bbox
+
 
 def remove_floats(mask):
 
@@ -149,8 +150,9 @@ def process_image(img_file, use_seg, hps_type, input_res=512, device=None, seg_p
                                              center[idx], scale[idx], [input_res, input_res])
 
         img_rembg = remove(img_crop[:, :, :4])
-        img_mask = torch.tensor(1.0-cv2.blur(1.0-remove_floats(img_rembg[:, :, 3] > 200), (3,3)))
-        
+        img_mask = torch.tensor(1.0 -
+                                cv2.blur(1.0 - remove_floats(img_rembg[:, :, 3] > 200), (3, 3))).ge(0.95)
+
         # required image tensors / arrays
         img_icon = image_to_icon_tensor(img_rembg[:, :, :3]) * img_mask  # [-1,1]
         img_hps = (img_icon + 1.0) * 0.5  # [0,1]
@@ -165,9 +167,7 @@ def process_image(img_file, use_seg, hps_type, input_res=512, device=None, seg_p
         else:
             print(f"No {hps_type} HPS")
 
-        # Image.fromarray(img_np).show()
-
-        img_crop_lst.append(img_crop[:, :, :3].transpose(2, 0, 1) / 255.)
+        img_crop_lst.append(torch.tensor(img_crop.transpose(2, 0, 1))/255.0)
         img_icon_lst.append(img_icon)
         img_hps_lst.append(img_hps)
         img_mask_lst.append(img_mask)
@@ -176,10 +176,10 @@ def process_image(img_file, use_seg, hps_type, input_res=512, device=None, seg_p
 
     return_dict = {
         "img_icon": torch.stack(img_icon_lst).float(),  #[N, 3, res, res]
-        "img_crop": torch.tensor(np.stack(img_crop_lst)),  #[N, res, res, 3]               
+        "img_crop": torch.stack(img_crop_lst).float(),  #[N, res, res, 4]               
         "img_hps": torch.cat(img_hps_lst).float(),  #[N, 3, res, res]
         "img_raw": img_raw,  #[H, W, 3]
-        "img_mask": torch.cat(img_mask_lst).float(),  #[N, res, res]
+        "img_mask": torch.stack(img_mask_lst).float(),  #[N, res, res]
         "uncrop_param": uncrop_param,
         "landmark": torch.stack(landmark_lst),  #[N, 33, 4]
     }

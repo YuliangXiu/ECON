@@ -21,6 +21,7 @@ from pytorch_lightning.callbacks.progress.rich_progress import RichProgressBarTh
 from pytorch_lightning.callbacks import RichProgressBar
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.strategies import DDPSpawnStrategy
 
 if __name__ == "__main__":
 
@@ -64,7 +65,7 @@ if __name__ == "__main__":
     trainer_kwargs = {
         "accelerator": "gpu",
         "devices": cfg.devices,
-        "strategy": "ddp_spawn",
+        "strategy": DDPSpawnStrategy(find_unused_parameters=True),
         "detect_anomaly": True,
         "reload_dataloaders_every_n_epochs": 0,
         "sync_batchnorm": True,

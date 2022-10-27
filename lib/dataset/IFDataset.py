@@ -104,28 +104,31 @@ class IFDataset:
                 "scale": self.scales[dataset_id],
             }
 
-            self.datasets_dict[dataset].update(
-                {"subjects": np.loadtxt(osp.join(dataset_dir, f"{split}.txt"), dtype=str)})
+            split_txt = osp.join(dataset_dir, f"{split}.txt")
+            if osp.exists(split_txt) and osp.getsize(split_txt) > 0:
 
-            # pre-cached meshes
-            self.mesh_cached[dataset] = {}
+                self.datasets_dict[dataset].update({"subjects": np.loadtxt(split_txt, dtype=str)})
 
-            if self.cached:
+                if dataset not in self.mesh_cached.keys():
+                    # pre-cached meshes
+                    self.mesh_cached[dataset] = {}
 
-                pbar = tqdm(self.datasets_dict[dataset]["subjects"])
-                for subject in pbar:
-                    subject = subject.split("/")[-1]
-                    pbar.set_description(f"Loading {dataset}-{split}-{subject}")
-                    if dataset == "thuman2":
-                        mesh_path = osp.join(self.datasets_dict[dataset]["mesh_dir"],
-                                             f"{subject}/{subject}.obj")
-                    else:
-                        mesh_path = osp.join(self.datasets_dict[dataset]["mesh_dir"],
-                                             f"{subject}.obj")
+                if self.cached:
 
-                    if subject not in self.mesh_cached[dataset].keys():
-                        self.mesh_cached[dataset][subject] = self.load_mesh(
-                            mesh_path, self.scales[dataset_id])
+                    pbar = tqdm(self.datasets_dict[dataset]["subjects"])
+                    for subject in pbar:
+                        subject = subject.split("/")[-1]
+                        pbar.set_description(f"Loading {dataset}-{split}-{subject}")
+                        if dataset == "thuman2":
+                            mesh_path = osp.join(self.datasets_dict[dataset]["mesh_dir"],
+                                                 f"{subject}/{subject}.obj")
+                        else:
+                            mesh_path = osp.join(self.datasets_dict[dataset]["mesh_dir"],
+                                                 f"{subject}.obj")
+
+                        if subject not in self.mesh_cached[dataset].keys():
+                            self.mesh_cached[dataset][subject] = self.load_mesh(
+                                mesh_path, self.scales[dataset_id])
 
         self.subject_list = self.get_subject_list(split)
         self.smplx = SMPLX()
@@ -152,6 +155,10 @@ class IFDataset:
         if self.split == "train":
             subject_list += subject_list[:self.bsize - len(subject_list) % self.bsize]
             print(colored(f"total: {len(subject_list)}", "yellow"))
+
+        bug_list = sorted(np.loadtxt(osp.join(self.root, 'bug.txt'), dtype=str).tolist())
+
+        subject_list = [subject for subject in subject_list if (subject not in bug_list)]
 
         # subject_list = ["thuman2/0008"]
         return subject_list
@@ -261,10 +268,14 @@ class IFDataset:
         data_dict.update(self.load_calib(data_dict))
 
         data_dict.update({
-            "image": self.image2tensor(data_dict["image_path"], 'rgb'),
-            "image_back": self.image2tensor(data_dict["image_back_path"], 'rgb'),
-            "depth_F": self.image2tensor(data_dict["image_path"].replace("render", "depth_F"), 'z'),
-            "depth_B": self.image2tensor(data_dict["image_path"].replace("render", "depth_B"), 'z')
+            "image":
+                self.image2tensor(data_dict["image_path"], 'rgb'),
+            "image_back":
+                self.image2tensor(data_dict["image_back_path"], 'rgb'),
+            "depth_F":
+                self.image2tensor(data_dict["image_path"].replace("/render/", "/depth_F/"), 'z'),
+            "depth_B":
+                self.image2tensor(data_dict["image_path"].replace("/render/", "/depth_B/"), 'z')
         })
         if self.vis:
             data_dict.update(self.load_smpl(data_dict, self.vis))
@@ -313,8 +324,8 @@ class IFDataset:
 
         depth_mask = (data_dict['depth_F'] != 0.).float()
         for s in np.arange(0.01, 0.2, 0.05):
-            depth_mask *= kornia.augmentation.RandomErasing(p=1.0,
-                                                            scale=s,
+            depth_mask *= kornia.augmentation.RandomErasing(p=0.8,
+                                                            scale=(s, s),
                                                             ratio=(0.3, 3.3),
                                                             keepdim=True)(depth_mask)
 

@@ -80,7 +80,7 @@ if __name__ == "__main__":
     load_normal_networks(normal_model, cfg.normal_path)
 
     # load IFGeo model
-    ifnet_model = IFGeo(cfg, device).to(device)
+    ifnet_model = IFGeo(cfg).to(device)
     load_networks(ifnet_model, mlp_path=cfg.ifnet_path)
 
     normal_model.netG.eval()
@@ -132,7 +132,7 @@ if __name__ == "__main__":
         img_crop_path = os.path.join(args.out_dir, cfg.name, "png", f"{data['name']}_crop.png")
         torchvision.utils.save_image(data["img_crop"], img_crop_path)
 
-        in_tensor = {"smpl_faces": data["smpl_faces"], "image": data["image"]}
+        in_tensor = {"smpl_faces": data["smpl_faces"], "image": data["image"], "mask": data["mask"]}
 
         # The optimizer and variables
         optimed_pose = data["body_pose"].requires_grad_(True)
@@ -215,8 +215,6 @@ if __name__ == "__main__":
             ghum_lmks = data["landmark"][:, SMPLX_object.ghum_smpl_pairs[:, 0], :2].to(device)
             ghum_conf = data["landmark"][:, SMPLX_object.ghum_smpl_pairs[:, 0], -1].to(device)
             smpl_lmks = smpl_joints_3d[:, SMPLX_object.ghum_smpl_pairs[:, 1], :2]
-            losses["joint"]["value"] = (torch.norm(ghum_lmks - smpl_lmks, dim=2) *
-                                        ghum_conf).mean(dim=1)
 
             # render optimized mesh as normal [-1,1]
             in_tensor["T_normal_F"], in_tensor["T_normal_B"] = dataset.render_normal(
@@ -236,22 +234,38 @@ if __name__ == "__main__":
 
             # silhouette loss
             smpl_arr = torch.cat([T_mask_F, T_mask_B], dim=-1)
-            gt_arr = torch.cat([in_tensor["normal_F"], in_tensor["normal_B"]],
-                               dim=-1).permute(0, 2, 3, 1)
-            gt_arr = ((gt_arr + 1.0) * 0.5).to(device)
-            bg_color = (torch.Tensor([0.5, 0.5, 0.5]).unsqueeze(0).unsqueeze(0).to(device))
-            gt_arr = ((gt_arr - bg_color).sum(dim=-1) != 0.0).float()
-
+            gt_arr = in_tensor["mask"].repeat(1, 1, 2)
             diff_S = torch.abs(smpl_arr - gt_arr)
             losses["silhouette"]["value"] = diff_S.mean()
 
-            # for loose clothing, reply more on landmarks
+            # large cloth_overlap --> big difference between body and cloth mask
+            # for loose clothing, reply more on landmarks instead of silhouette+normal loss
             cloth_overlap = diff_S.sum(dim=[1, 2]) / gt_arr.sum(dim=[1, 2])
-            body_overlap = (gt_arr *
-                            (smpl_arr > 0)).sum(dim=[1, 2]) / (smpl_arr > 0.).sum(dim=[1, 2])
-
             cloth_overlap_flag = cloth_overlap > cfg.cloth_overlap_thres
             losses["joint"]["weight"] = [50.0 if flag else 5.0 for flag in cloth_overlap_flag]
+
+            # small body_overlap --> large occlusion or out-of-frame
+            # for highly occluded body, reply only on high-confidence landmarks
+            # no silhouette+normal loss
+
+            # BUG: PyTorch3D silhouette renderer generates dilated mask
+            bg_value = in_tensor["T_normal_F"][0, 0, 0, 0]
+            smpl_arr_fake = torch.cat([
+                in_tensor["T_normal_F"][:, 0].ne(bg_value).float(),
+                in_tensor["T_normal_B"][:, 0].ne(bg_value).float()
+            ],
+                                      dim=-1)
+
+            body_overlap = (gt_arr * smpl_arr_fake.gt(0.0)).sum(
+                dim=[1, 2]) / smpl_arr_fake.gt(0.0).sum(dim=[1, 2])
+
+            body_overlap_flag = body_overlap < cfg.body_overlap_thres
+            losses["silhouette"]["weight"] = [0.1 if flag else 1.0 for flag in body_overlap_flag]
+            losses["normal"]["weight"] = [0.1 if flag else 1.0 for flag in body_overlap_flag]
+            occluded_idx = torch.where(body_overlap_flag)[0]
+            ghum_conf[occluded_idx] *= ghum_conf[occluded_idx] > 0.95
+            losses["joint"]["value"] = (torch.norm(ghum_lmks - smpl_lmks, dim=2) *
+                                        ghum_conf).mean(dim=1)
 
             # Weighted sum of the losses
             smpl_loss = 0.0
@@ -262,10 +276,12 @@ if __name__ == "__main__":
                 pbar_desc += f"{k}: {per_loop_loss:.3f} | "
                 smpl_loss += per_loop_loss
             pbar_desc += f"Total: {smpl_loss:.3f}"
+            loose_str = ''.join([str(j) for j in cloth_overlap_flag.int().tolist()])
+            occlude_str = ''.join([str(j) for j in body_overlap_flag.int().tolist()])
+            pbar_desc += colored(f"| loose:{loose_str}, occluded:{occlude_str}", "yellow")
             loop_smpl.set_description(pbar_desc)
 
             # save intermediate results / vis_freq and final_step
-
             if (i % args.vis_freq == 0) or (i == args.loop_smpl - 1):
 
                 per_loop_lst.extend([
