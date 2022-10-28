@@ -77,7 +77,6 @@ class ICON(pl.LightningModule):
             resolutions=self.resolutions,
             align_corners=True,
             balance_value=0.50,
-            device=torch.device(f"cuda:{self.cfg.test_gpus[0]}"),
             visualize=False,
             debug=False,
             use_cuda_impl=False,
@@ -262,12 +261,6 @@ class ICON(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
 
-        # dict_keys(['dataset', 'subject', 'rotation', 'scale', 'calib',
-        #            'normal_F', 'normal_B', 'image', 'T_normal_F', 'T_normal_B',
-        #            'z-trans', 'verts', 'faces', 'samples_geo', 'labels_geo',
-        #            'smpl_verts', 'smpl_faces', 'smpl_vis', 'smpl_cmap',
-        #            'type', 'gender', 'age', 'body_pose', 'global_orient', 'betas', 'transl'])
-
         self.netG.eval()
         self.netG.training = False
         in_tensor_dict = {}
@@ -357,8 +350,7 @@ class ICON(pl.LightningModule):
             outputs,
             rot_num=3,
             split={
-                "cape-easy": (0, 50),
-                "cape-hard": (50, 100)
+                "cape-hard": (0, 100)
             },
         )
 

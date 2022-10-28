@@ -9,12 +9,13 @@ net:
 
 test_mode: True
 batch_size: 1
-use_smpl: ["hand", "face"]
-always_ifnet: True
 
 # user defined
-vol_res: 256
+vol_res: 256      # IF-Net volume resolution
 mcube_res: 256    # occupancy field resolution, higher --> more details
-clean_mesh: True # if True, will remove floating pieces
+clean_mesh: True  # if True, will remove floating pieces
 cloth_overlap_thres: 0.50
 body_overlap_thres: 0.93
+
+use_smpl: ["hand", "face"]
+always_ifnet: True

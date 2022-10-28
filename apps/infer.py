@@ -36,6 +36,7 @@ from lib.common.cloth_extraction import extract_cloth
 from lib.common.config import cfg
 from lib.common.train_util import init_loss, load_normal_networks, load_networks
 from lib.common.BNI import BNI
+from lib.common.BNI_utils import save_normal_tensor
 from lib.dataset.TestDataset import TestDataset
 from lib.net.geometry import rot6d_to_rotmat
 from lib.dataset.mesh_util import *
@@ -398,7 +399,7 @@ if __name__ == "__main__":
             # requires shape completion when low overlap
             # replace SMPL by completed mesh as side_mesh
 
-            if body_overlap[idx] < cfg.body_overlap_thres or cfg.always_ifnet:
+            if (body_overlap[idx] < cfg.body_overlap_thres) or cfg.always_ifnet:
 
                 print(colored(f"Low overlap: {body_overlap[idx]:.2f}, shape completion\n", "green"))
 
@@ -458,9 +459,10 @@ if __name__ == "__main__":
             if "face" in cfg.use_smpl:
                 # only face
                 face_mesh = apply_vertex_mask(face_mesh, SMPLX_object.front_flame_vertex_mask)
+                face_mesh.vertices[:,2] -= BNI_object.thickness.numpy() / 2.0
                 # remove face neighbor triangles
-                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, face_mesh, 4e-2,
-                                                      device)
+                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, face_mesh,
+                                                      4e-2, device)
                 full_lst += [face_mesh]
 
             if "hand" in cfg.use_smpl:
@@ -502,8 +504,6 @@ if __name__ == "__main__":
             # for video rendering
             in_tensor["BNI_verts"].append(torch.tensor(final_mesh.vertices).float())
             in_tensor["BNI_faces"].append(torch.tensor(final_mesh.faces).long())
-
-            break
 
         # always export visualized png regardless of the cloth refinment
 

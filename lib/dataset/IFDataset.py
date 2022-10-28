@@ -624,8 +624,7 @@ class IFDataset:
                 volume_res=128,
                 sigma=0.05,
                 smooth_kernel_size=7,
-                batch_size=1,
-                device=torch.device("cuda:0"),
+                batch_size=1
             )
 
             self.voxelization.update_param(voxel_faces)

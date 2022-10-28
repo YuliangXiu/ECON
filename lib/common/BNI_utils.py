@@ -1,6 +1,7 @@
 import torch
 import trimesh
-import cv2
+import cv2, os
+from PIL import Image
 import os.path as osp
 import cupy as cp
 import numpy as np
@@ -740,3 +741,70 @@ def bilateral_normal_integration_new(normal_map,
 
     return torch.as_tensor(vertices), torch.as_tensor(faces).long(), torch.as_tensor(
         depth_map).float()
+    
+    
+def save_normal_tensor(in_tensor, idx, png_path):
+
+    os.makedirs(os.path.dirname(png_path), exist_ok=True)
+
+    depth_scale = 256.0
+
+    image_arr = tensor2arr(in_tensor["image"][idx:idx + 1])
+    normal_F_arr = tensor2arr(in_tensor["normal_F"][idx:idx + 1])
+    normal_B_arr = tensor2arr(in_tensor["normal_B"][idx:idx + 1])
+    mask_normal_arr = tensor2arr(in_tensor["image"][idx:idx + 1], True)
+
+    depth_F_arr = depth2arr(in_tensor["depth_F"][idx])
+    depth_B_arr = depth2arr(in_tensor["depth_B"][idx])
+
+    # T_normal_F_arr = tensor2arr(in_tensor["T_normal_F"][idx:idx+1])
+    # T_normal_B_arr = tensor2arr(in_tensor["T_normal_B"][idx:idx+1])
+    T_mask_normal_arr = tensor2arr(in_tensor["T_normal_F"][idx:idx + 1], True)
+
+    if False:
+        Image.fromarray(arr2png(image_arr)).save(png_path + "_image.png")
+        Image.fromarray(arr2png(normal_F_arr)).save(png_path + "_normal_F.png")
+        Image.fromarray(arr2png(normal_B_arr)).save(png_path + "_normal_B.png")
+        # Image.fromarray(arr2png(T_normal_F_arr)).save(png_path + "_T_normal_F.png")
+        # Image.fromarray(arr2png(T_normal_B_arr)).save(png_path + "_T_normal_B.png")
+
+        # write binary mask
+        cv2.imwrite(png_path + "_mask.png", (mask_normal_arr * 255.0).astype(np.uint8))
+        cv2.imwrite(png_path + "_T_mask.png", (T_mask_normal_arr * 255.0).astype(np.uint8))
+
+        # write depth map as pngs with scaling to 0~255
+        cv2.imwrite(png_path + "_depth_F.png", depth2png(depth_F_arr))
+        cv2.imwrite(png_path + "_depth_B.png", depth2png(depth_B_arr))
+
+    BNI_dict = {}
+
+    # clothed human
+    tightness = 0.05  # empirical value: displacement bewteen clothing and body (unit: m)
+    BNI_dict["normal_F"] = normal_F_arr
+    BNI_dict["normal_B"] = normal_B_arr
+    BNI_dict["mask"] = mask_normal_arr > 0.
+    BNI_dict["depth_F"] = (depth_F_arr - 100. - tightness) * depth_scale
+    BNI_dict["depth_B"] = (100. - depth_B_arr + tightness) * depth_scale
+    BNI_dict["depth_mask"] = depth_F_arr != -1.0
+    
+    # # smpl body
+    # BNI_dict["T_normal_F"] = T_normal_F_arr
+    # BNI_dict["T_normal_B"] = T_normal_B_arr
+    # BNI_dict["T_mask"] = T_mask_normal_arr
+
+    np.save(png_path + ".npy", BNI_dict, allow_pickle=True)
+
+    # obj export
+    smpl_obj = trimesh.Trimesh(
+        verts_transform(
+            in_tensor["smpl_verts"].detach().cpu()[idx] * torch.tensor([1.0, -1.0, 1.0]),
+            depth_scale,
+        ),
+        in_tensor["smpl_faces"].detach().cpu()[0],
+        process=False,
+        maintains_order=True,
+    )
+
+    smpl_obj.export(png_path + "_smpl.obj")
+
+    return BNI_dict

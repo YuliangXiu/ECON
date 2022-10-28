@@ -29,13 +29,6 @@ from pytorch3d.structures import Meshes
 import torch.nn.functional as F
 from lib.common.imutils import uncrop
 from lib.common.render_utils import Pytorch3dRasterizer
-from lib.common.BNI_utils import (
-    depth2arr,
-    depth2png,
-    tensor2arr,
-    arr2png,
-    verts_transform,
-)
 from pytorch3d.renderer.mesh import rasterize_meshes
 from PIL import Image, ImageFont, ImageDraw
 from kaolin.ops.mesh import check_sign
@@ -220,7 +213,7 @@ def sample_surface(triangles, count, area=None):
     return samples, face_index
 
 
-def obj_loader(path):
+def obj_loader(path, with_uv=True):
     # Create reader.
     reader = tinyobjloader.ObjReader()
 
@@ -237,11 +230,14 @@ def obj_loader(path):
     f_v = tri[:, [0, 3, 6]]
     f_vt = tri[:, [2, 5, 8]]
 
-    face_uvs = vt[f_vt].mean(axis=1)  #[m, 2]
-    vert_uvs = np.zeros((v.shape[0], 2), dtype=np.float32)  #[n, 2]
-    vert_uvs[f_v.reshape(-1)] = vt[f_vt.reshape(-1)]
+    if with_uv:
+        face_uvs = vt[f_vt].mean(axis=1)  #[m, 2]
+        vert_uvs = np.zeros((v.shape[0], 2), dtype=np.float32)  #[n, 2]
+        vert_uvs[f_v.reshape(-1)] = vt[f_vt.reshape(-1)]
 
-    return v, f_v, vert_uvs, face_uvs
+        return v, f_v, vert_uvs, face_uvs
+    else:
+        return v, f_v
 
 
 class HoppeMesh:
@@ -364,91 +360,6 @@ def remesh(obj, obj_path):
 
     return polished_mesh
 
-
-def save_normal_tensor(in_tensor, idx, png_path):
-
-    os.makedirs(os.path.dirname(png_path), exist_ok=True)
-
-    depth_scale = 256.0
-
-    image_arr = tensor2arr(in_tensor["image"][idx:idx + 1])
-    normal_F_arr = tensor2arr(in_tensor["normal_F"][idx:idx + 1])
-    normal_B_arr = tensor2arr(in_tensor["normal_B"][idx:idx + 1])
-    mask_normal_arr = tensor2arr(in_tensor["image"][idx:idx + 1], True)
-
-    depth_F_arr = depth2arr(in_tensor["depth_F"][idx])
-    depth_B_arr = depth2arr(in_tensor["depth_B"][idx])
-
-    # T_normal_F_arr = tensor2arr(in_tensor["T_normal_F"][idx:idx+1])
-    # T_normal_B_arr = tensor2arr(in_tensor["T_normal_B"][idx:idx+1])
-    T_mask_normal_arr = tensor2arr(in_tensor["T_normal_F"][idx:idx + 1], True)
-
-    Image.fromarray(arr2png(image_arr)).save(png_path + "_image.png")
-    Image.fromarray(arr2png(normal_F_arr)).save(png_path + "_normal_F.png")
-    Image.fromarray(arr2png(normal_B_arr)).save(png_path + "_normal_B.png")
-    # Image.fromarray(arr2png(T_normal_F_arr)).save(png_path + "_T_normal_F.png")
-    # Image.fromarray(arr2png(T_normal_B_arr)).save(png_path + "_T_normal_B.png")
-
-    # write binary mask
-    cv2.imwrite(png_path + "_mask.png", (mask_normal_arr * 255.0).astype(np.uint8))
-    cv2.imwrite(png_path + "_T_mask.png", (T_mask_normal_arr * 255.0).astype(np.uint8))
-
-    # write depth map as pngs with scaling to 0~255
-    cv2.imwrite(png_path + "_depth_F.png", depth2png(depth_F_arr))
-    cv2.imwrite(png_path + "_depth_B.png", depth2png(depth_B_arr))
-
-    BNI_dict = {}
-
-    # clothed human
-    tightness = 50.0  # empirical value: displacement bewteen clothing and body
-    BNI_dict["normal_F"] = normal_F_arr
-    BNI_dict["normal_B"] = normal_B_arr
-    BNI_dict["mask"] = mask_normal_arr > 0.
-    BNI_dict["depth_F"] = (depth_F_arr - 100.) * (depth_scale + tightness)
-    BNI_dict["depth_B"] = (100. - depth_B_arr) * (depth_scale + tightness)
-    BNI_dict["depth_mask"] = depth_F_arr > -1.0
-
-    # # smpl body
-    # BNI_dict["T_normal_F"] = T_normal_F_arr
-    # BNI_dict["T_normal_B"] = T_normal_B_arr
-    # BNI_dict["T_mask"] = T_mask_normal_arr
-
-    np.save(png_path + ".npy", BNI_dict, allow_pickle=True)
-
-    # obj export
-    smpl_obj = trimesh.Trimesh(
-        verts_transform(
-            in_tensor["smpl_verts"].detach().cpu()[idx] * torch.tensor([1.0, -1.0, 1.0]),
-            depth_scale,
-        ),
-        in_tensor["smpl_faces"].detach().cpu()[0],
-        process=False,
-        maintains_order=True,
-    )
-
-    smpl_obj.export(png_path + "_smpl.obj")
-
-    return BNI_dict
-
-
-# def poisson(mesh, obj_path, depth=10):
-
-#     # meshlab poisson
-#     mesh.export(obj_path)
-#     ms = pymeshlab.MeshSet(verbose=False)
-#     ms.load_new_mesh(obj_path)
-#     ms.set_verbosity(False)
-#     ms.surface_reconstruction_screened_poisson(depth=depth, preclean=True)
-#     ms.set_current_mesh(1)
-#     ms.save_current_mesh(obj_path)
-
-#     new_meshes = trimesh.load(obj_path)
-#     new_mesh_lst = new_meshes.split(only_watertight=False)
-#     comp_num = [new_mesh.vertices.shape[0] for new_mesh in new_mesh_lst]
-#     final_mesh = new_mesh_lst[comp_num.index(max(comp_num))]
-#     final_mesh.export(obj_path)
-
-#     return final_mesh
 
 
 def poisson(mesh, obj_path, depth=10):

@@ -26,7 +26,7 @@ from lib.dataset.mesh_util import (
     HoppeMesh,
     obj_loader,
 )
-from lib.pare.pare.utils.geometry import rotation_matrix_to_angle_axis
+from lib.net.geometry import rotation_matrix_to_angle_axis
 from termcolor import colored
 import os.path as osp
 import numpy as np
@@ -382,7 +382,7 @@ class PIFuDataset:
         mesh_path = data_dict["mesh_path"]
         scale = data_dict["scale"]
 
-        verts, faces = obj_loader(mesh_path)
+        verts, faces = obj_loader(mesh_path, with_uv=False)
 
         mesh = HoppeMesh(verts * scale, faces)
 
