@@ -1,6 +1,6 @@
 name: bni
 ckpt_dir: "./data/ckpt/"
-normal_path: "./data/ckpt/normal/mrf-v2.ckpt"
+normal_path: "./data/ckpt/normal/last.ckpt"
 ifnet_path: "./data/ckpt/IF-Geo/last-256.ckpt"
 results_path: "./results"
 
@@ -9,6 +9,8 @@ net:
 
 test_mode: True
 batch_size: 1
+use_smpl: ["hand", "face"]
+always_ifnet: True
 
 # user defined
 vol_res: 256

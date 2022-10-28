@@ -37,6 +37,7 @@ from lib.common.config import cfg
 from lib.common.train_util import init_loss, load_normal_networks, load_networks
 from lib.common.BNI import BNI
 from lib.dataset.TestDataset import TestDataset
+from lib.net.geometry import rot6d_to_rotmat
 from lib.dataset.mesh_util import *
 from lib.common.voxelize import VoxelGrid
 
@@ -51,7 +52,7 @@ if __name__ == "__main__":
     parser.add_argument("-loop_smpl", "--loop_smpl", type=int, default=100)
     parser.add_argument("-patience", "--patience", type=int, default=5)
     parser.add_argument("-vis_freq", "--vis_freq", type=int, default=1000)
-    parser.add_argument("-hps_type", "--hps_type", type=str, default="pixie")
+    parser.add_argument("-hps_type", "--hps_type", type=str, default="pymafx")
     parser.add_argument("-export_video", action="store_true")
     parser.add_argument("-BNI", action="store_false")
     parser.add_argument("-in_dir", "--in_dir", type=str, default="./examples")
@@ -63,7 +64,7 @@ if __name__ == "__main__":
 
     # cfg read and merge
     cfg.merge_from_file(args.config)
-    cfg.merge_from_file("./lib/pymaf/configs/pymaf_config.yaml")
+    cfg.merge_from_file("./lib/pymafx/configs/pymafx_config.yaml")
     device = torch.device(f"cuda:{args.gpu_device}")
 
     # setting for testing on in-the-wild images
@@ -93,13 +94,9 @@ if __name__ == "__main__":
         "image_dir": args.in_dir,
         "seg_dir": args.seg_dir,
         "use_seg": True,  # w/ or w/o segmentation
-        "hps_type": args.hps_type,  # pymaf/pare/pixie
+        "hps_type": args.hps_type,  # pymafx/pixie
         "vol_res": cfg.vol_res,
     }
-
-    if args.hps_type == "pixie" and "pamir" in args.config:
-        print(colored("PIXIE isn't compatible with PaMIR, thus switch to PyMAF", "red"))
-        dataset_param["hps_type"] = "pymaf"
 
     dataset = TestDataset(dataset_param, device)
 
@@ -395,19 +392,17 @@ if __name__ == "__main__":
 
             BNI_object.extract_surface(idx)
 
-            side_mesh = apply_face_mask(side_mesh, ~SMPLX_object.smplx_eyeball_fid_mask)
-            side_verts = torch.tensor(side_mesh.vertices).float()
-            side_faces = torch.tensor(side_mesh.faces).long()
-
-            in_tensor["body_verts"].append(side_verts)
-            in_tensor["body_faces"].append(side_faces)
+            in_tensor["body_verts"].append(torch.tensor(smpl_obj_lst[idx].vertices).float())
+            in_tensor["body_faces"].append(torch.tensor(smpl_obj_lst[idx].faces).long())
 
             # requires shape completion when low overlap
             # replace SMPL by completed mesh as side_mesh
 
-            if body_overlap[idx] < cfg.body_overlap_thres:
+            if body_overlap[idx] < cfg.body_overlap_thres or cfg.always_ifnet:
 
                 print(colored(f"Low overlap: {body_overlap[idx]:.2f}, shape completion\n", "green"))
+
+                side_mesh = apply_face_mask(side_mesh, ~SMPLX_object.smplx_eyeball_fid_mask)
 
                 # mesh completion via IF-net
                 in_tensor.update(
@@ -438,55 +433,61 @@ if __name__ == "__main__":
                 side_mesh_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_IF.obj"
                 side_mesh = remesh(side_mesh, side_mesh_path)
 
-                side_verts = torch.tensor(side_mesh.vertices).float()
-                side_faces = torch.tensor(side_mesh.faces).long()
             else:
                 print(colored("High overlap, use SMPL-X body\n", "green"))
+                side_mesh = apply_vertex_mask(
+                    side_mesh,
+                    (SMPLX_object.front_flame_vertex_mask + SMPLX_object.mano_vertex_mask +
+                     SMPLX_object.eyeball_vertex_mask).eq(0).float(),
+                )
+
+            side_verts = torch.tensor(side_mesh.vertices).float().to(device)
+            side_faces = torch.tensor(side_mesh.faces).long().to(device)
 
             # Possion Fusion between SMPLX and BNI
             # 1. keep the faces invisible to front+back cameras
             # 2. keep the front-FLAME+MANO faces
             # 3. remove eyeball faces
 
-            side_verts = side_verts.to(device)
-            side_faces = side_faces.to(device)
-
             (xy, z) = side_verts.split([2, 1], dim=-1)
             F_vis = get_visibility(xy, z, side_faces[..., [0, 2, 1]], img_res=2**8)
             B_vis = get_visibility(xy, -z, side_faces, img_res=2**8)
 
-            side_mesh = overlap_removal(side_mesh, torch.logical_or(F_vis, B_vis),
-                                        BNI_object.F_B_trimesh, device)
+            full_lst = []
 
-            # only face
-            front_flame_vertex_mask = torch.zeros(face_mesh.vertices.shape[0],)
-            front_flame_vertex_mask[SMPLX_object.smplx_front_flame_vid] = 1.0
-            face_mesh = apply_vertex_mask(face_mesh, front_flame_vertex_mask)
+            if "face" in cfg.use_smpl:
+                # only face
+                face_mesh = apply_vertex_mask(face_mesh, SMPLX_object.front_flame_vertex_mask)
+                # remove face neighbor triangles
+                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, face_mesh, 4e-2,
+                                                      device)
+                full_lst += [face_mesh]
 
-            # only hands
-            mano_vertex_mask = torch.zeros(hand_mesh.vertices.shape[0],)
-            mano_vertex_mask[SMPLX_object.smplx_mano_vid] = 1.0
-            hand_mesh = apply_vertex_mask(hand_mesh, mano_vertex_mask)
+            if "hand" in cfg.use_smpl:
+                # only hands
+                hand_mesh = apply_vertex_mask(hand_mesh, SMPLX_object.mano_vertex_mask)
+                # remove face neighbor triangles
+                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, hand_mesh, 4e-2,
+                                                      device)
+                full_lst += [hand_mesh]
 
-            # remove hand/face neighbor triangles
-            BNI_object.F_B_trimesh = face_hand_removal(BNI_object.F_B_trimesh, hand_mesh, face_mesh,
-                                                       device)
+            full_lst += [BNI_object.F_B_trimesh]
 
-            full_lst = [BNI_object.F_B_trimesh]
+            # initial side_mesh could be SMPLX or IF-net
+            side_mesh = part_removal(side_mesh,
+                                     torch.logical_or(F_vis, B_vis),
+                                     sum(full_lst),
+                                     1e-2,
+                                     device,
+                                     clean=False)
 
-            if body_overlap[idx] < cfg.body_overlap_thres:
-                side_mesh = face_hand_removal(side_mesh, hand_mesh, face_mesh, device)
-
-            full_lst += [side_mesh, hand_mesh, face_mesh]
+            full_lst += [side_mesh]
 
             # export intermediate meshes
             BNI_object.F_B_trimesh.export(
                 f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_BNI.obj")
 
             side_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_side.obj")
-
-            sum([hand_mesh, face_mesh
-                ]).export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_hand_face.obj")
 
             final_mesh = poisson(
                 sum(full_lst),
@@ -501,6 +502,8 @@ if __name__ == "__main__":
             # for video rendering
             in_tensor["BNI_verts"].append(torch.tensor(final_mesh.vertices).float())
             in_tensor["BNI_faces"].append(torch.tensor(final_mesh.faces).long())
+
+            break
 
         # always export visualized png regardless of the cloth refinment
 

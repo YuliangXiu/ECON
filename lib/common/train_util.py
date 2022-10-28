@@ -20,9 +20,6 @@ import torch
 import numpy as np
 from ..dataset.mesh_util import *
 from ..net.geometry import orthogonal
-from .render_utils import Pytorch3dRasterizer
-from pytorch3d.renderer.mesh import rasterize_meshes
-from pytorch3d.structures import Meshes
 import cv2, PIL
 from tqdm import tqdm
 import os

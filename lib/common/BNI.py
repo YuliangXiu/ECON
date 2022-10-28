@@ -1,6 +1,7 @@
 from lib.common.BNI_utils import (verts_inverse_transform,
                                   depth_inverse_transform,
                                   bilateral_normal_integration,
+                                  bilateral_normal_integration_new,
                                   mean_value_cordinates, find_contour,
                                   depth2png, dispCorres, repeat_pts,
                                   get_dst_mat)
@@ -29,10 +30,11 @@ class BNI:
         self.depth_back = BNI_dict["depth_B"]
         self.depth_mask = BNI_dict["depth_mask"]
 
-        # hparam
-        self.k = 2
-        self.lambda1 = 1e-4
-        self._DEFAULT_MIN_TRIANGLE_AREA = 5e-3
+        # hparam:
+        # k --> smaller, keep continuity
+        # lambda --> larger, more depth-awareness
+        self.k = 1e-3
+        self.lambda1 = 1e-2
         self.name = name
 
         self.F_B_surface = None
@@ -121,7 +123,7 @@ class BNI:
 
     def extract_surface(self, idx):
 
-        F_verts, F_faces, F_depth = bilateral_normal_integration(
+        F_verts, F_faces, F_depth = bilateral_normal_integration_new(
             normal_map=self.normal_front,
             normal_mask=self.mask,
             k=self.k,
@@ -131,7 +133,7 @@ class BNI:
             label="Front",
         )
 
-        B_verts, B_faces, B_depth = bilateral_normal_integration(
+        B_verts, B_faces, B_depth = bilateral_normal_integration_new(
             normal_map=self.normal_back,
             normal_mask=self.mask,
             k=self.k,

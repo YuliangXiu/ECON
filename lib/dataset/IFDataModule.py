@@ -86,6 +86,7 @@ class IFDataModule(pl.LightningDataModule):
             shuffle=True,
             num_workers=self.cfg.num_threads,
             pin_memory=True,
+            drop_last=True,
         )
 
         return train_data_loader
@@ -103,6 +104,7 @@ class IFDataModule(pl.LightningDataModule):
             shuffle=False,
             num_workers=self.cfg.num_threads,
             pin_memory=True,
+            drop_last=True,
         )
 
         return val_data_loader

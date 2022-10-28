@@ -132,6 +132,7 @@ class IFDataset:
 
         self.subject_list = self.get_subject_list(split)
         self.smplx = SMPLX()
+        self.bug_lst = sorted(np.loadtxt(osp.join(self.root, 'bug.txt'), dtype=str).tolist())
 
     def transform_to_tensor(self, res, mean, std):
         return transforms.Compose([
@@ -152,13 +153,12 @@ class IFDataset:
                 print(f"load from {split_txt}")
                 subject_list += np.loadtxt(split_txt, dtype=str).tolist()
 
+        subject_list = [subject for subject in subject_list if (subject not in self.bug_lst)]
+        
         if self.split == "train":
             subject_list += subject_list[:self.bsize - len(subject_list) % self.bsize]
             print(colored(f"total: {len(subject_list)}", "yellow"))
 
-        bug_list = sorted(np.loadtxt(osp.join(self.root, 'bug.txt'), dtype=str).tolist())
-
-        subject_list = [subject for subject in subject_list if (subject not in bug_list)]
 
         # subject_list = ["thuman2/0008"]
         return subject_list
@@ -407,7 +407,7 @@ class IFDataset:
 
     def compute_voxel_verts(self, data_dict, noise_type=None, noise_scale=None):
 
-        from lib.pymaf.utils.geometry import rotation_matrix_to_angle_axis
+        from lib.net.geometry import rotation_matrix_to_angle_axis
         from lib.dataset.body_model import TetraSMPLModel
 
         smpl_param = np.load(data_dict["smpl_param"], allow_pickle=True)

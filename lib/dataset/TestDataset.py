@@ -21,15 +21,15 @@ warnings.filterwarnings("ignore")
 logging.getLogger("lightning").setLevel(logging.ERROR)
 logging.getLogger("trimesh").setLevel(logging.ERROR)
 
-from lib.hybrik.models.simple3dpose import HybrIKBaseSMPLCam
 from lib.pixielib.utils.config import cfg as pixie_cfg
 from lib.pixielib.pixie import PIXIE
 import lib.smplx as smplx
-from lib.pare.pare.core.tester import PARETester
-from lib.pymaf.utils.geometry import rotation_matrix_to_angle_axis, batch_rodrigues, rot6d_to_rotmat
-from lib.pymaf.utils.imutils import process_image
-from lib.pymaf.core import path_config
-from lib.pymaf.models import pymaf_net
+from lib.common.imutils import process_image
+from lib.net.geometry import rotation_matrix_to_angle_axis, rot6d_to_rotmat
+
+from lib.pymafx.core import path_config
+from lib.pymafx.models import pymaf_net
+
 from lib.common.config import cfg
 from lib.common.render import Render
 from lib.dataset.body_model import TetraSMPLModel
@@ -55,7 +55,7 @@ class TestDataset:
         self.seg_dir = cfg["seg_dir"]
         self.use_seg = cfg["use_seg"]
         self.hps_type = cfg["hps_type"]
-        self.smpl_type = "smpl" if cfg["hps_type"] != "pixie" else "smplx"
+        self.smpl_type = "smplx"
         self.smpl_gender = "neutral"
         self.vol_res = cfg["vol_res"]
 
@@ -80,40 +80,13 @@ class TestDataset:
 
         self.faces = self.smpl_model.faces
 
-        if self.hps_type == "pymaf":
+        if self.hps_type == "pymafx":
             self.hps = pymaf_net(path_config.SMPL_MEAN_PARAMS, pretrained=True).to(self.device)
             self.hps.load_state_dict(torch.load(path_config.CHECKPOINT_FILE)["model"], strict=True)
             self.hps.eval()
-
-        elif self.hps_type == "pare":
-            self.hps = PARETester(path_config.CFG, path_config.CKPT).model
         elif self.hps_type == "pixie":
             self.hps = PIXIE(config=pixie_cfg, device=self.device)
             self.smpl_model = self.hps.smplx
-        elif self.hps_type == "hybrik":
-            smpl_path = osp.join(self.smpl_data.model_dir, "smpl/SMPL_NEUTRAL.pkl")
-            self.hps = HybrIKBaseSMPLCam(
-                cfg_file=path_config.HYBRIK_CFG,
-                smpl_path=smpl_path,
-                data_path=path_config.hybrik_data_dir,
-            )
-            self.hps.load_state_dict(torch.load(path_config.HYBRIK_CKPT, map_location="cpu"),
-                                     strict=False)
-            self.hps.to(self.device)
-        elif self.hps_type == "bev":
-            try:
-                import bev
-            except:
-                print("Could not find bev, installing via pip install --upgrade simple-romp")
-                os.system("pip install simple-romp==1.0.3")
-                import bev
-            settings = bev.main.default_settings
-            # change the argparse settings of bev here if you prefer other settings.
-            settings.mode = "image"
-            settings.GPU = int(str(self.device).split(":")[1])
-            settings.show_largest = True
-            # settings.show = True # uncommit this to show the original BEV predictions
-            self.hps = bev.BEV(settings)
 
         print(colored(f"Using -- {self.hps_type} -- as HPS Estimator\n", "green"))
 
@@ -200,7 +173,6 @@ class TestDataset:
                     if self.seg_dir is not None else None)
 
         arr_dict = process_image(img_path,
-                                 self.use_seg,
                                  self.hps_type,
                                  512,
                                  self.device,
@@ -221,12 +193,12 @@ class TestDataset:
 
         with torch.no_grad():
             preds_dict = self.hps.forward(arr_dict["img_hps"])
-
+            
         arr_dict["smpl_faces"] = (torch.as_tensor(self.faces.astype(
             np.int64)).unsqueeze(0).long().to(self.device))
         arr_dict["type"] = self.smpl_type
 
-        if self.hps_type == "pymaf":
+        if self.hps_type == "pymafx":
             output = preds_dict["smpl_out"][-1]
             scale, tranX, tranY = output["theta"][0, :3]
             arr_dict["betas"] = output["pred_shape"]
@@ -234,40 +206,12 @@ class TestDataset:
             arr_dict["global_orient"] = output["rotmat"][:, 0:1]
             arr_dict["smpl_verts"] = output["verts"]
 
-        elif self.hps_type == "pare":
-            arr_dict["body_pose"] = preds_dict["pred_pose"][:, 1:]
-            arr_dict["global_orient"] = preds_dict["pred_pose"][:, 0:1]
-            arr_dict["betas"] = preds_dict["pred_shape"]
-            arr_dict["smpl_verts"] = preds_dict["smpl_vertices"]
-            scale, tranX, tranY = preds_dict["pred_cam"][0, :3]
-
         elif self.hps_type == "pixie":
             arr_dict.update(preds_dict)
             arr_dict["global_orient"] = preds_dict["global_pose"]
             arr_dict["betas"] = preds_dict["shape"]
             arr_dict["smpl_verts"] = preds_dict["vertices"]
             scale, tranX, tranY = preds_dict["cam"].split(1, dim=1)
-
-        elif self.hps_type == "hybrik":
-            arr_dict["body_pose"] = preds_dict["pred_theta_mats"][:, 1:]
-            arr_dict["global_orient"] = preds_dict["pred_theta_mats"][:, [0]]
-            arr_dict["betas"] = preds_dict["pred_shape"]
-            arr_dict["smpl_verts"] = preds_dict["pred_vertices"]
-            scale, tranX, tranY = preds_dict["pred_camera"][0, :3]
-            scale = scale * 2
-
-        elif self.hps_type == "bev":
-            arr_dict["betas"] = (torch.from_numpy(preds_dict["smpl_betas"])[[0], :10].to(
-                self.device).float())
-            pred_thetas = batch_rodrigues(
-                torch.from_numpy(preds_dict["smpl_thetas"][0]).reshape(-1, 3)).float()
-            arr_dict["body_pose"] = pred_thetas[1:][None].to(self.device)
-            arr_dict["global_orient"] = pred_thetas[[0]][None].to(self.device)
-            arr_dict["smpl_verts"] = (torch.from_numpy(preds_dict["verts"][[0]]).to(
-                self.device).float())
-            tranX = preds_dict["cam_trans"][0, 0]
-            tranY = preds_dict["cam"][0, 1] + 0.28
-            scale = preds_dict["cam"][0, 0] * 1.1
 
         arr_dict["scale"] = scale.unsqueeze(1)
         arr_dict["trans"] = (torch.cat([tranX, tranY, torch.zeros_like(tranX)],
@@ -357,7 +301,7 @@ class TestDataset:
 if __name__ == "__main__":
 
     cfg.merge_from_file("./configs/icon-keypoint.yaml")
-    cfg.merge_from_file("./lib/pymaf/configs/pymaf_config.yaml")
+    cfg.merge_from_file("./lib/pymafx/configs/pymafx_config.yaml")
 
     cfg_show_list = ["test_gpus", ["0"], "mcube_res", 512, "clean_mesh", False]
 
@@ -372,7 +316,7 @@ if __name__ == "__main__":
             "image_dir": "./log/mediapipe",
             "seg_dir": None,
             "use_seg": True,  # w/ or w/o segmentation
-            "hps_type": "pixie",  # pymaf/pare/pixie/hybrik/bev
+            "hps_type": "pixie",  # pymafx/pixie
         },
         device,
     )

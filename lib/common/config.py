@@ -64,6 +64,8 @@ _C.cloth_overlap_thres = 1.0
 
 _C.batch_size = 4
 _C.num_threads = 8
+_C.use_smpl = ["face", "hand"]
+_C.always_ifnet = True
 
 _C.num_epoch = 10
 _C.freq_plot = 0.01

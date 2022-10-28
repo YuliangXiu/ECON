@@ -1,0 +1,175 @@
+SOLVER:
+  MAX_ITER: 500000
+  TYPE: Adam
+  BASE_LR: 0.00005
+  GAMMA: 0.1
+  STEPS: [0]
+  EPOCHS: [0]
+# DEBUG: False
+LOGDIR: ''
+DEVICE: cuda
+# NUM_WORKERS: 8
+SEED_VALUE: -1
+LOSS:
+  KP_2D_W: 300.0
+  KP_3D_W: 300.0
+  HF_KP_2D_W: 1000.0
+  HF_KP_3D_W: 1000.0
+  GL_HF_KP_2D_W: 30.
+  FEET_KP_2D_W: 0.
+  SHAPE_W: 0.06
+  POSE_W: 60.0
+  VERT_W: 0.0
+  VERT_REG_W: 300.0
+  INDEX_WEIGHTS: 2.0
+  # Loss weights for surface parts. (24 Parts)
+  PART_WEIGHTS: 0.3
+  # Loss weights for UV regression.
+  POINT_REGRESSION_WEIGHTS: 0.5
+TRAIN:
+  NUM_WORKERS: 8
+  BATCH_SIZE: 64
+  LOG_FERQ: 100
+  SHUFFLE: True
+  PIN_MEMORY: True
+  BHF_MODE: 'full_body'
+TEST:
+  BATCH_SIZE: 32
+MODEL:
+  # IWP, Identity rotation and Weak Perspective Camera
+  USE_IWP_CAM: True
+  USE_GT_FL: False
+  PRED_PITCH: False
+  MESH_MODEL: 'smplx'
+  ALL_GENDER: False
+  EVAL_MODE: True
+  PyMAF:
+    BACKBONE: 'hr48'
+    HF_BACKBONE: 'res50'
+    MAF_ON: True
+    MLP_DIM: [256, 128, 64, 5]
+    HF_MLP_DIM: [256, 128, 64, 5]
+    MLP_VT_DIM: [256, 128, 64, 3]
+    N_ITER: 3
+    SUPV_LAST: False
+    AUX_SUPV_ON: True
+    HF_AUX_SUPV_ON: False
+    HF_BOX_CENTER: True
+    DP_HEATMAP_SIZE: 56
+    GRID_FEAT: False
+    USE_CAM_FEAT: True
+    HF_IMG_SIZE: 224
+    HF_DET: 'pifpaf'
+    OPT_WRIST: True
+    ADAPT_INTEGR: True
+    PRED_VIS_H: True
+    HAND_VIS_TH: 0.1
+    GRID_ALIGN:
+      USE_ATT: True
+      USE_FC: False
+      ATT_FEAT_IDX: 2
+      ATT_HEAD: 1
+      ATT_STARTS: 1
+RES_MODEL:
+  DECONV_WITH_BIAS: False
+  NUM_DECONV_LAYERS: 3
+  NUM_DECONV_FILTERS:
+  - 256
+  - 256
+  - 256
+  NUM_DECONV_KERNELS:
+  - 4
+  - 4
+  - 4
+POSE_RES_MODEL:
+  INIT_WEIGHTS: True
+  NAME: 'pose_resnet'
+  PRETR_SET: 'imagenet'   # 'none' 'imagenet' 'coco'
+  # PRETRAINED: 'data/pretrained_model/resnet50-19c8e357.pth'
+  PRETRAINED_IM: 'data/pretrained_model/resnet50-19c8e357.pth'
+  PRETRAINED_COCO: 'data/pretrained_model/pose_resnet_50_256x192.pth.tar'
+  EXTRA:
+    TARGET_TYPE: 'gaussian'
+    HEATMAP_SIZE:
+    - 48
+    - 64
+    SIGMA: 2
+    FINAL_CONV_KERNEL: 1
+    DECONV_WITH_BIAS: False
+    NUM_DECONV_LAYERS: 3
+    NUM_DECONV_FILTERS:
+    - 256
+    - 256
+    - 256
+    NUM_DECONV_KERNELS:
+    - 4
+    - 4
+    - 4
+    NUM_LAYERS: 50
+HR_MODEL:
+  INIT_WEIGHTS: True
+  NAME: pose_hrnet
+  PRETR_SET: 'coco'   # 'none' 'imagenet' 'coco'
+  PRETRAINED_IM: 'data/pretrained_model/hrnet_w48-imgnet-8ef0771d.pth'
+  PRETRAINED_COCO: 'data/pretrained_model/pose_hrnet_w48_256x192.pth'
+  TARGET_TYPE: gaussian
+  IMAGE_SIZE:
+  - 256
+  - 256
+  HEATMAP_SIZE:
+  - 64
+  - 64
+  SIGMA: 2
+  EXTRA:
+    PRETRAINED_LAYERS:
+    - 'conv1'
+    - 'bn1'
+    - 'conv2'
+    - 'bn2'
+    - 'layer1'
+    - 'transition1'
+    - 'stage2'
+    - 'transition2'
+    - 'stage3'
+    - 'transition3'
+    - 'stage4'
+    FINAL_CONV_KERNEL: 1
+    STAGE2:
+      NUM_MODULES: 1
+      NUM_BRANCHES: 2
+      BLOCK: BASIC
+      NUM_BLOCKS:
+      - 4
+      - 4
+      NUM_CHANNELS:
+      - 48
+      - 96
+      FUSE_METHOD: SUM
+    STAGE3:
+      NUM_MODULES: 4
+      NUM_BRANCHES: 3
+      BLOCK: BASIC
+      NUM_BLOCKS:
+      - 4
+      - 4
+      - 4
+      NUM_CHANNELS:
+      - 48
+      - 96
+      - 192
+      FUSE_METHOD: SUM
+    STAGE4:
+      NUM_MODULES: 3
+      NUM_BRANCHES: 4
+      BLOCK: BASIC
+      NUM_BLOCKS:
+      - 4
+      - 4
+      - 4
+      - 4
+      NUM_CHANNELS:
+      - 48
+      - 96
+      - 192
+      - 384
+      FUSE_METHOD: SUM

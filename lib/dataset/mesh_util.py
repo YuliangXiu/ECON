@@ -27,7 +27,7 @@ import _pickle as cPickle
 
 from pytorch3d.structures import Meshes
 import torch.nn.functional as F
-from lib.pymaf.utils.imutils import uncrop
+from lib.common.imutils import uncrop
 from lib.common.render_utils import Pytorch3dRasterizer
 from lib.common.BNI_utils import (
     depth2arr,
@@ -90,71 +90,31 @@ def apply_vertex_face_mask(mesh, vertex_mask, face_mask):
     return mesh
 
 
-def face_hand_removal(full_mesh, hand_mesh, face_mesh, device):
+def part_removal(full_mesh, vis_mask, part_mesh, thres, device, clean=True):
+
+    # thres: face 3e-2, hand 4e-2
 
     from lib.dataset.PointFeat import PointFeat
-    face_extractor = PointFeat(
-        torch.tensor(face_mesh.vertices).unsqueeze(0).to(device),
-        torch.tensor(face_mesh.faces).unsqueeze(0).to(device))
+    part_extractor = PointFeat(
+        torch.tensor(part_mesh.vertices).unsqueeze(0).to(device),
+        torch.tensor(part_mesh.faces).unsqueeze(0).to(device))
 
-    hand_extractor = PointFeat(
-        torch.tensor(hand_mesh.vertices).unsqueeze(0).to(device),
-        torch.tensor(hand_mesh.faces).unsqueeze(0).to(device))
-
-    (face_dist, face_cos) = face_extractor.query(
+    (part_dist, _) = part_extractor.query(
         torch.tensor(full_mesh.vertices).unsqueeze(0).to(device), {"smpl_nsdf": None})
 
-    (hand_dist, _) = hand_extractor.query(
-        torch.tensor(full_mesh.vertices).unsqueeze(0).to(device), {"smpl_nsdf": None})
+    if vis_mask is not None:
+        BNI_verts_mask = ~(torch.logical_or(part_dist < thres, vis_mask.to(device))).flatten()
+    else:
+        BNI_verts_mask = ~(part_dist < thres).flatten()
 
-    BNI_verts_mask = torch.logical_and(~(face_dist < 3e-2).flatten(), ~(hand_dist < 4e-2).flatten())
-
-    BNI_faces_mask = BNI_verts_mask[full_mesh.faces].any(dim=1)
-    full_mesh.update_faces(BNI_faces_mask.detach().cpu())
+    BNI_part_mask = BNI_verts_mask[full_mesh.faces].any(dim=1)
+    full_mesh.update_faces(BNI_part_mask.detach().cpu())
     full_mesh.remove_unreferenced_vertices()
-    full_mesh = clean_floats(full_mesh)
+
+    if clean:
+        full_mesh = clean_floats(full_mesh)
 
     return full_mesh
-
-
-def overlap_removal(full_mesh, vis_mask, bni_mesh, device):
-
-    from lib.dataset.PointFeat import PointFeat
-
-    vis_mask = vis_mask.to(device)
-
-    bni_extractor = PointFeat(
-        torch.tensor(bni_mesh.vertices).unsqueeze(0).to(device),
-        torch.tensor(bni_mesh.faces).unsqueeze(0).to(device))
-
-    (face_dist, _) = bni_extractor.query(
-        torch.tensor(full_mesh.vertices).unsqueeze(0).to(device), {"smpl_nsdf": None})
-
-    vert_mask = ~((face_dist < 4e-2) * (vis_mask)).flatten()
-    BNI_faces_mask = vert_mask[full_mesh.faces].all(dim=1)
-
-    full_mesh.update_faces(BNI_faces_mask.detach().cpu())
-    full_mesh.remove_unreferenced_vertices()
-    full_mesh = clean_floats(full_mesh)
-
-    return full_mesh
-
-
-def rot6d_to_rotmat(x):
-    """Convert 6D rotation representation to 3x3 rotation matrix.
-    Based on Zhou et al., "On the Continuity of Rotation Representations in Neural Networks", CVPR 2019
-    Input:
-        (B,6) Batch of 6-D rotation representations
-    Output:
-        (B,3,3) Batch of corresponding rotation matrices
-    """
-    x = x.view(-1, 3, 2)
-    a1 = x[:, :, 0]
-    a2 = x[:, :, 1]
-    b1 = F.normalize(a1)
-    b2 = F.normalize(a2 - torch.einsum("bi,bi->b", b1, a2).unsqueeze(-1) * b1)
-    b3 = torch.cross(b1, b2)
-    return torch.stack((b1, b2, b3), dim=-1)
 
 
 def cross(triangles):
@@ -951,8 +911,8 @@ def clean_mesh(verts, faces):
     return final_verts, final_faces
 
 
-def clean_floats(mesh, thres=100):
-
+def clean_floats(mesh):
+    thres = mesh.vertices.shape[0] * 1e-2
     mesh_lst = mesh.split(only_watertight=False)
     clean_mesh_lst = [mesh for mesh in mesh_lst if mesh.vertices.shape[0] > thres]
     return sum(clean_mesh_lst)
@@ -1016,6 +976,13 @@ class SMPLX:
             [self.smplx_mano_vid_dict["left_hand"], self.smplx_mano_vid_dict["right_hand"]])
         self.smplx_flame_vid = np.load(self.smplx_flame_vid_path, allow_pickle=True)
         self.smplx_front_flame_vid = self.smplx_flame_vid[np.load(self.front_flame_path)]
+
+        self.front_flame_vertex_mask = torch.zeros(self.smplx_verts.shape[0],).index_fill_(
+            0, torch.tensor(self.smplx_front_flame_vid), 1.0)
+        self.mano_vertex_mask = torch.zeros(self.smplx_verts.shape[0],).index_fill_(
+            0, torch.tensor(self.smplx_mano_vid), 1.0)
+        self.eyeball_vertex_mask = torch.zeros(self.smplx_verts.shape[0],).index_fill_(
+            0, torch.tensor(self.smplx_faces[self.smplx_eyeball_fid_mask].flatten()), 1.0)
 
         self.smplx_to_smpl = cPickle.load(open(self.smplx_to_smplx_path, "rb"))
 
