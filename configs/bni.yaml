@@ -17,5 +17,6 @@ clean_mesh: True  # if True, will remove floating pieces
 cloth_overlap_thres: 0.50
 body_overlap_thres: 0.93
 
-use_smpl: ["hand", "face"]
+# use_smpl: ["hand", "face"]
+use_smpl: []
 always_ifnet: True

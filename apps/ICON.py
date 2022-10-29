@@ -420,34 +420,3 @@ class ICON(pl.LightningModule):
                     wandb.Image(image, caption="multi-views")
             })
 
-    def test_single(self, batch):
-
-        self.netG.eval()
-        self.netG.training = False
-        in_tensor_dict = {}
-
-        for name in self.in_total:
-            if name in batch.keys():
-                in_tensor_dict.update({name: batch[name]})
-
-        in_tensor_dict.update({
-            k: batch[k] if k in batch.keys() else None
-            for k in getattr(self, f"{self.prior_type}_keys")
-        })
-
-        with torch.no_grad():
-            features, inter = self.netG.filter(in_tensor_dict, return_inter=True)
-            sdf = self.reconEngine(opt=self.cfg,
-                                   netG=self.netG,
-                                   features=features,
-                                   proj_matrix=None)
-
-        verts_pr, faces_pr = self.reconEngine.export_mesh(sdf)
-
-        if self.clean_mesh_flag:
-            verts_pr, faces_pr = clean_mesh(verts_pr, faces_pr)
-
-        verts_pr -= (self.resolutions[-1] - 1) / 2.0
-        verts_pr /= (self.resolutions[-1] - 1) / 2.0
-
-        return verts_pr, faces_pr, inter

@@ -106,7 +106,7 @@ class BNI:
     # code: https://github.com/hoshino042/bilateral_normal_integration
     # paper: Bilateral Normal Integration
 
-    def extract_surface(self, idx):
+    def extract_surface(self, idx, verbose=True):
 
         F_verts, F_faces, F_depth = bilateral_normal_integration_new(
             normal_map=self.normal_front,
@@ -116,6 +116,7 @@ class BNI:
             depth_map=self.depth_front,
             depth_mask=self.depth_mask,
             label="Front",
+            verbose=verbose
         )
 
         B_verts, B_faces, B_depth = bilateral_normal_integration_new(
@@ -126,6 +127,7 @@ class BNI:
             depth_map=self.depth_back,
             depth_mask=self.depth_mask,
             label="Back",
+            verbose=verbose
         )
 
         F_verts = verts_inverse_transform(F_verts, self.scale)
@@ -159,10 +161,10 @@ class BNI:
                                            process=False,
                                            maintain_order=True)
 
-        IO().save_mesh(
-            self.F_B_surfaces,
-            os.path.join(self.export_dir, f"{self.name}_{idx}_F_B_surface.obj"),
-        )
+        # IO().save_mesh(
+        #     self.F_B_surfaces,
+        #     os.path.join(self.export_dir, f"{self.name}_{idx}_F_B_surface.obj"),
+        # )
 
 
 if __name__ == "__main__":

@@ -122,8 +122,8 @@ _C.net.soft_onehot = True
 _C.net.no_residual = True
 _C.net.use_attention = False
 
-_C.net.prior_type = "sdf"
-_C.net.smpl_feats = ["sdf", "cmap", "norm", "vis"]
+_C.net.prior_type = "icon"
+_C.net.smpl_feats = ["sdf", "vis"]
 _C.net.use_filter = True
 _C.net.use_cc = False
 _C.net.use_PE = False

@@ -531,7 +531,8 @@ def bilateral_normal_integration_new(normal_map,
                                      tol=1e-4,
                                      cg_max_iter=5000,
                                      cg_tol=1e-3,
-                                     label=""):
+                                     label="",
+                                     verbose=True):
 
     # To avoid confusion, we list the coordinate systems in this code as follows
     #
@@ -650,8 +651,11 @@ def bilateral_normal_integration_new(normal_map,
             normal_mask]  # shape: (num_normals,)
         z_prior[~depth_mask_flat] = 0
 
-    pbar = tqdm(range(max_iter))
-
+    if verbose:
+        pbar = tqdm(range(max_iter))
+    else:
+        pbar = range(max_iter)
+        
     for i in pbar:
         data_term_top = wu[has_top_mask_flat] * nz_top_square
         data_term_bottom = (1 - wu[has_bottom_mask_flat]) * nz_bottom_square
@@ -716,7 +720,8 @@ def bilateral_normal_integration_new(normal_map,
 
         energy_list.append(energy)
         relative_energy = cp.abs(energy - energy_old) / energy_old
-        pbar.set_description(f"BNI[{label}] steps --- {i+1}/{max_iter} energy: {energy:.2f}")
+        if verbose:
+            pbar.set_description(f"BNI[{label}] steps --- {i+1}/{max_iter} energy: {energy:.2f}")
         if relative_energy < tol:
             break
     del A1, A2, A3, A4, nx, ny
@@ -794,17 +799,18 @@ def save_normal_tensor(in_tensor, idx, png_path):
 
     np.save(png_path + ".npy", BNI_dict, allow_pickle=True)
 
-    # obj export
-    smpl_obj = trimesh.Trimesh(
-        verts_transform(
-            in_tensor["smpl_verts"].detach().cpu()[idx] * torch.tensor([1.0, -1.0, 1.0]),
-            depth_scale,
-        ),
-        in_tensor["smpl_faces"].detach().cpu()[0],
-        process=False,
-        maintains_order=True,
-    )
+    if False:
+        # obj export
+        smpl_obj = trimesh.Trimesh(
+            verts_transform(
+                in_tensor["smpl_verts"].detach().cpu()[idx] * torch.tensor([1.0, -1.0, 1.0]),
+                depth_scale,
+            ),
+            in_tensor["smpl_faces"].detach().cpu()[0],
+            process=False,
+            maintains_order=True,
+        )
 
-    smpl_obj.export(png_path + "_smpl.obj")
+        smpl_obj.export(png_path + "_smpl.obj")
 
     return BNI_dict

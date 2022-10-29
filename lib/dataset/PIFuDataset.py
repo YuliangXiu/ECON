@@ -15,6 +15,7 @@
 # Contact: ps-license@tuebingen.mpg.de
 
 from lib import smplx
+import torch.nn.functional as F
 from lib.renderer.mesh import load_fit_body, compute_normal_batch
 from lib.dataset.body_model import TetraSMPLModel
 from lib.common.render import Render
@@ -151,7 +152,7 @@ class PIFuDataset:
             transforms.Normalize((0.0,), (1.0,)),
         ])
 
-        self.device = torch.device(f"cuda:{cfg.gpus[0]}")
+        self.device = torch.device("cuda:0")
         self.render = Render(size=512, device=self.device)
 
     def render_normal(self, verts, faces):
@@ -652,6 +653,35 @@ class PIFuDataset:
         labels = torch.from_numpy(labels).float()
 
         return {"samples_geo": samples, "labels_geo": labels}
+    
+    @staticmethod
+    def depth_to_voxel(data_dict, vol_res):
+
+        data_dict["depth_F"] = transforms.Resize(vol_res)(data_dict["depth_F"])
+        data_dict["depth_B"] = transforms.Resize(vol_res)(data_dict["depth_B"])
+
+        depth_mask = (~torch.isnan(data_dict['depth_F']))
+        depth_FB = torch.cat([data_dict['depth_F'], data_dict['depth_B']], dim=0)
+        depth_FB[:, ~depth_mask[0]] = 0.
+        # Important: index_long = depth_value - 1
+        index_z = (((depth_FB + 1.) * 0.5 * vol_res).round() - 1).clip(
+            0, vol_res - 1).long().permute(1, 2, 0)
+        index_mask = index_z[..., 0] == torch.tensor(vol_res * 0.5 - 1).long()
+        voxels = F.one_hot(index_z[..., 0], vol_res) + F.one_hot(index_z[..., 1], vol_res)
+        voxels[index_mask] *= 0
+        voxels = torch.flip(voxels, [2]).permute(2, 0, 1).float()  #[x-2, y-0, z-1]
+
+        return {
+            "depth_voxels": voxels.flip([
+                0,
+            ]).unsqueeze(0)
+        }
+        
+    def render_depth(self, verts, faces):
+
+        # render optimized mesh (normal, T_normal, image [-1,1])
+        self.render.load_meshes(verts, faces)
+        return self.render.get_image(type="depth")
 
     def visualize_sampling3D(self, data_dict, mode="vis"):
 
