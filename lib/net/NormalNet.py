@@ -166,7 +166,7 @@ class NormalNet(BasePIFuNet):
                 loss_G_GAN_Feat = 0
                 for i in range(2):
                     for j in range(len(pred_fake[i]) - 1):
-                        loss_G_GAN_Feat += self.l1_loss(pred_fake[i][j], pred_real[i][j])
+                        loss_G_GAN_Feat += self.l1_loss(pred_fake[i][j], pred_real[i][j].detach())
                 total_loss["netB"] += loss_G_GAN_Feat * self.B_losses_ratio[self.B_losses.index(
                     'gan_feat')]
                 total_loss["G_GAN_Feat"] = loss_G_GAN_Feat * self.B_losses_ratio[

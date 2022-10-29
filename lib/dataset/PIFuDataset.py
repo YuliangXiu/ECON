@@ -14,6 +14,7 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
+from lib import smplx
 from lib.renderer.mesh import load_fit_body, compute_normal_batch
 from lib.dataset.body_model import TetraSMPLModel
 from lib.common.render import Render
@@ -40,8 +41,7 @@ import torchvision.transforms as transforms
 
 cape_gender = {
     "male": [
-        '00032', '00096', '00122', '00127', '00145', '00215', '02474', '03284',
-        '03375', '03394'
+        '00032', '00096', '00122', '00127', '00145', '00215', '02474', '03284', '03375', '03394'
     ],
     "female": ['00134', '00159', '03223', '03331', '03383']
 }
@@ -68,15 +68,11 @@ class PIFuDataset:
         self.prior_type = cfg.net.prior_type
 
         self.base_keys = ["smpl_verts", "smpl_faces"]
-        self.icon_keys = self.base_keys + [
-            f"smpl_{feat_name}" for feat_name in cfg.net.smpl_feats
-        ]
+        self.icon_keys = self.base_keys + [f"smpl_{feat_name}" for feat_name in cfg.net.smpl_feats]
         self.keypoint_keys = self.base_keys + [
             f"smpl_{feat_name}" for feat_name in cfg.net.smpl_feats
         ]
-        self.pamir_keys = [
-            "voxel_verts", "voxel_faces", "pad_v_num", "pad_f_num"
-        ]
+        self.pamir_keys = ["voxel_verts", "voxel_faces", "pad_v_num", "pad_f_num"]
         self.pifu_keys = []
 
         self.noise_type = self.opt.noise_type
@@ -111,8 +107,7 @@ class PIFuDataset:
         self.in_total_dim = self.in_geo_dim + self.in_nml_dim
 
         if self.split == "train":
-            self.rotations = np.arange(0, 360, 360 /
-                                       self.opt.rotation_num).astype(np.int32)
+            self.rotations = np.arange(0, 360, 360 / self.opt.rotation_num).astype(np.int32)
         else:
             self.rotations = range(0, 360, 120)
 
@@ -136,10 +131,8 @@ class PIFuDataset:
                 "scale": self.scales[dataset_id],
             }
 
-            self.datasets_dict[dataset].update({
-                "subjects":
-                np.loadtxt(osp.join(dataset_dir, "all.txt"), dtype=str)
-            })
+            self.datasets_dict[dataset].update(
+                {"subjects": np.loadtxt(osp.join(dataset_dir, "all.txt"), dtype=str)})
 
         self.subject_list = self.get_subject_list(split)
         self.smplx = SMPLX()
@@ -155,7 +148,7 @@ class PIFuDataset:
         self.mask_to_tensor = transforms.Compose([
             transforms.Resize(self.input_size),
             transforms.ToTensor(),
-            transforms.Normalize((0.0, ), (1.0, )),
+            transforms.Normalize((0.0,), (1.0,)),
         ])
 
         self.device = torch.device(f"cuda:{cfg.gpus[0]}")
@@ -173,15 +166,22 @@ class PIFuDataset:
 
         for dataset in self.datasets:
 
-            split_txt = osp.join(self.root, dataset, f"{split}.txt")
+            if self.split != 'test':
+                split_txt = osp.join(self.root, dataset, f"{split}.txt")
+            else:
+                if dataset == 'renderpeople':
+                    split_txt = osp.join(self.root, dataset, "loose.txt")
+                elif dataset == 'cape':
+                    split_txt = osp.join(self.root, dataset, "pose.txt")
+                else:
+                    split_txt = osp.join(self.root, dataset, f"{split}.txt")
 
             if osp.exists(split_txt) and osp.getsize(split_txt) > 0:
                 print(f"load from {split_txt}")
                 subject_list += np.loadtxt(split_txt, dtype=str).tolist()
 
         if self.split == "train":
-            subject_list += subject_list[:self.bsize -
-                                         len(subject_list) % self.bsize]
+            subject_list += subject_list[:self.bsize - len(subject_list) % self.bsize]
             print(colored(f"total: {len(subject_list)}", "yellow"))
 
         # subject_list = ["thuman2/0008"]
@@ -202,70 +202,53 @@ class PIFuDataset:
         rotation = self.rotations[rid]
         subject = self.subject_list[mid].split("/")[1]
         dataset = self.subject_list[mid].split("/")[0]
-        render_folder = "/".join(
-            [dataset + f"_{self.opt.rotation_num}views", subject])
-        
+        render_folder = "/".join([dataset + f"_{self.opt.rotation_num}views", subject])
+
+        if not osp.exists(osp.join(self.root, render_folder)):
+            render_folder = "/".join([dataset + "_36views", subject])
 
         # setup paths
         data_dict = {
-            "dataset":
-            dataset,
-            "subject":
-            subject,
-            "rotation":
-            rotation,
-            "scale":
-            self.datasets_dict[dataset]["scale"],
-            "calib_path":
-            osp.join(self.root, render_folder, "calib", f"{rotation:03d}.txt"),
-            "image_path":
-            osp.join(self.root, render_folder, "render",
-                     f"{rotation:03d}.png"),
-            "vis_path":
-            osp.join(self.root, render_folder, "vis", f"{rotation:03d}.pt"),
+            "dataset": dataset,
+            "subject": subject,
+            "rotation": rotation,
+            "scale": self.datasets_dict[dataset]["scale"],
+            "calib_path": osp.join(self.root, render_folder, "calib", f"{rotation:03d}.txt"),
+            "image_path": osp.join(self.root, render_folder, "render", f"{rotation:03d}.png"),
+            "vis_path": osp.join(self.root, render_folder, "vis", f"{rotation:03d}.pt"),
         }
 
         if dataset == "thuman2":
             data_dict.update({
                 "mesh_path":
-                osp.join(
-                    self.datasets_dict[dataset]["mesh_dir"],
-                    f"{subject}/{subject}.obj",
-                ),
+                    osp.join(
+                        self.datasets_dict[dataset]["mesh_dir"],
+                        f"{subject}/{subject}.obj",
+                    ),
                 "smplx_path":
-                osp.join(self.datasets_dict[dataset]["smplx_dir"],
-                         f"{subject}.obj"),
+                    osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}.obj"),
                 "smplx_param":
-                osp.join(
-                    self.datasets_dict[dataset]["smplx_dir"],
-                    f"{subject}.pkl",
-                ),
+                    osp.join(
+                        self.datasets_dict[dataset]["smplx_dir"],
+                        f"{subject}.pkl",
+                    ),
                 "joint_path":
-                osp.join(self.datasets_dict[dataset]["smplx_dir"],
-                         f"{subject}_joints.npy"),
+                    osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}_joints.npy"),
                 "smpl_path":
-                osp.join(self.datasets_dict[dataset]["smpl_dir"],
-                         f"{subject}.obj"),
+                    osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.obj"),
                 "smpl_param":
-                osp.join(
-                    self.datasets_dict[dataset]["smpl_dir"],
-                    f"{subject}.pkl",
-                ),
+                    osp.join(
+                        self.datasets_dict[dataset]["smpl_dir"],
+                        f"{subject}.pkl",
+                    ),
             })
 
         elif dataset == "cape":
             data_dict.update({
-                "mesh_path":
-                osp.join(self.datasets_dict[dataset]["mesh_dir"],
-                         f"{subject}.obj"),
-                "joint_path":
-                osp.join(self.datasets_dict[dataset]["smpl_dir"],
-                         f"{subject}.npy"),
-                "smpl_path":
-                osp.join(self.datasets_dict[dataset]["smpl_dir"],
-                         f"{subject}.obj"),
-                "smpl_param":
-                osp.join(
+                "mesh_path": osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}.obj"),
+                "joint_path": osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.npy"),
+                "smpl_path": osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.obj"),
+                "smpl_param": osp.join(
                     self.datasets_dict[dataset]["smpl_dir"],
                     f"{subject}.npz",
                 ),
@@ -274,29 +257,26 @@ class PIFuDataset:
 
             data_dict.update({
                 "mesh_path":
-                osp.join(
-                    self.datasets_dict[dataset]["mesh_dir"],
-                    f"{subject}.obj",
-                ),
+                    osp.join(
+                        self.datasets_dict[dataset]["mesh_dir"],
+                        f"{subject}.obj",
+                    ),
                 "smplx_path":
-                osp.join(self.datasets_dict[dataset]["smplx_dir"],
-                         f"{subject}.obj"),
+                    osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}.obj"),
                 "smplx_param":
-                osp.join(
-                    self.datasets_dict[dataset]["smplx_dir"],
-                    f"{subject}.pkl",
-                ),
-                "joint_path":
-                osp.join(self.datasets_dict[dataset]["smplx_dir"],
-                         f"{subject}_joints.npy"),
+                    osp.join(
+                        self.datasets_dict[dataset]["smplx_dir"],
+                        f"{subject}.pkl",
+                    ),
                 "smpl_path":
-                osp.join(self.datasets_dict[dataset]["smpl_dir"],
-                         f"{subject}.obj"),
+                    osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.obj"),
                 "smpl_param":
-                osp.join(
-                    self.datasets_dict[dataset]["smpl_dir"],
-                    f"{subject}.pkl",
-                ),
+                    osp.join(
+                        self.datasets_dict[dataset]["smpl_dir"],
+                        f"{subject}.pkl",
+                    ),
+                "joint_path":
+                    osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}_joints.npy"),
             })
 
         # load training data
@@ -307,25 +287,19 @@ class PIFuDataset:
 
             if f"{name}_path" not in data_dict.keys():
                 data_dict.update({
-                    f"{name}_path":
-                    osp.join(self.root, render_folder, name,
-                             f"{rotation:03d}.png")
+                    f"{name}_path": osp.join(self.root, render_folder, name, f"{rotation:03d}.png")
                 })
 
             # tensor update
             if os.path.exists(data_dict[f"{name}_path"]):
-                data_dict.update({
-                    name:
-                    self.imagepath2tensor(data_dict[f"{name}_path"],
-                                          channel,
-                                          inv=False)
-                })
+                data_dict.update(
+                    {name: self.imagepath2tensor(data_dict[f"{name}_path"], channel, inv=False)})
 
         data_dict.update(self.load_mesh(data_dict))
-        data_dict.update(
-            self.get_sampling_geo(data_dict,
-                                  is_valid=self.split == "val",
-                                  is_sdf=self.use_sdf))
+        if self.split != 'test':
+            data_dict.update(
+                self.get_sampling_geo(data_dict, is_valid=self.split == "val", is_sdf=self.use_sdf))
+
         data_dict.update(self.load_smpl(data_dict, self.vis))
 
         if self.prior_type == "pamir":
@@ -339,9 +313,7 @@ class PIFuDataset:
         if not self.vis:
             del data_dict["mesh"]
 
-        path_keys = [
-            key for key in data_dict.keys() if "_path" in key or "_dir" in key
-        ]
+        path_keys = [key for key in data_dict.keys() if "_path" in key or "_dir" in key]
         for key in path_keys:
             del data_dict[key]
 
@@ -357,8 +329,7 @@ class PIFuDataset:
             img = np.asarray(rgba)[:, :, :3]
             fill_mask = ((mask & (img.sum(axis=2) == 0))).astype(np.uint8)
             image = Image.fromarray(
-                cv2.inpaint(img * mask[..., None], fill_mask, 3,
-                            cv2.INPAINT_TELEA))
+                cv2.inpaint(img * mask[..., None], fill_mask, 3, cv2.INPAINT_TELEA))
             mask = Image.fromarray(mask)
         else:
             mask = rgba.split()[-1]
@@ -392,8 +363,7 @@ class PIFuDataset:
             "faces": torch.as_tensor(faces).long(),
         }
 
-    def add_noise(self, beta_num, smpl_pose, smpl_betas, noise_type,
-                  noise_scale, type, hashcode):
+    def add_noise(self, beta_num, smpl_pose, smpl_betas, noise_type, noise_scale, type, hashcode):
 
         # np.random.seed(hashcode)
 
@@ -402,25 +372,22 @@ class PIFuDataset:
         else:
             noise_idx = self.noise_smpl_idx
 
-        if "beta" in noise_type and noise_scale[noise_type.index(
-                "beta")] > 0.0:
+        if "beta" in noise_type and noise_scale[noise_type.index("beta")] > 0.0:
             smpl_betas += ((np.random.rand(beta_num) - 0.5) * 2.0 *
                            noise_scale[noise_type.index("beta")])
             smpl_betas = smpl_betas.astype(np.float32)
 
-        if "pose" in noise_type and noise_scale[noise_type.index(
-                "pose")] > 0.0:
-            smpl_pose[noise_idx] += ((np.random.rand(len(noise_idx)) - 0.5) *
-                                     2.0 * np.pi *
+        if "pose" in noise_type and noise_scale[noise_type.index("pose")] > 0.0:
+            smpl_pose[noise_idx] += ((np.random.rand(len(noise_idx)) - 0.5) * 2.0 * np.pi *
                                      noise_scale[noise_type.index("pose")])
             smpl_pose = smpl_pose.astype(np.float32)
         if type == "smplx":
-            return torch.as_tensor(smpl_pose[None, ...]), torch.as_tensor(
-                smpl_betas[None, ...])
+            return torch.as_tensor(smpl_pose[None, ...]), torch.as_tensor(smpl_betas[None, ...])
         else:
             return smpl_pose, smpl_betas
 
     def compute_smpl_verts(self, data_dict, noise_type=None, noise_scale=None):
+        # TODO: sync with compute_voxel_verts
 
         dataset = data_dict["dataset"]
         smplx_dict = {}
@@ -435,8 +402,7 @@ class PIFuDataset:
             noise_type,
             noise_scale,
             type="smplx",
-            hashcode=(hash(f"{data_dict['subject']}_{data_dict['rotation']}"))
-            % (10**8),
+            hashcode=(hash(f"{data_dict['subject']}_{data_dict['rotation']}")) % (10**8),
         )
 
         smplx_out, smplx_joints = load_fit_body(
@@ -457,30 +423,38 @@ class PIFuDataset:
 
         return smplx_out.vertices, smplx_dict
 
-    def compute_voxel_verts(self,
-                            data_dict,
-                            noise_type=None,
-                            noise_scale=None):
+    def compute_voxel_verts(self, data_dict, noise_type=None, noise_scale=None):
 
         smpl_param = np.load(data_dict["smpl_param"], allow_pickle=True)
 
-        if data_dict['dataset'] == 'cape':
+        if data_dict['dataset'] == "thuman2":
+            gender = 'male'
+            smpl_trans = smpl_param["transl"]
+            smpl_pose = rotation_matrix_to_angle_axis(torch.as_tensor(
+                smpl_param["full_pose"][0])).numpy()
+            smpl_betas = smpl_param["betas"]
+        elif data_dict['dataset'] == 'cape':
             pid = data_dict['subject'].split("-")[0]
             gender = "male" if pid in cape_gender["male"] else "female"
             smpl_pose = smpl_param['pose'].flatten()
             smpl_betas = np.zeros((1, 10))
+            smpl_trans = smpl_param["transl"]
         else:
-            gender = 'male'
-            smpl_pose = rotation_matrix_to_angle_axis(
-                torch.as_tensor(smpl_param["full_pose"][0])).numpy()
+            gender = np.load(data_dict['smplx_param'], allow_pickle=True)['gender']
+            smpl_trans = smpl_param["translation"][0].numpy()
+            smpl_pose = rotation_matrix_to_angle_axis(torch.as_tensor(
+                smpl_param["full_pose"][0])).numpy()
             smpl_betas = smpl_param["betas"]
 
-        smpl_path = osp.join(self.smplx.model_dir,
-                             f"smpl/SMPL_{gender.upper()}.pkl")
-        tetra_path = osp.join(self.smplx.tedra_dir,
-                              f"tetra_{gender}_adult_smpl.npz")
+        if smpl_betas.shape[0] == 11:
+            age = 'kid'
+        else:
+            age = 'adult'
 
-        smpl_model = TetraSMPLModel(smpl_path, tetra_path, "adult")
+        smpl_path = osp.join(self.smplx.model_dir, f"smpl/SMPL_{gender.upper()}.pkl")
+        tetra_path = osp.join(self.smplx.tedra_dir, f"tetra_{gender}_{age}_smpl.npz")
+
+        smpl_model = TetraSMPLModel(smpl_path, tetra_path, age)
 
         smpl_pose, smpl_betas = self.add_noise(
             smpl_model.beta_shape[0],
@@ -489,62 +463,53 @@ class PIFuDataset:
             noise_type,
             noise_scale,
             type="smpl",
-            hashcode=(hash(f"{data_dict['subject']}_{data_dict['rotation']}"))
-            % (10**8),
+            hashcode=(hash(f"{data_dict['subject']}_{data_dict['rotation']}")) % (10**8),
         )
 
-        smpl_model.set_params(pose=smpl_pose.reshape(-1, 3),
-                              beta=smpl_betas,
-                              trans=smpl_param["transl"])
-        if data_dict['dataset'] == 'cape':
-            verts = np.concatenate([smpl_model.verts, smpl_model.verts_added],
-                                   axis=0) * 100.0
+        smpl_model.set_params(pose=smpl_pose.reshape(-1, 3), beta=smpl_betas, trans=smpl_trans)
+
+        if data_dict['dataset'] != 'thuman2':
+            verts = np.concatenate([smpl_model.verts, smpl_model.verts_added], axis=0) * 100.0
         else:
-            verts = (np.concatenate([smpl_model.verts, smpl_model.verts_added],
-                                    axis=0) * smpl_param["scale"] +
-                     smpl_param["translation"]
-                     ) * self.datasets_dict[data_dict["dataset"]]["scale"]
+            verts = (np.concatenate([smpl_model.verts, smpl_model.verts_added], axis=0) *
+                     smpl_param["scale"] +
+                     smpl_param["translation"]) * self.datasets_dict[data_dict["dataset"]]["scale"]
 
         faces = (np.loadtxt(
-            osp.join(self.smplx.tedra_dir, "tetrahedrons_male_adult.txt"),
+            osp.join(self.smplx.tedra_dir, f"tetrahedrons_{gender}_{age}.txt"),
             dtype=np.int32,
         ) - 1)
 
         pad_v_num = int(8000 - verts.shape[0])
         pad_f_num = int(25100 - faces.shape[0])
 
-        verts = np.pad(verts, ((0, pad_v_num), (0, 0)),
-                       mode="constant",
+        verts = np.pad(verts, ((0, pad_v_num), (0, 0)), mode="constant",
                        constant_values=0.0).astype(np.float32)
-        faces = np.pad(faces, ((0, pad_f_num), (0, 0)),
-                       mode="constant",
+        faces = np.pad(faces, ((0, pad_f_num), (0, 0)), mode="constant",
                        constant_values=0.0).astype(np.int32)
 
         return verts, faces, pad_v_num, pad_f_num
 
     def load_smpl(self, data_dict, vis=False):
 
-        smpl_type = ("smplx" if
-                     ("smplx_path" in data_dict.keys()
-                      and os.path.exists(data_dict["smplx_path"])) else "smpl")
+        smpl_type = ("smplx" if ("smplx_path" in data_dict.keys() and
+                                 os.path.exists(data_dict["smplx_path"])) else "smpl")
 
         return_dict = {}
+        smplx_joints = None
 
         # add random noise to SMPL-(X) params
-        if ("smplx_param" in data_dict.keys()
-                and os.path.exists(data_dict["smplx_param"])
-                and sum(self.noise_scale) > 0.0):
-            smplx_verts, smplx_dict = self.compute_smpl_verts(
-                data_dict, self.noise_type, self.noise_scale)
+        if ("smplx_param" in data_dict.keys() and os.path.exists(data_dict["smplx_param"]) and
+                sum(self.noise_scale) > 0.0):
+            smplx_verts, smplx_dict = self.compute_smpl_verts(data_dict, self.noise_type,
+                                                              self.noise_scale)
             smplx_faces = torch.as_tensor(self.smplx.smplx_faces).long()
 
             if "smpl_vis" in getattr(self, f"{self.prior_type}_keys"):
 
-                (xy, z) = (torch.as_tensor(smplx_verts).to(self.device).split(
-                    [2, 1], dim=1))
-                smplx_vis = get_visibility(
-                    xy, z,
-                    torch.as_tensor(smplx_faces).to(self.device).long())
+                (xy, z) = (torch.as_tensor(smplx_verts).to(self.device).split([2, 1], dim=1))
+                smplx_vis = get_visibility(xy, z,
+                                           torch.as_tensor(smplx_faces).to(self.device).long())
 
                 return_dict.update({"smpl_vis": smplx_vis})
 
@@ -553,34 +518,29 @@ class PIFuDataset:
         # instead, directly load SMPL-(X) objs
         else:
             smplx_vis = torch.load(data_dict["vis_path"]).float()
-            smplx_joints = (
-                torch.as_tensor(np.load(data_dict["joint_path"])).float() *
-                100.0)
             return_dict.update({
                 "smpl_vis": smplx_vis,
-                "smpl_joint": smplx_joints
             })
+            if osp.exists(data_dict["joint_path"]):
+                smplx_joints = (torch.as_tensor(np.load(data_dict["joint_path"])).float() * 100.0)
+                return_dict.update({"smpl_joint": smplx_joints})
 
-            smplx_verts = rescale_smpl(data_dict[f"{smpl_type}_path"],
-                                       scale=100.0)
-            smplx_faces = torch.as_tensor(
-                getattr(self.smplx, f"{smpl_type}_faces")).long()
+            smplx_verts = rescale_smpl(data_dict[f"{smpl_type}_path"], scale=100.0)
+            smplx_faces = torch.as_tensor(getattr(self.smplx, f"{smpl_type}_faces")).long()
 
-        # skeleton loading
-        smplx_joints = projection(return_dict["smpl_joint"],
-                                  data_dict["calib"]).float()
+        if smplx_joints is not None:
+            # skeleton loading
+            smplx_joints = projection(return_dict["smpl_joint"], data_dict["calib"]).float()
 
-        if smpl_type == "smplx":
-            return_dict.update(
-                {"smpl_joint": smplx_joints[self.smpl_joint_ids, :]})
-        else:
-            return_dict.update({"smpl_joint": smplx_joints[:24, :]})
+            if smpl_type == "smplx":
+                return_dict.update({"smpl_joint": smplx_joints[self.smpl_joint_ids, :]})
+            else:
+                return_dict.update({"smpl_joint": smplx_joints[:24, :]})
 
         smplx_cmap = self.smplx.cmap_smpl_vids(smpl_type)
         smplx_verts = projection(smplx_verts, data_dict["calib"]).float()
         smplx_norm = torch.as_tensor(
-            compute_normal_batch(smplx_verts[None, ...],
-                                 smplx_faces[None, ...])).float()[0]
+            compute_normal_batch(smplx_verts[None, ...], smplx_faces[None, ...])).float()[0]
 
         if "smpl_cmap" in getattr(self, f"{self.prior_type}_keys"):
             return_dict.update({"smpl_cmap": smplx_cmap})
@@ -595,8 +555,7 @@ class PIFuDataset:
         if vis:
 
             T_normal_F, T_normal_B = self.render_normal(
-                (smplx_verts * torch.tensor(np.array([1.0, -1.0, 1.0]))).to(
-                    self.device),
+                (smplx_verts * torch.tensor(np.array([1.0, -1.0, 1.0]))).to(self.device),
                 smplx_faces.to(self.device),
             )
 
@@ -605,8 +564,7 @@ class PIFuDataset:
                 "T_normal_B": T_normal_B.squeeze(0),
             })
 
-            query_points = projection(data_dict["samples_geo"],
-                                      data_dict["calib"]).float()
+            query_points = projection(data_dict["samples_geo"], data_dict["calib"]).float()
 
             point_feat_extractor = PointFeat(
                 smplx_verts.unsqueeze(0).to(self.device),
@@ -624,8 +582,7 @@ class PIFuDataset:
             )
 
             feat_lst = [
-                point_feat_out[key][0].detach().cpu()
-                for key in ["sdf", "cmap", "norm", "vis"]
+                point_feat_out[key][0].detach().cpu() for key in ["sdf", "cmap", "norm", "vis"]
             ]
 
             return_dict.update({"smpl_feat": torch.cat(feat_lst, dim=1)})
@@ -635,8 +592,7 @@ class PIFuDataset:
     def load_smpl_voxel(self, data_dict):
 
         smpl_verts, smpl_faces, pad_v_num, pad_f_num = self.compute_voxel_verts(
-            data_dict, self.noise_type,
-            self.noise_scale)  # compute using smpl model
+            data_dict, self.noise_type, self.noise_scale)  # compute using smpl model
         smpl_verts = projection(smpl_verts, data_dict["calib"])
 
         smpl_verts *= 0.5
@@ -657,15 +613,12 @@ class PIFuDataset:
         n_samples_surface = 4 * self.opt.num_sample_geo
         vert_ids = np.arange(mesh.verts.shape[0])
 
-        samples_surface_ids = np.random.choice(vert_ids,
-                                               n_samples_surface,
-                                               replace=True)
+        samples_surface_ids = np.random.choice(vert_ids, n_samples_surface, replace=True)
 
         samples_surface = mesh.verts[samples_surface_ids, :]
 
         # Sampling offsets are random noise with constant scale (15cm - 20cm)
-        offset = np.random.normal(scale=self.opt.sigma_geo,
-                                  size=(n_samples_surface, 1))
+        offset = np.random.normal(scale=self.opt.sigma_geo, size=(n_samples_surface, 1))
         samples_surface += mesh.vert_normals[samples_surface_ids, :] * offset
 
         # Uniform samples in [-1, 1]
@@ -691,10 +644,9 @@ class PIFuDataset:
             outside_samples = outside_samples[:(self.opt.num_sample_geo - nin)]
 
         samples = np.concatenate([inside_samples, outside_samples])
-        labels = np.concatenate([
-            np.ones(inside_samples.shape[0]),
-            np.zeros(outside_samples.shape[0])
-        ])
+        labels = np.concatenate(
+            [np.ones(inside_samples.shape[0]),
+             np.zeros(outside_samples.shape[0])])
 
         samples = torch.from_numpy(samples).float()
         labels = torch.from_numpy(labels).float()
@@ -784,18 +736,15 @@ class PIFuDataset:
         # create a picure
         img_pos = [1.0, 0.0, -1.0]
         for img_id, img_key in enumerate(["normal_F", "image", "T_normal_B"]):
-            image_arr = (
-                (data_dict[img_key].detach().cpu().permute(1, 2, 0).numpy() +
-                 1.0) * 0.5 * 255.0)
+            image_arr = ((data_dict[img_key].detach().cpu().permute(1, 2, 0).numpy() + 1.0) * 0.5 *
+                         255.0)
             image_dim = image_arr.shape[0]
             image = (vedo.Picture(image_arr).scale(2.0 / image_dim).pos(
                 -1.0, -1.0, img_pos[img_id]))
             vis_list.append(image)
 
         # create skeleton
-        kpt = vedo.Points(keypoints,
-                          r=15,
-                          c=np.float32(np.ones_like(keypoints)))
+        kpt = vedo.Points(keypoints, r=15, c=np.float32(np.ones_like(keypoints)))
         vis_list.append(kpt)
 
         vp.show(*vis_list, bg="white", axes=1.0, interactive=True)

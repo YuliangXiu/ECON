@@ -348,9 +348,10 @@ class ICON(pl.LightningModule):
 
         accu_outputs = accumulate(
             outputs,
-            rot_num=3,
+            rot_num=self.cfg.dataset.rotation_num,
             split={
-                "cape-hard": (0, 100)
+                self.cfg.dataset.types[0]: (0, 100),
+                self.cfg.dataset.types[1]: (100, 200)
             },
         )
 
