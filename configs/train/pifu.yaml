@@ -33,7 +33,7 @@ net:
   num_stack: 2
   prior_type: "pifu"
   use_filter: True
-  in_geo: (('normal_F',3), ('normal_B',3))
+  in_geo: (('image',3), )
   in_nml: (('image',3), ('T_normal_F',3), ('T_normal_B',3))
   gtype: 'HGPIFuNet'
   ctype: 'resnet34'

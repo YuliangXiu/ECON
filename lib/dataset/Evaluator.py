@@ -169,13 +169,13 @@ class Evaluator:
         self.render = Render(size=512, device=device)
         self.device = device
 
-    def set_mesh(self, result_dict):
+    def set_mesh(self, result_dict, scale=True):
 
         for k, v in result_dict.items():
             setattr(self, k, v)
-
-        self.verts_pr -= self.recon_size / 2.0
-        self.verts_pr /= self.recon_size / 2.0
+        if scale:
+            self.verts_pr -= self.recon_size / 2.0
+            self.verts_pr /= self.recon_size / 2.0
         self.verts_gt = projection(self.verts_gt, self.calib)
         self.verts_gt[:, 1] *= -1
 
@@ -196,6 +196,9 @@ class Evaluator:
         src_norm = torch.norm(src_normal_arr, dim=0, keepdim=True)
         tgt_norm = torch.norm(tgt_normal_arr, dim=0, keepdim=True)
 
+        src_norm[src_norm==0.0] = 1.0
+        tgt_norm[tgt_norm==0.0] = 1.0
+        
         src_normal_arr /= src_norm
         tgt_normal_arr /= tgt_norm
 

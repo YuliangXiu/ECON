@@ -87,7 +87,9 @@ class HGPIFuNet(BasePIFuNet):
                 self.channels_filter = [normal_F_lst, normal_B_lst]
 
         else:
-            if "image" in self.in_geo:
+            if ["image"] == self.in_geo:
+                self.channels_filter = [image_lst]
+            elif "image" in self.in_geo:
                 self.channels_filter = [image_lst + normal_F_lst + normal_B_lst]
             else:
                 self.channels_filter = [normal_F_lst + normal_B_lst]

@@ -1,4 +1,4 @@
-name: bni
+name: econ
 ckpt_dir: "./data/ckpt/"
 normal_path: "./data/ckpt/normal/last.ckpt"
 ifnet_path: "./data/ckpt/IF-Geo/last-256.ckpt"

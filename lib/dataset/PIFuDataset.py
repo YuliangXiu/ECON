@@ -94,9 +94,6 @@ class PIFuDataset:
             self.noise_smplx_idx.append((idx - 1) * 3 + 1)
             self.noise_smplx_idx.append((idx - 1) * 3 + 2)
 
-        self.use_sdf = cfg.sdf
-        self.sdf_clip = cfg.sdf_clip
-
         # [(feat_name, channel_num),...]
         self.in_geo = [item[0] for item in cfg.net.in_geo]
         self.in_nml = [item[0] for item in cfg.net.in_nml]
@@ -299,7 +296,7 @@ class PIFuDataset:
         data_dict.update(self.load_mesh(data_dict))
         if self.split != 'test':
             data_dict.update(
-                self.get_sampling_geo(data_dict, is_valid=self.split == "val", is_sdf=self.use_sdf))
+                self.get_sampling_geo(data_dict, is_valid=self.split == "val"))
 
         data_dict.update(self.load_smpl(data_dict, self.vis))
 
@@ -433,7 +430,7 @@ class PIFuDataset:
             smpl_trans = smpl_param["transl"]
             smpl_pose = rotation_matrix_to_angle_axis(torch.as_tensor(
                 smpl_param["full_pose"][0])).numpy()
-            smpl_betas = smpl_param["betas"]
+            smpl_betas = smpl_param["betas"].flatten()
         elif data_dict['dataset'] == 'cape':
             pid = data_dict['subject'].split("-")[0]
             gender = "male" if pid in cape_gender["male"] else "female"
@@ -445,7 +442,7 @@ class PIFuDataset:
             smpl_trans = smpl_param["translation"][0].numpy()
             smpl_pose = rotation_matrix_to_angle_axis(torch.as_tensor(
                 smpl_param["full_pose"][0])).numpy()
-            smpl_betas = smpl_param["betas"]
+            smpl_betas = smpl_param["betas"].flatten()
 
         if smpl_betas.shape[0] == 11:
             age = 'kid'
@@ -457,15 +454,16 @@ class PIFuDataset:
 
         smpl_model = TetraSMPLModel(smpl_path, tetra_path, age)
 
-        smpl_pose, smpl_betas = self.add_noise(
-            smpl_model.beta_shape[0],
-            smpl_pose.flatten(),
-            smpl_betas[0],
-            noise_type,
-            noise_scale,
-            type="smpl",
-            hashcode=(hash(f"{data_dict['subject']}_{data_dict['rotation']}")) % (10**8),
-        )
+        if sum(self.noise_scale) > 0.0:
+            smpl_pose, smpl_betas = self.add_noise(
+                smpl_model.beta_shape[0],
+                smpl_pose.flatten(),
+                smpl_betas[0],
+                noise_type,
+                noise_scale,
+                type="smpl",
+                hashcode=(hash(f"{data_dict['subject']}_{data_dict['rotation']}")) % (10**8),
+            )
 
         smpl_model.set_params(pose=smpl_pose.reshape(-1, 3), beta=smpl_betas, trans=smpl_trans)
 
@@ -498,7 +496,7 @@ class PIFuDataset:
 
         return_dict = {}
         smplx_joints = None
-
+        
         # add random noise to SMPL-(X) params
         if ("smplx_param" in data_dict.keys() and os.path.exists(data_dict["smplx_param"]) and
                 sum(self.noise_scale) > 0.0):
@@ -653,7 +651,7 @@ class PIFuDataset:
         labels = torch.from_numpy(labels).float()
 
         return {"samples_geo": samples, "labels_geo": labels}
-    
+
     @staticmethod
     def depth_to_voxel(data_dict, vol_res):
 
@@ -664,8 +662,9 @@ class PIFuDataset:
         depth_FB = torch.cat([data_dict['depth_F'], data_dict['depth_B']], dim=0)
         depth_FB[:, ~depth_mask[0]] = 0.
         # Important: index_long = depth_value - 1
-        index_z = (((depth_FB + 1.) * 0.5 * vol_res).round() - 1).clip(
-            0, vol_res - 1).long().permute(1, 2, 0)
+        index_z = (((depth_FB + 1.) * 0.5 * vol_res).round() - 1).clip(0,
+                                                                       vol_res - 1).long().permute(
+                                                                           1, 2, 0)
         index_mask = index_z[..., 0] == torch.tensor(vol_res * 0.5 - 1).long()
         voxels = F.one_hot(index_z[..., 0], vol_res) + F.one_hot(index_z[..., 1], vol_res)
         voxels[index_mask] *= 0
@@ -676,7 +675,7 @@ class PIFuDataset:
                 0,
             ]).unsqueeze(0)
         }
-        
+
     def render_depth(self, verts, faces):
 
         # render optimized mesh (normal, T_normal, image [-1,1])

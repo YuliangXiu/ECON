@@ -369,10 +369,11 @@ class ICON(pl.LightningModule):
     def tensor2image(self, height, inter):
 
         all = []
-        for dim in self.in_geo_dim:
+
+        for dim in self.in_geo_dim[-2:]:
             img = resize(
                 np.tile(
-                    ((inter[:dim].cpu().numpy() + 1.0) / 2.0 * 255.0).transpose(1, 2, 0),
+                    ((inter[-dim:].cpu().numpy() + 1.0) / 2.0 * 255.0).transpose(1, 2, 0),
                     (1, 1, int(3 / dim)),
                 ),
                 (height, height),
@@ -380,7 +381,7 @@ class ICON(pl.LightningModule):
             )
 
             all.append(img)
-            inter = inter[dim:]
+            inter = inter[:-dim]
 
         return all
 
@@ -391,7 +392,7 @@ class ICON(pl.LightningModule):
                 in_tensor_dict[name] = in_tensor_dict[name][0:1]
 
         self.netG.eval()
-        features, inter = self.netG.filter(in_tensor_dict, return_inter=True)
+        features = self.netG.filter(in_tensor_dict, return_inter=False)
         sdf = self.reconEngine(opt=self.cfg, netG=self.netG, features=features, proj_matrix=None)
 
         if sdf is not None:
@@ -405,18 +406,11 @@ class ICON(pl.LightningModule):
                 (height, height),
                 anti_aliasing=True,
             )
-            image_inter = self.tensor2image(height, inter[0])
+         
             image = PIL.Image.fromarray(
-                np.concatenate(
-                    [
-                        image_pred,
-                        np.concatenate([image_gt] + image_inter + [image_gt], axis=1),
-                    ],
-                    axis=0,
-                ).astype(np.uint8))
+                np.concatenate([image_gt, image_pred],axis=1).astype(np.uint8))
 
             self.logger.experiment.log({
                 f"SDF/{dataset}/{idx if not self.overfit else 1}":
                     wandb.Image(image, caption="multi-views")
             })
-

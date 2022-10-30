@@ -53,13 +53,13 @@ if __name__ == "__main__":
     parser.add_argument("-loop_smpl", "--loop_smpl", type=int, default=100)
     parser.add_argument("-patience", "--patience", type=int, default=5)
     parser.add_argument("-vis_freq", "--vis_freq", type=int, default=1000)
-    parser.add_argument("-hps_type", "--hps_type", type=str, default="pymafx")
+    parser.add_argument("-hps_type", "--hps_type", type=str, default="pixie")
     parser.add_argument("-export_video", action="store_true")
     parser.add_argument("-BNI", action="store_false")
     parser.add_argument("-in_dir", "--in_dir", type=str, default="./examples")
     parser.add_argument("-out_dir", "--out_dir", type=str, default="./results")
     parser.add_argument("-seg_dir", "--seg_dir", type=str, default=None)
-    parser.add_argument("-cfg", "--config", type=str, default="./configs/bni.yaml")
+    parser.add_argument("-cfg", "--config", type=str, default="./configs/econ.yaml")
 
     args = parser.parse_args()
 

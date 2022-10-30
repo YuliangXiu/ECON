@@ -8,6 +8,7 @@ import numpy as np
 from cupyx.scipy.sparse import diags, coo_matrix, vstack, csr_matrix
 from cupyx.scipy.sparse.linalg import cg
 from tqdm.auto import tqdm
+from lib.dataset.mesh_util import clean_floats
 
 
 def find_max_list(lst):
@@ -117,7 +118,7 @@ def remove_stretched_faces(verts, faces):
     faces_cam_angles = np.dot(mesh.face_normals, camera_ray)
 
     # cos(90-20)=0.34 cos(90-10)=0.17, 10~20 degree
-    faces_mask = np.abs(faces_cam_angles) > 3e-1
+    faces_mask = np.abs(faces_cam_angles) > 4e-1
 
     mesh.update_faces(faces_mask)
     mesh.remove_unreferenced_vertices()
@@ -223,6 +224,7 @@ def move_bottom_left(mask):
 def move_bottom_right(mask):
     return cp.pad(mask, ((1, 0), (1, 0)), "constant", constant_values=0)[:-1, :-1]
 
+
 def generate_dx_dy_new(mask, nz_horizontal, nz_vertical, step_size=1):
     # pixel coordinates
     # ^ vertical positive
@@ -245,23 +247,26 @@ def generate_dx_dy_new(mask, nz_horizontal, nz_vertical, step_size=1):
     nz_top = nz_vertical[has_top_mask[mask]]
     nz_bottom = nz_vertical[has_bottom_mask[mask]]
 
-    data = cp.stack([-nz_left/step_size, nz_left/step_size], -1).flatten()
-    indices = cp.stack((pixel_idx[move_left(has_left_mask)], pixel_idx[has_left_mask]), -1).flatten()
+    data = cp.stack([-nz_left / step_size, nz_left / step_size], -1).flatten()
+    indices = cp.stack((pixel_idx[move_left(has_left_mask)], pixel_idx[has_left_mask]),
+                       -1).flatten()
     indptr = cp.concatenate([cp.array([0]), cp.cumsum(has_left_mask[mask].astype(int) * 2)])
     D_horizontal_neg = csr_matrix((data, indices, indptr), shape=(num_pixel, num_pixel))
 
-    data = cp.stack([-nz_right/step_size, nz_right/step_size], -1).flatten()
-    indices = cp.stack((pixel_idx[has_right_mask], pixel_idx[move_right(has_right_mask)]), -1).flatten()
+    data = cp.stack([-nz_right / step_size, nz_right / step_size], -1).flatten()
+    indices = cp.stack((pixel_idx[has_right_mask], pixel_idx[move_right(has_right_mask)]),
+                       -1).flatten()
     indptr = cp.concatenate([cp.array([0]), cp.cumsum(has_right_mask[mask].astype(int) * 2)])
     D_horizontal_pos = csr_matrix((data, indices, indptr), shape=(num_pixel, num_pixel))
 
-    data = cp.stack([-nz_top/step_size, nz_top/step_size], -1).flatten()
+    data = cp.stack([-nz_top / step_size, nz_top / step_size], -1).flatten()
     indices = cp.stack((pixel_idx[has_top_mask], pixel_idx[move_top(has_top_mask)]), -1).flatten()
     indptr = cp.concatenate([cp.array([0]), cp.cumsum(has_top_mask[mask].astype(int) * 2)])
     D_vertical_pos = csr_matrix((data, indices, indptr), shape=(num_pixel, num_pixel))
 
-    data = cp.stack([-nz_bottom/step_size, nz_bottom/step_size], -1).flatten()
-    indices = cp.stack((pixel_idx[move_bottom(has_bottom_mask)], pixel_idx[has_bottom_mask]), -1).flatten()
+    data = cp.stack([-nz_bottom / step_size, nz_bottom / step_size], -1).flatten()
+    indices = cp.stack((pixel_idx[move_bottom(has_bottom_mask)], pixel_idx[has_bottom_mask]),
+                       -1).flatten()
     indptr = cp.concatenate([cp.array([0]), cp.cumsum(has_bottom_mask[mask].astype(int) * 2)])
     D_vertical_neg = csr_matrix((data, indices, indptr), shape=(num_pixel, num_pixel))
 
@@ -589,9 +594,9 @@ def bilateral_normal_integration_new(normal_map,
 
     # right, left, top, bottom
     A3, A4, A1, A2 = generate_dx_dy_new(normal_mask,
-                                    nz_horizontal=nz_v,
-                                    nz_vertical=nz_u,
-                                    step_size=step_size)
+                                        nz_horizontal=nz_v,
+                                        nz_vertical=nz_u,
+                                        step_size=step_size)
 
     pixel_idx = cp.zeros_like(normal_mask, dtype=int)
     pixel_idx[normal_mask] = cp.arange(num_normals)
@@ -655,7 +660,7 @@ def bilateral_normal_integration_new(normal_map,
         pbar = tqdm(range(max_iter))
     else:
         pbar = range(max_iter)
-        
+
     for i in pbar:
         data_term_top = wu[has_top_mask_flat] * nz_top_square
         data_term_bottom = (1 - wu[has_bottom_mask_flat]) * nz_bottom_square
@@ -744,10 +749,12 @@ def bilateral_normal_integration_new(normal_map,
 
     vertices, faces = remove_stretched_faces(vertices, faces)
 
-    return torch.as_tensor(vertices), torch.as_tensor(faces).long(), torch.as_tensor(
-        depth_map).float()
-    
-    
+    final_mesh = clean_floats(trimesh.Trimesh(vertices, faces))
+
+    return torch.as_tensor(final_mesh.vertices), torch.as_tensor(
+        final_mesh.faces).long(), torch.as_tensor(depth_map).float()
+
+
 def save_normal_tensor(in_tensor, idx, png_path):
 
     os.makedirs(os.path.dirname(png_path), exist_ok=True)
@@ -791,7 +798,7 @@ def save_normal_tensor(in_tensor, idx, png_path):
     BNI_dict["depth_F"] = (depth_F_arr - 100. - tightness) * depth_scale
     BNI_dict["depth_B"] = (100. - depth_B_arr + tightness) * depth_scale
     BNI_dict["depth_mask"] = depth_F_arr != -1.0
-    
+
     # # smpl body
     # BNI_dict["T_normal_F"] = T_normal_F_arr
     # BNI_dict["T_normal_B"] = T_normal_B_arr

@@ -108,27 +108,23 @@ class BNI:
 
     def extract_surface(self, idx, verbose=True):
 
-        F_verts, F_faces, F_depth = bilateral_normal_integration_new(
-            normal_map=self.normal_front,
-            normal_mask=self.mask,
-            k=self.k,
-            lambda1=self.lambda1,
-            depth_map=self.depth_front,
-            depth_mask=self.depth_mask,
-            label="Front",
-            verbose=verbose
-        )
+        F_verts, F_faces, F_depth = bilateral_normal_integration_new(normal_map=self.normal_front,
+                                                                     normal_mask=self.mask,
+                                                                     k=self.k,
+                                                                     lambda1=self.lambda1,
+                                                                     depth_map=self.depth_front,
+                                                                     depth_mask=self.depth_mask,
+                                                                     label="Front",
+                                                                     verbose=verbose)
 
-        B_verts, B_faces, B_depth = bilateral_normal_integration_new(
-            normal_map=self.normal_back,
-            normal_mask=self.mask,
-            k=self.k,
-            lambda1=self.lambda1,
-            depth_map=self.depth_back,
-            depth_mask=self.depth_mask,
-            label="Back",
-            verbose=verbose
-        )
+        B_verts, B_faces, B_depth = bilateral_normal_integration_new(normal_map=self.normal_back,
+                                                                     normal_mask=self.mask,
+                                                                     k=self.k,
+                                                                     lambda1=self.lambda1,
+                                                                     depth_map=self.depth_back,
+                                                                     depth_mask=self.depth_mask,
+                                                                     label="Back",
+                                                                     verbose=verbose)
 
         F_verts = verts_inverse_transform(F_verts, self.scale)
         B_verts = verts_inverse_transform(B_verts, self.scale)
@@ -138,13 +134,16 @@ class BNI:
 
         # thickness shift from BiNI surfaces
         depth_offset = self.F_depth - self.B_depth
-        depth_mask = cv2.GaussianBlur((~torch.isnan(depth_offset)).numpy().astype(np.uint8) * 255,
+        depth_mask = cv2.GaussianBlur((~torch.isnan(depth_offset)).numpy().astype(np.float32),
                                       (3, 3), 0)
-        contour_uv = cv2.findContours((depth_mask == 255).astype(np.uint8), cv2.RETR_TREE,
-                                      cv2.CHAIN_APPROX_NONE)[0][0].reshape(-1, 2)
-        self.thickness = depth_offset[contour_uv[:, 1], contour_uv[:, 0]].topk(100,
-                                                                          largest=False)[0].mean()
-        
+        cnts, hier = cv2.findContours((depth_mask == 1.0).astype(np.uint8), cv2.RETR_TREE,
+                                      cv2.CHAIN_APPROX_NONE)
+        cnt_index = sorted(range(len(cnts)), key=lambda k: cv2.contourArea(cnts[k]), reverse=True)
+        contour_uv = cnts[cnt_index[0]].reshape(-1, 2)
+
+        self.thickness = depth_offset[contour_uv[:, 1],
+                                      contour_uv[:, 0]].topk(50, largest=False)[0].mean()
+
         F_verts[:, 2] -= self.thickness / 2
         B_verts[:, 2] += self.thickness / 2
         self.F_depth[~torch.isnan(self.F_depth)] -= self.thickness / 2
