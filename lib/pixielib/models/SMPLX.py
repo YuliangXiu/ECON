@@ -697,7 +697,7 @@ class SMPLX(nn.Module):
         # print("creating the SMPLX Decoder")
         ss = np.load(config.smplx_model_path, allow_pickle=True)
         smplx_model = Struct(**ss)
-
+        
         self.dtype = torch.float32
         self.register_buffer(
             "faces_tensor",

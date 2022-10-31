@@ -89,6 +89,12 @@ _C.net.norm_color = "group"
 _C.net.hg_down = "ave_pool"
 _C.net.num_views = 1
 
+_C.bni = CN()
+_C.bni.k = 4
+_C.bni.lambda1 = 1e-4
+_C.bni.auto_thickness = True
+_C.bni.default_thickness = 0.05
+
 # kernel_size, stride, dilation, padding
 
 _C.net.conv1 = [7, 2, 1, 3]

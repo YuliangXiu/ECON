@@ -352,9 +352,9 @@ def remesh(obj, obj_path):
     obj.export(obj_path)
     ms = pymeshlab.MeshSet()
     ms.load_new_mesh(obj_path)
-    ms.meshing_decimation_quadric_edge_collapse(targetfacenum=80000)
+    ms.meshing_decimation_quadric_edge_collapse(targetfacenum=100000)
+    ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.Percentage(0.5), adaptive=True)
     ms.apply_coord_laplacian_smoothing()
-    ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.Percentage(1.0), adaptive=True)
     ms.save_current_mesh(obj_path)
     polished_mesh = trimesh.load_mesh(obj_path)
 

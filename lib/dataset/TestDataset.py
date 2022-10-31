@@ -23,7 +23,7 @@ logging.getLogger("trimesh").setLevel(logging.ERROR)
 
 from lib.pixielib.utils.config import cfg as pixie_cfg
 from lib.pixielib.pixie import PIXIE
-import lib.smplx as smplx
+from lib.pixielib.models.SMPLX import SMPLX as PIXIE_SMPLX
 from lib.common.imutils import process_image
 from lib.net.geometry import rotation_matrix_to_angle_axis, rot6d_to_rotmat
 
@@ -69,24 +69,16 @@ class TestDataset:
 
         # smpl related
         self.smpl_data = SMPLX()
-        self.get_smpl_model = lambda smpl_type, smpl_gender: smplx.create(model_path=self.smpl_data.
-                                                                          model_dir,
-                                                                          gender=smpl_gender,
-                                                                          model_type=smpl_type,
-                                                                          ext="npz")
-
-        # Load SMPL model
-        self.smpl_model = self.get_smpl_model(self.smpl_type, self.smpl_gender).to(self.device)
-
-        self.faces = self.smpl_model.faces
 
         if self.hps_type == "pymafx":
             self.hps = pymaf_net(path_config.SMPL_MEAN_PARAMS, pretrained=True).to(self.device)
             self.hps.load_state_dict(torch.load(path_config.CHECKPOINT_FILE)["model"], strict=True)
             self.hps.eval()
+            pixie_cfg.merge_from_list(["model.n_shape", 10, "model.n_exp", 10])
         elif self.hps_type == "pixie":
             self.hps = PIXIE(config=pixie_cfg, device=self.device)
-            self.smpl_model = self.hps.smplx
+        
+        self.smpl_model = PIXIE_SMPLX(pixie_cfg.model).to(self.device)
 
         print(colored(f"Using -- {self.hps_type} -- as HPS Estimator\n", "green"))
 
@@ -169,10 +161,8 @@ class TestDataset:
 
         img_path = self.subject_list[index]
         img_name = img_path.split("/")[-1].rsplit(".", 1)[0]
-        seg_path = (os.path.join(self.seg_dir, f"{img_name}.json")
-                    if self.seg_dir is not None else None)
 
-        arr_dict = process_image(img_path, self.hps_type, 512, self.device, seg_path=seg_path)
+        arr_dict = process_image(img_path, self.hps_type, 512)
 
         # "img_icon":         #[N, 3, res, res] tensor
         # "img_crop":         #[N, 3, res, res] array
@@ -181,38 +171,44 @@ class TestDataset:
         # "img_mask":         #[N, res, res]    tensor
         # "landmark":         #[N, 33, 4]       tensor
 
-        arr_dict.update({
-            "name": img_name,
-            "image": arr_dict["img_icon"].to(self.device),
-            "mask": arr_dict["img_mask"].to(self.device),
-        })
+        arr_dict.update({"name": img_name})
 
         with torch.no_grad():
-            preds_dict = self.hps.forward(arr_dict["img_hps"])
+            if self.hps_type == "pixie":
+                preds_dict = self.hps.forward(arr_dict["img_hps"].to(self.device))
+            elif self.hps_type == 'pymafx':
+                batch = {k: v.to(self.device) for k, v in arr_dict["img_pymafx"].items()}
+                preds_dict, _ = self.hps.forward(batch)
 
-        arr_dict["smpl_faces"] = (torch.as_tensor(self.faces.astype(
+        arr_dict["smpl_faces"] = (torch.as_tensor(self.smpl_data.smplx_faces.astype(
             np.int64)).unsqueeze(0).long().to(self.device))
         arr_dict["type"] = self.smpl_type
 
         if self.hps_type == "pymafx":
-            output = preds_dict["smpl_out"][-1]
-            scale, tranX, tranY = output["theta"][0, :3]
+            output = preds_dict["mesh_out"][-1]
+            scale, tranX, tranY = output["theta"][:, :3].split(1, dim=1)
             arr_dict["betas"] = output["pred_shape"]
-            arr_dict["body_pose"] = output["rotmat"][:, 1:]
+            arr_dict["body_pose"] = output["rotmat"][:, 1:22]
             arr_dict["global_orient"] = output["rotmat"][:, 0:1]
-            arr_dict["smpl_verts"] = output["verts"]
+            arr_dict["smpl_verts"] = output["smplx_verts"]
+            arr_dict["left_hand_pose"] = output["pred_lhand_rotmat"]
+            arr_dict["right_hand_pose"] = output["pred_rhand_rotmat"]
+            arr_dict['jaw_pose'] = output['pred_face_rotmat'][:, 0:1]
+            arr_dict["exp"] = output["pred_exp"]
+            # 1.2009, 0.0013, 0.3954
 
         elif self.hps_type == "pixie":
             arr_dict.update(preds_dict)
             arr_dict["global_orient"] = preds_dict["global_pose"]
-            arr_dict["betas"] = preds_dict["shape"]
+            arr_dict["betas"] = preds_dict["shape"]  #200
             arr_dict["smpl_verts"] = preds_dict["vertices"]
             scale, tranX, tranY = preds_dict["cam"].split(1, dim=1)
-
+            # 1.1435, 0.0128, 0.3520
+            
         arr_dict["scale"] = scale.unsqueeze(1)
         arr_dict["trans"] = (torch.cat([tranX, tranY, torch.zeros_like(tranX)],
                                        dim=1).unsqueeze(1).to(self.device).float())
-
+        
         # data_dict info (key-shape):
         # scale, tranX, tranY - tensor.float
         # betas - [1,10] / [1, 200]

@@ -791,12 +791,11 @@ def save_normal_tensor(in_tensor, idx, png_path):
     BNI_dict = {}
 
     # clothed human
-    tightness = 0.01  # empirical value: displacement bewteen clothing and body (unit: m)
     BNI_dict["normal_F"] = normal_F_arr
     BNI_dict["normal_B"] = normal_B_arr
     BNI_dict["mask"] = mask_normal_arr > 0.
-    BNI_dict["depth_F"] = (depth_F_arr - 100. - tightness) * depth_scale
-    BNI_dict["depth_B"] = (100. - depth_B_arr + tightness) * depth_scale
+    BNI_dict["depth_F"] = depth_F_arr - 100.
+    BNI_dict["depth_B"] = 100. - depth_B_arr
     BNI_dict["depth_mask"] = depth_F_arr != -1.0
 
     # # smpl body

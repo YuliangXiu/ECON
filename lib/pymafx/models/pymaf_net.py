@@ -1195,8 +1195,6 @@ class PyMAF(nn.Module):
             out_dict: the list containing the predicted parameters
             vis_feat_list: the list containing features for visualization
         '''
-        import ipdb
-        ipdb.set_trace()
 
         # batch keys: ['img_body', 'orig_height', 'orig_width', 'person_id', 'img_lhand', 
         # 'lhand_theta_inv', 'img_rhand', 'rhand_theta_inv', 'img_face', 'face_theta_inv']

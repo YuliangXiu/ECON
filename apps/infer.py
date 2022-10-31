@@ -50,7 +50,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-gpu", "--gpu_device", type=int, default=0)
-    parser.add_argument("-loop_smpl", "--loop_smpl", type=int, default=100)
+    parser.add_argument("-loop_smpl", "--loop_smpl", type=int, default=20)
     parser.add_argument("-patience", "--patience", type=int, default=5)
     parser.add_argument("-vis_freq", "--vis_freq", type=int, default=1000)
     parser.add_argument("-hps_type", "--hps_type", type=str, default="pixie")
@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
     # setting for testing on in-the-wild images
     cfg_show_list = [
-        "test_gpus", [args.gpu_device], "mcube_res", 512, "clean_mesh", False, "test_mode", True,
+        "test_gpus", [args.gpu_device], "mcube_res", 512, "clean_mesh", True, "test_mode", True,
         "batch_size", 1
     ]
 
@@ -90,6 +90,8 @@ if __name__ == "__main__":
 
     # SMPLX object
     SMPLX_object = SMPLX()
+    dropbox_dir = osp.join("/home/yxiu/Dropbox/ECON/pinterest/single", cfg.name)
+    os.makedirs(dropbox_dir, exist_ok=True)
 
     dataset_param = {
         "image_dir": args.in_dir,
@@ -106,6 +108,7 @@ if __name__ == "__main__":
     pbar = tqdm(dataset)
 
     for data in pbar:
+
         losses = init_loss()
 
         pbar.set_description(f"{data['name']}")
@@ -115,7 +118,7 @@ if __name__ == "__main__":
         # 2. Render the final reconstructed clothed human (xxx_cloth.png)
         # 3. Blend the original image with predicted cloth normal (xxx_overlap.png)
 
-        os.makedirs(os.path.join(args.out_dir, cfg.name, "png"), exist_ok=True)
+        os.makedirs(osp.join(args.out_dir, cfg.name, "png"), exist_ok=True)
 
         # final reconstruction meshes
         # 1. SMPL mesh (xxx_smpl.obj)
@@ -125,12 +128,16 @@ if __name__ == "__main__":
         # 5. refined clothed mesh (xxx_refine.obj)
         # 6. BNI clothed mesh (xxx_combine.obj)
 
-        os.makedirs(os.path.join(args.out_dir, cfg.name, "obj"), exist_ok=True)
+        os.makedirs(osp.join(args.out_dir, cfg.name, "obj"), exist_ok=True)
 
-        img_crop_path = os.path.join(args.out_dir, cfg.name, "png", f"{data['name']}_crop.png")
+        img_crop_path = osp.join(args.out_dir, cfg.name, "png", f"{data['name']}_crop.png")
         torchvision.utils.save_image(data["img_crop"], img_crop_path)
 
-        in_tensor = {"smpl_faces": data["smpl_faces"], "image": data["image"], "mask": data["mask"]}
+        in_tensor = {
+            "smpl_faces": data["smpl_faces"],
+            "image": data["img_icon"].to(device),
+            "mask": data["img_mask"].to(device)
+        }
 
         # The optimizer and variables
         optimed_pose = data["body_pose"].requires_grad_(True)
@@ -150,7 +157,7 @@ if __name__ == "__main__":
         )
 
         # smpl optimization
-        loop_smpl = tqdm(range(args.loop_smpl if cfg.net.prior_type != "pifu" else 1))
+        loop_smpl = tqdm(range(args.loop_smpl))
 
         # [result_loop_1, result_loop_2, ...]
         per_data_lst = []
@@ -167,43 +174,24 @@ if __name__ == "__main__":
             optimed_orient_mat = rot6d_to_rotmat(optimed_orient.view(-1, 6)).view(N_body, 1, 3, 3)
             optimed_pose_mat = rot6d_to_rotmat(optimed_pose.view(-1, 6)).view(N_body, N_pose, 3, 3)
 
-            if dataset_param["hps_type"] != "pixie":
-                smpl_out = dataset.smpl_model(
-                    betas=optimed_betas,
-                    body_pose=optimed_pose_mat,
-                    global_orient=optimed_orient_mat,
-                    transl=optimed_trans,
-                    pose2rot=False,
-                )
+            smpl_verts, smpl_landmarks, smpl_joints = dataset.smpl_model(
+                shape_params=optimed_betas,
+                expression_params=tensor2variable(data["exp"], device),
+                body_pose=optimed_pose_mat,
+                global_pose=optimed_orient_mat,
+                jaw_pose=tensor2variable(data["jaw_pose"], device),
+                left_hand_pose=tensor2variable(data["left_hand_pose"], device),
+                right_hand_pose=tensor2variable(data["right_hand_pose"], device),
+            )
 
-                smpl_verts = smpl_out.vertices * data["scale"]
-                smpl_joints = smpl_out.joints * data["scale"]
-
-            else:
-
-                smpl_verts, smpl_landmarks, smpl_joints = dataset.smpl_model(
-                    shape_params=optimed_betas,
-                    expression_params=tensor2variable(data["exp"], device),
-                    body_pose=optimed_pose_mat,
-                    global_pose=optimed_orient_mat,
-                    jaw_pose=tensor2variable(data["jaw_pose"], device),
-                    left_hand_pose=tensor2variable(data["left_hand_pose"], device),
-                    right_hand_pose=tensor2variable(data["right_hand_pose"], device),
-                )
-
-                smpl_verts = (smpl_verts + optimed_trans) * data["scale"]
-                smpl_joints = (smpl_joints + optimed_trans) * data["scale"]
-
-            smpl_joints *= torch.tensor([1.0, 1.0, -1.0]).to(device)
+            smpl_verts = (smpl_verts + optimed_trans) * data["scale"]
+            smpl_joints = (smpl_joints + optimed_trans) * data["scale"] * torch.tensor(
+                [1.0, 1.0, -1.0]).to(device)
 
             # landmark errors
             if data["type"] == "smpl":
                 smpl_joints_3d = (smpl_joints[0, :, :] + 1.0) * 0.5
                 in_tensor["smpl_joint"] = smpl_joints[:, :24, :]
-            elif data["type"] == "smplx" and dataset_param["hps_type"] != "pixie":
-                smpl_joints_3d = (smpl_joints[0, dataset.smpl_data.smpl_joint_ids_45, :] +
-                                  1.0) * 0.5
-                in_tensor["smpl_joint"] = smpl_joints[:, dataset.smpl_data.smpl_joint_ids_24, :]
             else:
                 smpl_joints_3d = (smpl_joints[:, dataset.smpl_data.smpl_joint_ids_45_pixie, :] +
                                   1.0) * 0.5
@@ -258,10 +246,6 @@ if __name__ == "__main__":
                 dim=[1, 2]) / smpl_arr_fake.gt(0.0).sum(dim=[1, 2])
 
             body_overlap_flag = body_overlap < cfg.body_overlap_thres
-            losses["silhouette"]["weight"] = [0.1 if flag else 1.0 for flag in body_overlap_flag]
-            losses["normal"]["weight"] = [0.1 if flag else 1.0 for flag in body_overlap_flag]
-            occluded_idx = torch.where(body_overlap_flag)[0]
-            ghum_conf[occluded_idx] *= ghum_conf[occluded_idx] > 0.95
             losses["joint"]["value"] = (torch.norm(ghum_lmks - smpl_lmks, dim=2) *
                                         ghum_conf).mean(dim=1)
 
@@ -305,15 +289,19 @@ if __name__ == "__main__":
         # visualize the optimization process
         # 1. SMPL Fitting
 
-        per_data_lst[-1].save(os.path.join(args.out_dir, cfg.name, f"png/{data['name']}_smpl.png"))
+        per_data_lst[-1].save(osp.join(args.out_dir, cfg.name, f"png/{data['name']}_smpl.png"))
+        per_data_lst[-1].save(osp.join(dropbox_dir, f"{data['name']}_smpl.png"))
 
         rgb_norm_F = blend_rgb_norm(in_tensor["normal_F"], data)
         rgb_norm_B = blend_rgb_norm(in_tensor["normal_B"], data)
 
-        img_overlap_path = os.path.join(args.out_dir, cfg.name, f"png/{data['name']}_overlap.png")
+        img_overlap_path = osp.join(args.out_dir, cfg.name, f"png/{data['name']}_overlap.png")
         torchvision.utils.save_image(
             torch.Tensor([data["img_raw"], rgb_norm_F, rgb_norm_B]).permute(0, 3, 1, 2) / 255.,
             img_overlap_path)
+        torchvision.utils.save_image(
+            torch.Tensor([data["img_raw"], rgb_norm_F, rgb_norm_B]).permute(0, 3, 1, 2) / 255.,
+            osp.join(dropbox_dir, f"{data['name']}_overlap.png"))
 
         smpl_obj_lst = []
         for idx in range(N_body):
@@ -381,15 +369,15 @@ if __name__ == "__main__":
             BNI_dict = save_normal_tensor(
                 in_tensor,
                 idx,
-                os.path.join(args.out_dir, cfg.name, f"BNI/{data['name']}_{idx}"),
+                osp.join(args.out_dir, cfg.name, f"BNI/{data['name']}_{idx}"),
             )
 
             # BNI process
-            BNI_object = BNI(dir_path=os.path.join(args.out_dir, cfg.name, "BNI"),
+            BNI_object = BNI(dir_path=osp.join(args.out_dir, cfg.name, "BNI"),
                              name=data["name"],
                              BNI_dict=BNI_dict,
-                             device=device,
-                             mvc=False)
+                             cfg=cfg.bni,
+                             device=device)
 
             BNI_object.extract_surface()
 
@@ -401,7 +389,10 @@ if __name__ == "__main__":
 
             if (body_overlap[idx] < cfg.body_overlap_thres) or cfg.always_ifnet:
 
-                print(colored(f"Low overlap: {body_overlap[idx]:.2f}, shape completion\n", "green"))
+                if not cfg.always_ifnet:
+                    print(
+                        colored(f"Low overlap: {body_overlap[idx]:.2f}, shape completion\n",
+                                "green"))
 
                 side_mesh = apply_face_mask(side_mesh, ~SMPLX_object.smplx_eyeball_fid_mask)
 
@@ -451,15 +442,15 @@ if __name__ == "__main__":
             # 3. remove eyeball faces
 
             (xy, z) = side_verts.split([2, 1], dim=-1)
-            F_vis = get_visibility(xy, z, side_faces[..., [0, 2, 1]], img_res=2**8)
-            B_vis = get_visibility(xy, -z, side_faces, img_res=2**8)
+            F_vis = get_visibility(xy, z, side_faces[..., [0, 2, 1]], img_res=2**9, faces_per_pixel=1)
+            B_vis = get_visibility(xy, -z, side_faces, img_res=2**9, faces_per_pixel=1)
 
             full_lst = []
 
             if "face" in cfg.use_smpl:
                 # only face
                 face_mesh = apply_vertex_mask(face_mesh, SMPLX_object.front_flame_vertex_mask)
-                face_mesh.vertices[:, 2] -= BNI_object.thickness.numpy() / 2.0
+                face_mesh.vertices[:, 2] -= BNI_object.thickness / 2.0
                 # remove face neighbor triangles
                 BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, face_mesh, 4e-2,
                                                       device)
@@ -499,7 +490,7 @@ if __name__ == "__main__":
 
             dataset.render.load_meshes(final_mesh.vertices, final_mesh.faces)
             rotate_recon_lst = dataset.render.get_image(cam_type="four")
-            per_loop_lst.extend([data['image'][idx:idx + 1]] + rotate_recon_lst)
+            per_loop_lst.extend([in_tensor['image'][idx:idx + 1]] + rotate_recon_lst)
 
             # for video rendering
             in_tensor["BNI_verts"].append(torch.tensor(final_mesh.vertices).float())
@@ -510,12 +501,13 @@ if __name__ == "__main__":
         per_data_lst.append(get_optim_grid_image(per_loop_lst, None, nrow=5, type="cloth"))
 
         # visualize the final result
-        per_data_lst[-1].save(os.path.join(args.out_dir, cfg.name, f"png/{data['name']}_cloth.png"))
+        per_data_lst[-1].save(osp.join(args.out_dir, cfg.name, f"png/{data['name']}_cloth.png"))
+        per_data_lst[-1].save(osp.join(dropbox_dir, f"{data['name']}_cloth.png"))
 
-        os.makedirs(os.path.join(args.out_dir, cfg.name, "vid"), exist_ok=True)
+        os.makedirs(osp.join(args.out_dir, cfg.name, "vid"), exist_ok=True)
         in_tensor["uncrop_param"] = data["uncrop_param"]
         in_tensor["img_raw"] = data["img_raw"]
-        torch.save(in_tensor, os.path.join(args.out_dir, cfg.name, "vid/in_tensor.pt"))
+        torch.save(in_tensor, osp.join(args.out_dir, cfg.name, "vid/in_tensor.pt"))
 
         # always export visualized video regardless of the cloth refinment
         if args.export_video:
@@ -530,5 +522,5 @@ if __name__ == "__main__":
             dataset.render.load_meshes(verts_lst, faces_lst)
             dataset.render.get_rendered_video_multi(
                 in_tensor,
-                os.path.join(args.out_dir, cfg.name, f"vid/{data['name']}_cloth.mp4"),
+                osp.join(args.out_dir, cfg.name, f"vid/{data['name']}_cloth.mp4"),
             )

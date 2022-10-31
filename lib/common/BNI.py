@@ -15,9 +15,11 @@ from pytorch3d.io import IO
 
 class BNI:
 
-    def __init__(self, dir_path, name, BNI_dict, device, mvc=False):
+    def __init__(self, dir_path, name, BNI_dict, cfg, device):
 
         self.scale = 256.0
+        self.cfg = cfg
+        self.name = name
 
         self.normal_front = BNI_dict["normal_F"]
         self.normal_back = BNI_dict["normal_B"]
@@ -30,12 +32,14 @@ class BNI:
         # hparam:
         # k --> smaller, keep continuity
         # lambda --> larger, more depth-awareness
+
         # self.k = 1e-3
         # self.lambda1 = 1e-2
-        self.k = 4
-        self.lambda1 = 1e-4
-        self.name = name
-        self.thickness = 0.0
+
+        self.k = self.cfg.k
+        self.lambda1 = self.cfg.lambda1
+        self.thickness = -self.cfg.default_thickness
+        self.auto_thickness = self.cfg.auto_thickness
 
         self.F_B_surface = None
         self.F_B_trimesh = None
@@ -45,8 +49,8 @@ class BNI:
         self.device = device
         self.export_dir = dir_path
 
-        if mvc:
-            self.mvp_expand(self.mask, self.depth_mask, self.depth_front, self.depth_back)
+        # if mvc:
+        #     self.mvp_expand(self.mask, self.depth_mask, self.depth_front, self.depth_back)
 
     def mvp_expand(self, cloth_mask, body_mask, depth_front, depth_back):
 
@@ -114,7 +118,8 @@ class BNI:
                                                                      normal_mask=self.mask,
                                                                      k=self.k,
                                                                      lambda1=self.lambda1,
-                                                                     depth_map=self.depth_front,
+                                                                     depth_map=self.depth_front *
+                                                                     self.scale,
                                                                      depth_mask=self.depth_mask,
                                                                      label="Front",
                                                                      verbose=verbose)
@@ -123,7 +128,8 @@ class BNI:
                                                                      normal_mask=self.mask,
                                                                      k=self.k,
                                                                      lambda1=self.lambda1,
-                                                                     depth_map=self.depth_back,
+                                                                     depth_map=self.depth_back *
+                                                                     self.scale,
                                                                      depth_mask=self.depth_mask,
                                                                      label="Back",
                                                                      verbose=verbose)
@@ -134,25 +140,34 @@ class BNI:
         self.F_depth = depth_inverse_transform(F_depth, self.scale)
         self.B_depth = depth_inverse_transform(B_depth, self.scale)
 
-        # thickness shift from BiNI surfaces
-        depth_offset = self.F_depth - self.B_depth
-        depth_mask = cv2.GaussianBlur((~torch.isnan(depth_offset)).numpy().astype(np.float32),
-                                      (5, 5), 0)
-        cnts, hier = cv2.findContours((depth_mask == 1.0).astype(np.uint8), cv2.RETR_TREE,
-                                      cv2.CHAIN_APPROX_NONE)
-        cnt_index = sorted(range(len(cnts)), key=lambda k: cv2.contourArea(cnts[k]), reverse=True)
-        contour_uv = cnts[cnt_index[0]].reshape(-1, 2)
+        if self.auto_thickness:
 
-        # test_mask = np.zeros_like(depth_mask)
-        # cv2.fillPoly(test_mask, [cnts[cnt_index[0]]], 1)
-        # from PIL import Image
-        # Image.fromarray((test_mask * 255).astype(np.uint8)).show()
-        # import ipdb; ipdb.set_trace()
+            # thickness shift from BiNI surfaces
+            depth_offset = self.F_depth - self.B_depth
+            depth_mask = cv2.GaussianBlur((~torch.isnan(depth_offset)).numpy().astype(np.float32),
+                                          (5, 5), 0)
+            cnts, hier = cv2.findContours((depth_mask == 1.0).astype(np.uint8), cv2.RETR_TREE,
+                                          cv2.CHAIN_APPROX_NONE)
+            cnt_index = sorted(range(len(cnts)),
+                               key=lambda k: cv2.contourArea(cnts[k]),
+                               reverse=True)
+            contour_uv = cnts[cnt_index[0]].reshape(-1, 2)
 
-        self.thickness = depth_offset[contour_uv[:, 1],
-                                      contour_uv[:, 0]].topk(contour_uv.shape[0] // 20,
-                                                             largest=False)[0].mean()
-        self.thickness = 0.0
+            # # visualize the thickness shift
+            # test_mask = np.zeros_like(depth_mask)
+            # cv2.fillPoly(test_mask, [cnts[cnt_index[0]]], 1)
+            # from PIL import Image
+            # Image.fromarray((test_mask * 255).astype(np.uint8)).show()
+            # import ipdb; ipdb.set_trace()
+
+            self.thickness = depth_offset[contour_uv[:, 1],
+                                          contour_uv[:, 0]].topk(contour_uv.shape[0] // 10,
+                                                                 largest=False)[0].mean()
+            # negative thickness means thicker body-cloth space
+            # positive thickness means thinner body-cloth space, no need given SMPL fits
+
+            self.thickness = torch.clamp(self.thickness, min=-self.cfg.default_thickness,
+                                         max=0.0).item()
 
         F_verts[:, 2] -= self.thickness / 2
         B_verts[:, 2] += self.thickness / 2
