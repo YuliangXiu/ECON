@@ -30,8 +30,10 @@ class BNI:
         # hparam:
         # k --> smaller, keep continuity
         # lambda --> larger, more depth-awareness
-        self.k = 1e-3
-        self.lambda1 = 1e-2
+        # self.k = 1e-3
+        # self.lambda1 = 1e-2
+        self.k = 4
+        self.lambda1 = 1e-4
         self.name = name
         self.thickness = 0.0
 
@@ -106,7 +108,7 @@ class BNI:
     # code: https://github.com/hoshino042/bilateral_normal_integration
     # paper: Bilateral Normal Integration
 
-    def extract_surface(self, idx, verbose=True):
+    def extract_surface(self, verbose=True):
 
         F_verts, F_faces, F_depth = bilateral_normal_integration_new(normal_map=self.normal_front,
                                                                      normal_mask=self.mask,
@@ -135,14 +137,22 @@ class BNI:
         # thickness shift from BiNI surfaces
         depth_offset = self.F_depth - self.B_depth
         depth_mask = cv2.GaussianBlur((~torch.isnan(depth_offset)).numpy().astype(np.float32),
-                                      (3, 3), 0)
+                                      (5, 5), 0)
         cnts, hier = cv2.findContours((depth_mask == 1.0).astype(np.uint8), cv2.RETR_TREE,
                                       cv2.CHAIN_APPROX_NONE)
         cnt_index = sorted(range(len(cnts)), key=lambda k: cv2.contourArea(cnts[k]), reverse=True)
         contour_uv = cnts[cnt_index[0]].reshape(-1, 2)
 
+        # test_mask = np.zeros_like(depth_mask)
+        # cv2.fillPoly(test_mask, [cnts[cnt_index[0]]], 1)
+        # from PIL import Image
+        # Image.fromarray((test_mask * 255).astype(np.uint8)).show()
+        # import ipdb; ipdb.set_trace()
+
         self.thickness = depth_offset[contour_uv[:, 1],
-                                      contour_uv[:, 0]].topk(50, largest=False)[0].mean()
+                                      contour_uv[:, 0]].topk(contour_uv.shape[0] // 20,
+                                                             largest=False)[0].mean()
+        self.thickness = 0.0
 
         F_verts[:, 2] -= self.thickness / 2
         B_verts[:, 2] += self.thickness / 2

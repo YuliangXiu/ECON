@@ -791,7 +791,7 @@ def save_normal_tensor(in_tensor, idx, png_path):
     BNI_dict = {}
 
     # clothed human
-    tightness = 0.05  # empirical value: displacement bewteen clothing and body (unit: m)
+    tightness = 0.01  # empirical value: displacement bewteen clothing and body (unit: m)
     BNI_dict["normal_F"] = normal_F_arr
     BNI_dict["normal_B"] = normal_B_arr
     BNI_dict["mask"] = mask_normal_arr > 0.

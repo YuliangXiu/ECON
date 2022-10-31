@@ -20,5 +20,5 @@ net:
   voxel_dim: 7
 
 # user defined
-mcube_res: 512    # occupancy field resolution, higher --> more details
+mcube_res: 256    # occupancy field resolution, higher --> more details
 clean_mesh: False # if True, will remove floating pieces

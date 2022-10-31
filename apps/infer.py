@@ -391,7 +391,7 @@ if __name__ == "__main__":
                              device=device,
                              mvc=False)
 
-            BNI_object.extract_surface(idx)
+            BNI_object.extract_surface()
 
             in_tensor["body_verts"].append(torch.tensor(smpl_obj_lst[idx].vertices).float())
             in_tensor["body_faces"].append(torch.tensor(smpl_obj_lst[idx].faces).long())
@@ -459,10 +459,10 @@ if __name__ == "__main__":
             if "face" in cfg.use_smpl:
                 # only face
                 face_mesh = apply_vertex_mask(face_mesh, SMPLX_object.front_flame_vertex_mask)
-                face_mesh.vertices[:,2] -= BNI_object.thickness.numpy() / 2.0
+                face_mesh.vertices[:, 2] -= BNI_object.thickness.numpy() / 2.0
                 # remove face neighbor triangles
-                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, face_mesh,
-                                                      4e-2, device)
+                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, face_mesh, 4e-2,
+                                                      device)
                 full_lst += [face_mesh]
 
             if "hand" in cfg.use_smpl:
@@ -532,56 +532,3 @@ if __name__ == "__main__":
                 in_tensor,
                 os.path.join(args.out_dir, cfg.name, f"vid/{data['name']}_cloth.mp4"),
             )
-
-        # garment extraction from deepfashion images
-        if not (args.seg_dir is None):
-            if final_mesh is not None:
-                recon_obj = final_mesh.copy()
-
-            os.makedirs(os.path.join(args.out_dir, cfg.name, "clothes"), exist_ok=True)
-            os.makedirs(
-                os.path.join(args.out_dir, cfg.name, "clothes", "info"),
-                exist_ok=True,
-            )
-            for seg in data["segmentations"]:
-                # These matrices work for PyMaf, not sure about the other hps type
-                K = np.array([
-                    [1.0000, 0.0000, 0.0000, 0.0000],
-                    [0.0000, 1.0000, 0.0000, 0.0000],
-                    [0.0000, 0.0000, -0.5000, 0.0000],
-                    [-0.0000, -0.0000, 0.5000, 1.0000],
-                ]).T
-
-                R = np.array([[-1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, -1.0]])
-
-                t = np.array([[-0.0, -0.0, 100.0]])
-                clothing_obj = extract_cloth(recon_obj, seg, K, R, t, smpl_obj)
-                if clothing_obj is not None:
-                    cloth_type = seg["type"].replace(" ", "_")
-                    cloth_info = {
-                        "betas": optimed_betas,
-                        "body_pose": optimed_pose,
-                        "global_orient": optimed_orient,
-                        "pose2rot": False,
-                        "clothing_type": cloth_type,
-                    }
-
-                    file_id = f"{data['name']}_{cloth_type}"
-                    with open(
-                            os.path.join(
-                                args.out_dir,
-                                cfg.name,
-                                "clothes",
-                                "info",
-                                f"{file_id}_info.pkl",
-                            ),
-                            "wb",
-                    ) as fp:
-                        pickle.dump(cloth_info, fp)
-
-                    clothing_obj.export(
-                        os.path.join(args.out_dir, cfg.name, "clothes", f"{file_id}.obj"))
-                else:
-                    print(
-                        f"Unable to extract clothing of type {seg['type']} from image {data['name']}"
-                    )

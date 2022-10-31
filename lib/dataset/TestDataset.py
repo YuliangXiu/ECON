@@ -172,11 +172,7 @@ class TestDataset:
         seg_path = (os.path.join(self.seg_dir, f"{img_name}.json")
                     if self.seg_dir is not None else None)
 
-        arr_dict = process_image(img_path,
-                                 self.hps_type,
-                                 512,
-                                 self.device,
-                                 seg_path=seg_path)
+        arr_dict = process_image(img_path, self.hps_type, 512, self.device, seg_path=seg_path)
 
         # "img_icon":         #[N, 3, res, res] tensor
         # "img_crop":         #[N, 3, res, res] array
@@ -193,7 +189,7 @@ class TestDataset:
 
         with torch.no_grad():
             preds_dict = self.hps.forward(arr_dict["img_hps"])
-            
+
         arr_dict["smpl_faces"] = (torch.as_tensor(self.faces.astype(
             np.int64)).unsqueeze(0).long().to(self.device))
         arr_dict["type"] = self.smpl_type

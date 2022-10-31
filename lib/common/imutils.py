@@ -12,20 +12,15 @@ from lib.pymafx.core import constants
 from lib.common.cloth_extraction import load_segmentation
 from torchvision import transforms
 
-image_to_icon_tensor = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-])
 
-image_to_pymaf_tensor = transforms.Compose([
-    transforms.Resize(size=224),
-    transforms.Normalize(mean=constants.IMG_NORM_MEAN, std=constants.IMG_NORM_STD),
-])
-
-image_to_hybrik_tensor = transforms.Compose([
-    transforms.Resize(256),
-    transforms.Normalize(mean=(0.406, 0.457, 0.480), std=(0.225, 0.224, 0.229))
-])
+def transform_to_tensor(res, mean, std, is_tensor=False):
+    all_ops = []
+    if res is not None:
+        all_ops.append(transforms.Resize(size=res))
+    if not is_tensor:
+        all_ops.append(transforms.ToTensor())
+    all_ops.append(transforms.Normalize(mean=mean, std=std))
+    return transforms.Compose(all_ops)
 
 
 def aug_matrix(w1, h1, w2, h2):
@@ -91,7 +86,55 @@ def get_keypoints(image):
     ) as holistic:
         results = holistic.process(image)
 
+    import ipdb
+    ipdb.set_trace()
+
     return collect_xyv(results.pose_landmarks)
+
+
+def get_pymafx(image, landmarks):
+
+    item = {'img_body': image}
+
+    for part in ['lhand', 'rhand', 'face']:
+        kp2d = landmarks[part]
+        kp2d_valid = kp2d[kp2d[:, 2] > 0.]
+        if len(kp2d_valid) > 0:
+            bbox = [
+                min(kp2d_valid[:, 0]),
+                min(kp2d_valid[:, 1]),
+                max(kp2d_valid[:, 0]),
+                max(kp2d_valid[:, 1])
+            ]
+            center_part = [(bbox[2] + bbox[0]) / 2., (bbox[3] + bbox[1]) / 2.]
+            scale_part = 2. * max(bbox[2] - bbox[0], bbox[3] - bbox[1]) / 2
+
+        # handle invalid part keypoints
+        if len(kp2d_valid) < 1 or scale_part < 0.01:
+            center_part = [0, 0]
+            scale_part = 0.5
+            kp2d[:, 2] = 0
+
+        center_part = torch.tensor(center_part).float()
+
+        theta_part = torch.zeros(1, 2, 3)
+        theta_part[:, 0, 0] = scale_part
+        theta_part[:, 1, 1] = scale_part
+        theta_part[:, :, -1] = center_part
+
+        grid = F.affine_grid(theta_part.detach(), torch.Size([1, 3, 224, 224]), align_corners=False)
+        img_part = F.grid_sample(torch.from_numpy(image[None]), grid.cpu(),
+                                 align_corners=False).squeeze(0).float()
+
+        item[f'img_{part}'] = img_part
+
+        theta_i_inv = torch.zeros_like(theta_part)
+        theta_i_inv[:, 0, 0] = 1. / theta_part[:, 0, 0]
+        theta_i_inv[:, 1, 1] = 1. / theta_part[:, 1, 1]
+        theta_i_inv[:, :, -1] = -theta_part[:, :, -1] / theta_part[:, 0, 0].unsqueeze(-1)
+        item[f'{part}_theta_inv'] = theta_i_inv[0]
+
+    return item
 
 
 def expand_bbox(bbox, width, height, ratio=0.1):
@@ -161,6 +204,10 @@ def process_image(img_file, hps_type, input_res=512, device=None, seg_path=None)
     uncrop_param_lst = []
     landmark_lst = []
 
+    if hps_type == 'pymafx':
+        # pymafx
+        pymafx_lst = []
+
     uncrop_param = {
         "center": center,
         "scale": scale,
@@ -185,19 +232,32 @@ def process_image(img_file, hps_type, input_res=512, device=None, seg_path=None)
         # get accurate segmentation mask of focus person
         img_rembg = remove(img_crop, post_process_mask=True, session=new_session("u2net"))
         img_mask = torch.tensor(remove_floats(img_rembg[:, :, 3]))
-        
+
         # required image tensors / arrays
-        img_icon = image_to_icon_tensor(img_rembg[:, :, :3]) * img_mask  # [-1,1]
-        img_hps = (img_icon + 1.0) * 0.5  # [0,1]
-        img_np = (img_hps * 255).permute(1, 2, 0).numpy().astype(np.uint8)  # [0, 255]
-        img_hps = image_to_pymaf_tensor(img_hps).unsqueeze(0).to(device)
+        img_icon = transform_to_tensor(None, (0.5, 0.5, 0.5),
+                                       (0.5, 0.5, 0.5))(img_rembg[:, :, :3]) * img_mask  # [-1,1]
+        img_np = ((img_rembg[:, :, :3] * img_mask) * 255).permute(1, 2, 0).numpy().astype(
+            np.uint8)  # [0, 255]
+        img_hps = transform_to_tensor(224, constants.IMG_NORM_MEAN, constants.IMG_NORM_STD)(
+            (img_icon + 1.0) * 0.5, is_tensor=True).unsqueeze(0).to(device)
+        
+        import ipdb; ipdb.set_trace()
+        landmarks = get_keypoints(img_np)
+
+        if hps_type == 'pymafx':
+            pymafx_lst.append(
+                get_pymafx(
+                    transform_to_tensor(input_res,
+                                        constants.IMG_NORM_MEAN,
+                                        constants.IMG_NORM_STD,
+                                        is_tensor=True)(img_rembg[:, :, :3]), landmarks))
 
         img_crop_lst.append(torch.tensor(img_crop.transpose(2, 0, 1)) / 255.0)
         img_icon_lst.append(img_icon)
         img_hps_lst.append(img_hps)
         img_mask_lst.append(img_mask)
         uncrop_param_lst.append(uncrop_param)
-        landmark_lst.append(get_keypoints(img_np))
+        landmark_lst.append(landmarks['body'])
 
     return_dict = {
         "img_icon": torch.stack(img_icon_lst).float(),  #[N, 3, res, res]
