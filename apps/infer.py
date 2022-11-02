@@ -379,7 +379,7 @@ if __name__ == "__main__":
                              cfg=cfg.bni,
                              device=device)
 
-            BNI_object.extract_surface()
+            BNI_object.extract_surface(False)
 
             in_tensor["body_verts"].append(torch.tensor(smpl_obj_lst[idx].vertices).float())
             in_tensor["body_faces"].append(torch.tensor(smpl_obj_lst[idx].faces).long())
@@ -482,11 +482,13 @@ if __name__ == "__main__":
 
             side_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_side.obj")
 
-            final_mesh = poisson(
-                sum(full_lst),
-                f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_full.obj",
-                8,
-            )
+        
+            # final_mesh = poisson(
+            #     sum(full_lst),
+            #     f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_full.obj",
+            #     cfg.bni.poisson_depth,
+            # )
+            final_mesh = sum(full_lst)
 
             dataset.render.load_meshes(final_mesh.vertices, final_mesh.faces)
             rotate_recon_lst = dataset.render.get_image(cam_type="four")
@@ -495,7 +497,7 @@ if __name__ == "__main__":
             # for video rendering
             in_tensor["BNI_verts"].append(torch.tensor(final_mesh.vertices).float())
             in_tensor["BNI_faces"].append(torch.tensor(final_mesh.faces).long())
-
+            
         # always export visualized png regardless of the cloth refinment
 
         per_data_lst.append(get_optim_grid_image(per_loop_lst, None, nrow=5, type="cloth"))
@@ -508,6 +510,8 @@ if __name__ == "__main__":
         in_tensor["uncrop_param"] = data["uncrop_param"]
         in_tensor["img_raw"] = data["img_raw"]
         torch.save(in_tensor, osp.join(args.out_dir, cfg.name, "vid/in_tensor.pt"))
+        
+        break
 
         # always export visualized video regardless of the cloth refinment
         if args.export_video:

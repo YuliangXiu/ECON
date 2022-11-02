@@ -1,4 +1,4 @@
-name: econ-if
+name: econ-smpl
 ckpt_dir: "./data/ckpt/"
 normal_path: "./data/ckpt/normal/last.ckpt"
 ifnet_path: "./data/ckpt/IF-Geo/last-256-v2.ckpt"
@@ -32,4 +32,4 @@ bni:
 
 # use_smpl: ["hand", "face"]
 use_smpl: []
-always_ifnet: True
+always_ifnet: False

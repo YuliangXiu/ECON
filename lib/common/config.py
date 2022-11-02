@@ -92,8 +92,8 @@ _C.net.num_views = 1
 _C.bni = CN()
 _C.bni.k = 4
 _C.bni.lambda1 = 1e-4
-_C.bni.auto_thickness = True
-_C.bni.default_thickness = 0.05
+_C.bni.boundary_consist = 1e0
+_C.bni.poisson_depth = 8
 
 # kernel_size, stride, dilation, padding
 

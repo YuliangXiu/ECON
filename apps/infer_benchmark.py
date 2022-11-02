@@ -67,22 +67,23 @@ if __name__ == "__main__":
         "batch_size",
         1,
     ]
-    
-    cfg_test_list += ["dataset.types",
+
+    cfg_test_list += [
+        "dataset.types",
         ["cape", "renderpeople"],
         "dataset.scales",
-        [100.0, 1.0],]
-    
+        [100.0, 1.0],
+    ]
+
     # cfg_test_list += ["dataset.types",
     #     ["cape"],
     #     "dataset.scales",
     #     [100.0],]
-    
+
     # cfg_test_list += ["dataset.types",
     #     ["renderpeople"],
     #     "dataset.scales",
     #     [1.0],]
-    
 
     cfg.merge_from_list(cfg_test_list)
     cfg.freeze()
@@ -104,6 +105,7 @@ if __name__ == "__main__":
     evaluator = Evaluator(device=device)
 
     export_dir = osp.join(cfg.results_path, cfg.name, "-".join(cfg.dataset.types))
+    # export_dir = osp.join(cfg.results_path, "pifuhd")
 
     print(colored(f"Dataset Size: {len(dataset)}", "green"))
 
@@ -124,9 +126,11 @@ if __name__ == "__main__":
                 data[key] = data[key].unsqueeze(0).to(device)
 
         current_name = f"{data['dataset']}-{data['subject']}-{data['rotation']}"
-
         current_dir = osp.join(export_dir, data['dataset'], data['subject'])
         os.makedirs(current_dir, exist_ok=True)
+
+        # current_name = f"{data['subject']}-{data['rotation']:03d}"
+        # current_dir = osp.join(export_dir, data['dataset'])
 
         final_path = osp.join(current_dir, f"{current_name}_final.obj")
 
@@ -165,11 +169,11 @@ if __name__ == "__main__":
             BNI_object = BNI(dir_path=osp.join(current_dir, "BNI"),
                              name=current_name,
                              BNI_dict=BNI_dict,
-                             device=device,
-                             mvc=False)
+                             cfg=cfg.bni,
+                             device=device)
 
             BNI_object.extract_surface(False)
-                
+
             if cfg.always_ifnet:
 
                 if is_smplx:
@@ -183,12 +187,9 @@ if __name__ == "__main__":
                             "depth_B": BNI_object.B_depth.unsqueeze(0).to(device)
                         }, cfg.vol_res))
 
-                occupancies = VoxelGrid.from_mesh(side_mesh,
-                                                    cfg.vol_res,
-                                                    loc=[
-                                                        0,
-                                                    ] * 3,
-                                                    scale=2.0).data.transpose(2, 1, 0)
+                occupancies = VoxelGrid.from_mesh(side_mesh, cfg.vol_res, loc=[
+                    0,
+                ] * 3, scale=2.0).data.transpose(2, 1, 0)
                 occupancies = np.flip(occupancies, axis=1)
 
                 in_tensor["body_voxels"] = torch.tensor(
@@ -213,7 +214,7 @@ if __name__ == "__main__":
                     side_mesh = apply_vertex_mask(
                         side_mesh,
                         (SMPLX_object.front_flame_vertex_mask + SMPLX_object.mano_vertex_mask +
-                            SMPLX_object.eyeball_vertex_mask).eq(0).float(),
+                         SMPLX_object.eyeball_vertex_mask).eq(0).float(),
                     )
 
             side_verts = torch.tensor(side_mesh.vertices).float().to(device)
@@ -233,7 +234,6 @@ if __name__ == "__main__":
             if "face" in cfg.use_smpl and is_smplx:
                 # only face
                 face_mesh = apply_vertex_mask(face_mesh, SMPLX_object.front_flame_vertex_mask)
-                face_mesh.vertices[:, 2] -= BNI_object.thickness.numpy() / 2.0
                 # remove face neighbor triangles
                 BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, face_mesh, 4e-2,
                                                       device)
@@ -264,11 +264,12 @@ if __name__ == "__main__":
 
             side_mesh.export(osp.join(current_dir, f"{current_name}_side.obj"))
 
-            final_mesh = poisson(
-                sum(full_lst),
-                final_path,
-                10,
-            )
+            # final_mesh = poisson(
+            #     sum(full_lst),
+            #     final_path,
+            #     cfg.bni.poisson_depth,
+            # )
+            final_mesh = sum(full_lst)
         else:
             final_mesh = trimesh.load(final_path)
 
