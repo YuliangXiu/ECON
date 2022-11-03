@@ -64,8 +64,6 @@ _C.cloth_overlap_thres = 1.0
 
 _C.batch_size = 4
 _C.num_threads = 8
-_C.use_smpl = ["face", "hand"]
-_C.always_ifnet = True
 
 _C.num_epoch = 10
 _C.freq_plot = 0.01
@@ -92,8 +90,13 @@ _C.net.num_views = 1
 _C.bni = CN()
 _C.bni.k = 4
 _C.bni.lambda1 = 1e-4
-_C.bni.boundary_consist = 1e0
-_C.bni.poisson_depth = 8
+_C.bni.boundary_consist = 1e-6
+_C.bni.poisson_depth = 10
+_C.bni.use_poisson = True
+_C.bni.use_smpl = ["face", "hand"]
+_C.bni.always_ifnet = True
+_C.bni.finish = True
+_C.bni.thickness = 0.00
 
 # kernel_size, stride, dilation, padding
 
@@ -204,6 +207,7 @@ def get_cfg_defaults():
 # Alternatively, provide a way to import the defaults as
 # a global singleton:
 cfg = _C  # users can `from config import cfg`
+
 
 # cfg = get_cfg_defaults()
 # cfg.merge_from_file('./configs/example.yaml')

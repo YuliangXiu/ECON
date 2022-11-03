@@ -32,7 +32,6 @@ from tqdm.auto import tqdm
 from apps.Normal import Normal
 from apps.IFGeo import IFGeo
 from lib.common.config import cfg
-from lib.common.render import Render
 from lib.common.train_util import load_normal_networks, load_networks
 from lib.common.BNI import BNI
 from lib.common.BNI_utils import save_normal_tensor
@@ -55,7 +54,7 @@ if __name__ == "__main__":
 
     # cfg read and merge
     cfg.merge_from_file(args.config)
-    device = torch.device(f"cuda:{args.gpu_device}")
+    device = torch.device("cuda:0")
 
     cfg_test_list = [
         "test_mode",
@@ -70,9 +69,9 @@ if __name__ == "__main__":
 
     cfg_test_list += [
         "dataset.types",
-        ["cape", "renderpeople"],
+        ["renderpeople", "cape"],
         "dataset.scales",
-        [100.0, 1.0],
+        [1.0, 100.0],
     ]
 
     # cfg_test_list += ["dataset.types",
@@ -104,7 +103,7 @@ if __name__ == "__main__":
     dataset = PIFuDataset(cfg=cfg, split="test")
     evaluator = Evaluator(device=device)
 
-    export_dir = osp.join(cfg.results_path, cfg.name, "-".join(cfg.dataset.types))
+    export_dir = osp.join(cfg.results_path, cfg.name, "-".join(sorted(cfg.dataset.types)))
     # export_dir = osp.join(cfg.results_path, "pifuhd")
 
     print(colored(f"Dataset Size: {len(dataset)}", "green"))
@@ -134,8 +133,8 @@ if __name__ == "__main__":
 
         final_path = osp.join(current_dir, f"{current_name}_final.obj")
 
-        # if not osp.exists(final_path):
-        if True:
+        if not osp.exists(final_path):
+        # if True:
 
             in_tensor = data.copy()
 
@@ -264,12 +263,15 @@ if __name__ == "__main__":
 
             side_mesh.export(osp.join(current_dir, f"{current_name}_side.obj"))
 
-            # final_mesh = poisson(
-            #     sum(full_lst),
-            #     final_path,
-            #     cfg.bni.poisson_depth,
-            # )
-            final_mesh = sum(full_lst)
+            if cfg.use_poisson:
+                final_mesh = poisson(
+                    sum(full_lst),
+                    final_path,
+                    cfg.bni.poisson_depth,
+                )
+            else:
+                final_mesh = sum(full_lst)
+                final_mesh.export(final_path)
         else:
             final_mesh = trimesh.load(final_path)
 

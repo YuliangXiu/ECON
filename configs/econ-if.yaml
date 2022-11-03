@@ -13,7 +13,7 @@ batch_size: 1
 
 # user defined
 vol_res: 256      # IF-Net volume resolution
-mcube_res: 256
+mcube_res: 512
 clean_mesh: True  # if True, will remove floating pieces
 cloth_overlap_thres: 0.50
 body_overlap_thres: 0.93
@@ -26,10 +26,11 @@ body_overlap_thres: 0.93
 
 bni:
   k: 4
-  lambda1: 1e-3
-  boundary_consist: 1e-5
-  poisson_depth: 8
-
-# use_smpl: ["hand", "face"]
-use_smpl: []
-always_ifnet: True
+  lambda1: 1e-4
+  boundary_consist: 1e-6
+  poisson_depth: 10
+  use_smpl: ["hand", "face"]
+  # use_smpl: []
+  always_ifnet: True
+  use_poisson: True
+  thickness: 0.02

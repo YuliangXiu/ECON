@@ -332,6 +332,7 @@ class PIFuDataset:
         else:
             mask = rgba.split()[-1]
             image = rgba.convert("RGB")
+            
         image = self.image_to_tensor(image)
         mask = self.mask_to_tensor(mask)
         image = (image * mask)[:channel]

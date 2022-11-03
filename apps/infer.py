@@ -25,14 +25,13 @@ import torch, torchvision
 import trimesh
 import numpy as np
 import argparse
-import pickle
+import yaml
 import os
 
 from termcolor import colored
 from tqdm.auto import tqdm
 from apps.Normal import Normal
 from apps.IFGeo import IFGeo
-from lib.common.cloth_extraction import extract_cloth
 from lib.common.config import cfg
 from lib.common.train_util import init_loss, load_normal_networks, load_networks
 from lib.common.BNI import BNI
@@ -90,7 +89,7 @@ if __name__ == "__main__":
 
     # SMPLX object
     SMPLX_object = SMPLX()
-    dropbox_dir = osp.join("/home/yxiu/Dropbox/ECON/pinterest/single", cfg.name)
+    dropbox_dir = osp.join(args.out_dir.replace("results", "/home/yxiu/Dropbox/ECON"), cfg.name)
     os.makedirs(dropbox_dir, exist_ok=True)
 
     dataset_param = {
@@ -110,6 +109,18 @@ if __name__ == "__main__":
     for data in pbar:
 
         losses = init_loss()
+
+        bni_path = osp.join(args.out_dir, cfg.name, "BNI", f"{data['name']}.yaml")
+        os.makedirs(osp.dirname(bni_path), exist_ok=True)
+
+        if osp.exists(bni_path):
+            cfg.bni.merge_from_file(bni_path)
+            if cfg.bni.finish:
+                continue
+        else:
+            cfg.bni.merge_from_list(["finish", True])
+            with open(bni_path, "w+") as file:
+                _ = yaml.dump(dict(cfg.bni), file)
 
         pbar.set_description(f"{data['name']}")
 
@@ -370,6 +381,7 @@ if __name__ == "__main__":
                 in_tensor,
                 idx,
                 osp.join(args.out_dir, cfg.name, f"BNI/{data['name']}_{idx}"),
+                cfg.bni.thickness,
             )
 
             # BNI process
@@ -387,9 +399,9 @@ if __name__ == "__main__":
             # requires shape completion when low overlap
             # replace SMPL by completed mesh as side_mesh
 
-            if (body_overlap[idx] < cfg.body_overlap_thres) or cfg.always_ifnet:
+            if (body_overlap[idx] < cfg.body_overlap_thres) or cfg.bni.always_ifnet:
 
-                if not cfg.always_ifnet:
+                if not cfg.bni.always_ifnet:
                     print(
                         colored(f"Low overlap: {body_overlap[idx]:.2f}, shape completion\n",
                                 "green"))
@@ -442,21 +454,25 @@ if __name__ == "__main__":
             # 3. remove eyeball faces
 
             (xy, z) = side_verts.split([2, 1], dim=-1)
-            F_vis = get_visibility(xy, z, side_faces[..., [0, 2, 1]], img_res=2**9, faces_per_pixel=1)
+            F_vis = get_visibility(xy,
+                                   z,
+                                   side_faces[..., [0, 2, 1]],
+                                   img_res=2**9,
+                                   faces_per_pixel=1)
             B_vis = get_visibility(xy, -z, side_faces, img_res=2**9, faces_per_pixel=1)
 
             full_lst = []
 
-            if "face" in cfg.use_smpl:
+            if "face" in cfg.bni.use_smpl:
                 # only face
                 face_mesh = apply_vertex_mask(face_mesh, SMPLX_object.front_flame_vertex_mask)
-                face_mesh.vertices[:, 2] -= BNI_object.thickness / 2.0
+                face_mesh.vertices[:, 2] -= cfg.bni.thickness
                 # remove face neighbor triangles
-                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, face_mesh, 4e-2,
-                                                      device)
+                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, face_mesh, 6e-2,
+                                                      device, camera_ray=True)
                 full_lst += [face_mesh]
 
-            if "hand" in cfg.use_smpl:
+            if "hand" in cfg.bni.use_smpl:
                 # only hands
                 hand_mesh = apply_vertex_mask(hand_mesh, SMPLX_object.mano_vertex_mask)
                 # remove face neighbor triangles
@@ -469,8 +485,8 @@ if __name__ == "__main__":
             # initial side_mesh could be SMPLX or IF-net
             side_mesh = part_removal(side_mesh,
                                      torch.logical_or(F_vis, B_vis),
-                                     sum(full_lst),
-                                     1e-2,
+                                     sum([face_mesh, hand_mesh]),
+                                     4e-2,
                                      device,
                                      clean=False)
 
@@ -482,13 +498,14 @@ if __name__ == "__main__":
 
             side_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_side.obj")
 
-        
-            # final_mesh = poisson(
-            #     sum(full_lst),
-            #     f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_full.obj",
-            #     cfg.bni.poisson_depth,
-            # )
-            final_mesh = sum(full_lst)
+            if cfg.bni.use_poisson:
+                final_mesh = poisson(
+                    sum(full_lst),
+                    f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_full.obj",
+                    cfg.bni.poisson_depth,
+                )
+            else:
+                final_mesh = sum(full_lst)
 
             dataset.render.load_meshes(final_mesh.vertices, final_mesh.faces)
             rotate_recon_lst = dataset.render.get_image(cam_type="four")
@@ -497,7 +514,7 @@ if __name__ == "__main__":
             # for video rendering
             in_tensor["BNI_verts"].append(torch.tensor(final_mesh.vertices).float())
             in_tensor["BNI_faces"].append(torch.tensor(final_mesh.faces).long())
-            
+
         # always export visualized png regardless of the cloth refinment
 
         per_data_lst.append(get_optim_grid_image(per_loop_lst, None, nrow=5, type="cloth"))
@@ -510,8 +527,6 @@ if __name__ == "__main__":
         in_tensor["uncrop_param"] = data["uncrop_param"]
         in_tensor["img_raw"] = data["img_raw"]
         torch.save(in_tensor, osp.join(args.out_dir, cfg.name, "vid/in_tensor.pt"))
-        
-        break
 
         # always export visualized video regardless of the cloth refinment
         if args.export_video:

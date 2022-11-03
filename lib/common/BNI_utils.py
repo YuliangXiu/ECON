@@ -295,28 +295,30 @@ def generate_dx_dy(mask, nz_horizontal, nz_vertical, step_size=1):
     nz_top = nz_vertical[has_top_mask[mask]]
     nz_bottom = nz_vertical[has_bottom_mask[mask]]
 
-    data = cp.stack([-nz_left/step_size, nz_left/step_size], -1).flatten()
-    indices = cp.stack((pixel_idx[move_left(has_left_mask)], pixel_idx[has_left_mask]), -1).flatten()
+    data = cp.stack([-nz_left / step_size, nz_left / step_size], -1).flatten()
+    indices = cp.stack((pixel_idx[move_left(has_left_mask)], pixel_idx[has_left_mask]),
+                       -1).flatten()
     indptr = cp.concatenate([cp.array([0]), cp.cumsum(has_left_mask[mask].astype(int) * 2)])
     D_horizontal_neg = csr_matrix((data, indices, indptr), shape=(num_pixel, num_pixel))
 
-    data = cp.stack([-nz_right/step_size, nz_right/step_size], -1).flatten()
-    indices = cp.stack((pixel_idx[has_right_mask], pixel_idx[move_right(has_right_mask)]), -1).flatten()
+    data = cp.stack([-nz_right / step_size, nz_right / step_size], -1).flatten()
+    indices = cp.stack((pixel_idx[has_right_mask], pixel_idx[move_right(has_right_mask)]),
+                       -1).flatten()
     indptr = cp.concatenate([cp.array([0]), cp.cumsum(has_right_mask[mask].astype(int) * 2)])
     D_horizontal_pos = csr_matrix((data, indices, indptr), shape=(num_pixel, num_pixel))
 
-    data = cp.stack([-nz_top/step_size, nz_top/step_size], -1).flatten()
+    data = cp.stack([-nz_top / step_size, nz_top / step_size], -1).flatten()
     indices = cp.stack((pixel_idx[has_top_mask], pixel_idx[move_top(has_top_mask)]), -1).flatten()
     indptr = cp.concatenate([cp.array([0]), cp.cumsum(has_top_mask[mask].astype(int) * 2)])
     D_vertical_pos = csr_matrix((data, indices, indptr), shape=(num_pixel, num_pixel))
 
-    data = cp.stack([-nz_bottom/step_size, nz_bottom/step_size], -1).flatten()
-    indices = cp.stack((pixel_idx[move_bottom(has_bottom_mask)], pixel_idx[has_bottom_mask]), -1).flatten()
+    data = cp.stack([-nz_bottom / step_size, nz_bottom / step_size], -1).flatten()
+    indices = cp.stack((pixel_idx[move_bottom(has_bottom_mask)], pixel_idx[has_bottom_mask]),
+                       -1).flatten()
     indptr = cp.concatenate([cp.array([0]), cp.cumsum(has_bottom_mask[mask].astype(int) * 2)])
     D_vertical_neg = csr_matrix((data, indices, indptr), shape=(num_pixel, num_pixel))
 
     return D_horizontal_pos, D_horizontal_neg, D_vertical_pos, D_vertical_neg
-
 
 
 def construct_facets_from(mask):
@@ -675,7 +677,7 @@ def double_side_bilateral_normal_integration(normal_front,
     #      [0,  fy, cy],
     #      [0,  0,  1]]
 
-    num_normals = np.sum(normal_mask)
+    num_normals = cp.sum(normal_mask)
     normal_map_front = cp.asarray(normal_front)
     normal_map_back = cp.asarray(normal_back)
     normal_mask = cp.asarray(normal_mask)
@@ -727,16 +729,17 @@ def double_side_bilateral_normal_integration(normal_front,
     b_back = cp.concatenate((-nx_back, -nx_back, -ny_back, -ny_back))
 
     # initialization
-    W_front = spdiags(0.5 * np.ones(4 * num_normals),
+    W_front = spdiags(0.5 * cp.ones(4 * num_normals),
                       0,
                       4 * num_normals,
                       4 * num_normals,
                       format="csr")
-    W_back = spdiags(0.5 * np.ones(4 * num_normals),
+    W_back = spdiags(0.5 * cp.ones(4 * num_normals),
                      0,
                      4 * num_normals,
                      4 * num_normals,
                      format="csr")
+
     z_front = cp.zeros(num_normals, float)
     z_back = cp.zeros(num_normals, float)
     z_combined = cp.concatenate((z_front, z_back))
@@ -798,7 +801,7 @@ def double_side_bilateral_normal_integration(normal_front,
         wu_f[bottom_boundary_mask] = 0.5
         wv_f[left_boundary_mask] = 0.5
         wv_f[right_boudnary_mask] = 0.5
-        W_front = spdiags(np.concatenate((wu_f, 1 - wu_f, wv_f, 1 - wv_f)),
+        W_front = spdiags(cp.concatenate((wu_f, 1 - wu_f, wv_f, 1 - wv_f)),
                           0,
                           4 * num_normals,
                           4 * num_normals,
@@ -810,7 +813,7 @@ def double_side_bilateral_normal_integration(normal_front,
         wu_b[bottom_boundary_mask] = 0.5
         wv_b[left_boundary_mask] = 0.5
         wv_b[right_boudnary_mask] = 0.5
-        W_back = spdiags(np.concatenate((wu_b, 1 - wu_b, wv_b, 1 - wv_b)),
+        W_back = spdiags(cp.concatenate((wu_b, 1 - wu_b, wv_b, 1 - wv_b)),
                          0,
                          4 * num_normals,
                          4 * num_normals,
@@ -825,8 +828,8 @@ def double_side_bilateral_normal_integration(normal_front,
 
         energy_list.append(energy)
         relative_energy = cp.abs(energy - energy_old) / energy_old
-        # pbar.set_description(f"step {i + 1}/{max_iter} energy: {energy:.3e}"
-        #                      f" relative energy: {relative_energy:.3e}")
+        # print(f"step {i + 1}/{max_iter} energy: {energy:.3e}"
+        #       f" relative energy: {relative_energy:.3e}")
         if relative_energy < tol:
             break
     # del A1, A2, A3, A4, nx, ny
@@ -853,22 +856,23 @@ def double_side_bilateral_normal_integration(normal_front,
 
     front_mesh = clean_floats(trimesh.Trimesh(vertices_front, faces_front))
     back_mesh = clean_floats(trimesh.Trimesh(vertices_back, faces_back))
-    
-    result = {"F_verts":torch.as_tensor(front_mesh.vertices).float(),
-              "F_faces":torch.as_tensor(front_mesh.faces).long(),
-              "B_verts":torch.as_tensor(back_mesh.vertices).float(),
-              "B_faces":torch.as_tensor(back_mesh.faces).long(),
-              "F_depth": torch.as_tensor(depth_map_front_est).float(),
-              "B_depth": torch.as_tensor(depth_map_back_est).float()}
+
+    result = {
+        "F_verts": torch.as_tensor(front_mesh.vertices).float(),
+        "F_faces": torch.as_tensor(front_mesh.faces).long(),
+        "B_verts": torch.as_tensor(back_mesh.vertices).float(),
+        "B_faces": torch.as_tensor(back_mesh.faces).long(),
+        "F_depth": torch.as_tensor(depth_map_front_est).float(),
+        "B_depth": torch.as_tensor(depth_map_back_est).float()
+    }
 
     return result
 
 
-def save_normal_tensor(in_tensor, idx, png_path):
+def save_normal_tensor(in_tensor, idx, png_path, thickness=0.0):
 
     os.makedirs(os.path.dirname(png_path), exist_ok=True)
 
-    image_arr = tensor2arr(in_tensor["image"][idx:idx + 1])
     normal_F_arr = tensor2arr(in_tensor["normal_F"][idx:idx + 1])
     normal_B_arr = tensor2arr(in_tensor["normal_B"][idx:idx + 1])
     mask_normal_arr = tensor2arr(in_tensor["image"][idx:idx + 1], True)
@@ -876,24 +880,15 @@ def save_normal_tensor(in_tensor, idx, png_path):
     depth_F_arr = depth2arr(in_tensor["depth_F"][idx])
     depth_B_arr = depth2arr(in_tensor["depth_B"][idx])
 
-    # T_normal_F_arr = tensor2arr(in_tensor["T_normal_F"][idx:idx+1])
-    # T_normal_B_arr = tensor2arr(in_tensor["T_normal_B"][idx:idx+1])
-    T_mask_normal_arr = tensor2arr(in_tensor["T_normal_F"][idx:idx + 1], True)
-
     BNI_dict = {}
 
     # clothed human
     BNI_dict["normal_F"] = normal_F_arr
     BNI_dict["normal_B"] = normal_B_arr
     BNI_dict["mask"] = mask_normal_arr > 0.
-    BNI_dict["depth_F"] = depth_F_arr - 100.
-    BNI_dict["depth_B"] = 100. - depth_B_arr
+    BNI_dict["depth_F"] = depth_F_arr - 100. - thickness
+    BNI_dict["depth_B"] = 100. - depth_B_arr + thickness
     BNI_dict["depth_mask"] = depth_F_arr != -1.0
-
-    # # smpl body
-    # BNI_dict["T_normal_F"] = T_normal_F_arr
-    # BNI_dict["T_normal_B"] = T_normal_B_arr
-    # BNI_dict["T_mask"] = T_mask_normal_arr
 
     np.save(png_path + ".npy", BNI_dict, allow_pickle=True)
 

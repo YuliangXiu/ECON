@@ -83,7 +83,7 @@ def apply_vertex_face_mask(mesh, vertex_mask, face_mask):
     return mesh
 
 
-def part_removal(full_mesh, vis_mask, part_mesh, thres, device, clean=True):
+def part_removal(full_mesh, vis_mask, part_mesh, thres, device, clean=True, camera_ray=False):
 
     # thres: face 3e-2, hand 4e-2
 
@@ -92,13 +92,18 @@ def part_removal(full_mesh, vis_mask, part_mesh, thres, device, clean=True):
         torch.tensor(part_mesh.vertices).unsqueeze(0).to(device),
         torch.tensor(part_mesh.faces).unsqueeze(0).to(device))
 
-    (part_dist, _) = part_extractor.query(
+    (part_dist, part_cos) = part_extractor.query(
         torch.tensor(full_mesh.vertices).unsqueeze(0).to(device), {"smpl_nsdf": None})
 
-    if vis_mask is not None:
-        BNI_verts_mask = ~(torch.logical_or(part_dist < thres, vis_mask.to(device))).flatten()
+    if camera_ray:
+        remove_mask = torch.logical_and(part_dist < thres, part_cos > 0.5)
     else:
-        BNI_verts_mask = ~(part_dist < thres).flatten()
+        remove_mask = part_dist < thres
+    
+    if vis_mask is not None:
+        BNI_verts_mask = ~(torch.logical_or(remove_mask, vis_mask.to(device))).flatten()
+    else:
+        BNI_verts_mask = ~(remove_mask).flatten()
 
     BNI_part_mask = BNI_verts_mask[full_mesh.faces].any(dim=1)
     full_mesh.update_faces(BNI_part_mask.detach().cpu())
@@ -348,26 +353,29 @@ def mesh_edge_loss(meshes, target_length: float = 0.0):
 
 
 def remesh(obj, obj_path):
-
+    
     obj.export(obj_path)
     ms = pymeshlab.MeshSet()
     ms.load_new_mesh(obj_path)
-    ms.meshing_decimation_quadric_edge_collapse(targetfacenum=100000)
+    # ms.meshing_decimation_quadric_edge_collapse(targetfacenum=100000)
     ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.Percentage(0.5), adaptive=True)
-    ms.apply_coord_laplacian_smoothing()
-    ms.save_current_mesh(obj_path)
-    polished_mesh = trimesh.load_mesh(obj_path)
+    # ms.apply_coord_laplacian_smoothing()
+    ms.save_current_mesh(obj_path[:-4]+"_remesh.obj")
+    polished_mesh = trimesh.load_mesh(obj_path[:-4]+"_remesh.obj")
 
     return polished_mesh
 
 
 
 def poisson(mesh, obj_path, depth=10):
-
-    # pypoisson
+    
+    
+    if osp.exists(obj_path):
+        final_mesh = trimesh.load(obj_path)
+        if final_mesh.is_watertight:
+            return final_mesh
 
     from pypoisson import poisson_reconstruction
-
     faces, vertices = poisson_reconstruction(mesh.vertices, mesh.vertex_normals, depth=depth)
 
     new_meshes = trimesh.Trimesh(vertices, faces)
