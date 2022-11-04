@@ -113,7 +113,7 @@ if __name__ == "__main__":
     benchmark = {}
 
     for data in pbar:
-
+        
         # dict_keys(['dataset', 'subject', 'rotation', 'scale',
         # 'smplx_param', 'smpl_param', 'calib',
         # 'image', 'T_normal_F', 'T_normal_B',
@@ -127,14 +127,16 @@ if __name__ == "__main__":
         current_name = f"{data['dataset']}-{data['subject']}-{data['rotation']}"
         current_dir = osp.join(export_dir, data['dataset'], data['subject'])
         os.makedirs(current_dir, exist_ok=True)
+        
+        pbar.set_description(current_name)
 
         # current_name = f"{data['subject']}-{data['rotation']:03d}"
         # current_dir = osp.join(export_dir, data['dataset'])
 
         final_path = osp.join(current_dir, f"{current_name}_final.obj")
 
-        if not osp.exists(final_path):
-        # if True:
+        # if not osp.exists(final_path):
+        if data['dataset'] == "renderpeople":
 
             in_tensor = data.copy()
 
@@ -162,6 +164,7 @@ if __name__ == "__main__":
                 in_tensor,
                 0,
                 osp.join(current_dir, "BNI/param_dict"),
+                cfg.bni.thickness,
             )
 
             # BNI process
@@ -173,7 +176,7 @@ if __name__ == "__main__":
 
             BNI_object.extract_surface(False)
 
-            if cfg.always_ifnet:
+            if cfg.bni.always_ifnet:
 
                 if is_smplx:
                     side_mesh = apply_face_mask(side_mesh, ~SMPLX_object.smplx_eyeball_fid_mask)
@@ -230,7 +233,7 @@ if __name__ == "__main__":
 
             full_lst = []
 
-            if "face" in cfg.use_smpl and is_smplx:
+            if "face" in cfg.bni.use_smpl and is_smplx:
                 # only face
                 face_mesh = apply_vertex_mask(face_mesh, SMPLX_object.front_flame_vertex_mask)
                 # remove face neighbor triangles
@@ -238,7 +241,7 @@ if __name__ == "__main__":
                                                       device)
                 full_lst += [face_mesh]
 
-            if "hand" in cfg.use_smpl and is_smplx:
+            if "hand" in cfg.bni.use_smpl and is_smplx:
                 # only hands
                 hand_mesh = apply_vertex_mask(hand_mesh, SMPLX_object.mano_vertex_mask)
                 # remove face neighbor triangles
@@ -263,7 +266,7 @@ if __name__ == "__main__":
 
             side_mesh.export(osp.join(current_dir, f"{current_name}_side.obj"))
 
-            if cfg.use_poisson:
+            if cfg.bni.use_poisson:
                 final_mesh = poisson(
                     sum(full_lst),
                     final_path,
@@ -275,38 +278,38 @@ if __name__ == "__main__":
         else:
             final_mesh = trimesh.load(final_path)
 
-        # evaluation
+    #     # evaluation
 
-        result_eval = {
-            "verts_gt": data["verts"][0],
-            "faces_gt": data["faces"][0],
-            "verts_pr": final_mesh.vertices,
-            "faces_pr": final_mesh.faces,
-            "calib": data["calib"][0],
-        }
+    #     result_eval = {
+    #         "verts_gt": data["verts"][0],
+    #         "faces_gt": data["faces"][0],
+    #         "verts_pr": final_mesh.vertices,
+    #         "faces_pr": final_mesh.faces,
+    #         "calib": data["calib"][0],
+    #     }
 
-        evaluator.set_mesh(result_eval, scale=False)
-        chamfer, p2s = evaluator.calculate_chamfer_p2s(num_samples=1000)
-        nc = evaluator.calculate_normal_consist(osp.join(current_dir, f"{current_name}_nc.png"))
+    #     evaluator.set_mesh(result_eval, scale=False)
+    #     chamfer, p2s = evaluator.calculate_chamfer_p2s(num_samples=1000)
+    #     nc = evaluator.calculate_normal_consist(osp.join(current_dir, f"{current_name}_nc.png"))
 
-        if data["dataset"] not in benchmark.keys():
-            benchmark[data["dataset"]] = {
-                "chamfer": [chamfer.item()],
-                "p2s": [p2s.item()],
-                "nc": [nc.item()],
-                "subject": [f"{data['subject']}-{data['rotation']}"],
-            }
-        else:
-            benchmark[data["dataset"]]["chamfer"] += [chamfer.item()]
-            benchmark[data["dataset"]]["p2s"] += [p2s.item()]
-            benchmark[data["dataset"]]["nc"] += [nc.item()]
-            benchmark[data["dataset"]]["subject"] += [f"{data['subject']}-{data['rotation']}"]
+    #     if data["dataset"] not in benchmark.keys():
+    #         benchmark[data["dataset"]] = {
+    #             "chamfer": [chamfer.item()],
+    #             "p2s": [p2s.item()],
+    #             "nc": [nc.item()],
+    #             "subject": [f"{data['subject']}-{data['rotation']}"],
+    #         }
+    #     else:
+    #         benchmark[data["dataset"]]["chamfer"] += [chamfer.item()]
+    #         benchmark[data["dataset"]]["p2s"] += [p2s.item()]
+    #         benchmark[data["dataset"]]["nc"] += [nc.item()]
+    #         benchmark[data["dataset"]]["subject"] += [f"{data['subject']}-{data['rotation']}"]
 
-        pbar.set_description(
-            f"{current_name} | {chamfer.item():.3f} | {p2s.item():.3f} | {nc.item():.3f}")
+    #     pbar.set_description(
+    #         f"{current_name} | {chamfer.item():.3f} | {p2s.item():.3f} | {nc.item():.3f}")
 
-    np.save(osp.join(export_dir, "metric.npy"), benchmark, allow_pickle=True)
+    # np.save(osp.join(export_dir, "metric.npy"), benchmark, allow_pickle=True)
 
-    for dataset in benchmark.keys():
-        for metric in ["chamfer", "p2s", "nc"]:
-            print(f"{dataset}-{metric}: {sum(benchmark[dataset][metric])/300:.3f}")
+    # for dataset in benchmark.keys():
+    #     for metric in ["chamfer", "p2s", "nc"]:
+    #         print(f"{dataset}-{metric}: {sum(benchmark[dataset][metric])/300:.3f}")

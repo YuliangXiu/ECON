@@ -745,7 +745,7 @@ def double_side_bilateral_normal_integration(normal_front,
     z_combined = cp.concatenate((z_front, z_back))
 
     B, B_full = create_boundary_matrix(normal_mask)
-    B_mat = lambda_boundary_consistency * B_full.T @ B_full  #bug
+    B_mat = lambda_boundary_consistency * coo_matrix(B_full.get().T @ B_full.get())  #bug
 
     energy_list = []
 

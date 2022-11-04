@@ -287,7 +287,7 @@ class HGPIFuNet(BasePIFuNet):
                 point_feat_out[key] for key in self.smpl_feats if key in point_feat_out.keys()
             ]
             smpl_feat = torch.cat(feat_lst, dim=2).permute(0, 2, 1)
-
+            
             if self.prior_type == "keypoint":
                 kpt_feat = self.sp_encoder.forward(
                     cxyz=xyz.permute(0, 2, 1).contiguous(),

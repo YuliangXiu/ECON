@@ -64,9 +64,8 @@ class TestDataset:
 
         keep_lst = sorted(glob.glob(f"{self.image_dir}/*"))
         img_fmts = ["jpg", "png", "jpeg", "JPG", "bmp"]
-        keep_lst = [item for item in keep_lst if item.split(".")[-1] in img_fmts]
 
-        self.subject_list = sorted([item for item in keep_lst if item.split(".")[-1] in img_fmts])
+        self.subject_list = sorted([item for item in keep_lst if item.split(".")[-1] in img_fmts])[193:]
 
         # smpl related
         self.smpl_data = SMPLX()
@@ -91,7 +90,7 @@ class TestDataset:
     def compute_vis_cmap(self, smpl_verts, smpl_faces):
 
         (xy, z) = torch.as_tensor(smpl_verts).split([2, 1], dim=-1)
-        smpl_vis = get_visibility(xy, -z, torch.as_tensor(smpl_faces).long())
+        smpl_vis = get_visibility(xy, -z, torch.as_tensor(smpl_faces).long()).unsqueeze(-1)
         smpl_cmap = self.smpl_data.cmap_smpl_vids(self.smpl_type).unsqueeze(0)
 
         return {

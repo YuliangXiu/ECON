@@ -1,4 +1,4 @@
-name: econ-smpl
+name: econ-if-raw
 ckpt_dir: "./data/ckpt/"
 normal_path: "./data/ckpt/normal/last.ckpt"
 ifnet_path: "./data/ckpt/IF-Geo/last-256-v2.ckpt"
@@ -24,14 +24,13 @@ body_overlap_thres: 0.93
 #   boundary_consist: 1e-5
 
 bni:
-  k: 3
+  k: 4
   lambda1: 1e-4
   boundary_consist: 1e-6
   poisson_depth: 10
-  # use_smpl: ["hand", "face"]
   use_smpl: []
-  always_ifnet: False
-  use_poisson: False
+  always_ifnet: True
+  use_poisson: True
   hand_thres: 4e-2
   face_thres: 6e-2
   thickness: 0.02
