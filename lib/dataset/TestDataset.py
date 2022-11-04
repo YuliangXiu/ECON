@@ -58,6 +58,7 @@ class TestDataset:
         self.smpl_type = "smplx"
         self.smpl_gender = "neutral"
         self.vol_res = cfg["vol_res"]
+        self.single = cfg["single"]
 
         self.device = device
 
@@ -158,11 +159,11 @@ class TestDataset:
         return voxel_dict
 
     def __getitem__(self, index):
-
+        
         img_path = self.subject_list[index]
         img_name = img_path.split("/")[-1].rsplit(".", 1)[0]
-
-        arr_dict = process_image(img_path, self.hps_type, 512)
+        
+        arr_dict = process_image(img_path, self.hps_type, self.single, 512)
 
         # "img_icon":         #[N, 3, res, res] tensor
         # "img_crop":         #[N, 3, res, res] array

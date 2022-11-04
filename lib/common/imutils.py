@@ -96,7 +96,7 @@ def get_keypoints(image):
     result["rhand"] = collect_xyv(
         results.right_hand_landmarks) if results.right_hand_landmarks else fake_kps
     result["face"] = collect_xyv(results.face_landmarks) if results.face_landmarks else fake_kps
-
+    
     return result
 
 
@@ -181,7 +181,7 @@ def remove_floats(mask):
     return new_mask
 
 
-def process_image(img_file, hps_type, input_res=512):
+def process_image(img_file, hps_type, single, input_res=512):
 
     img_raw = load_img(img_file)
 
@@ -197,8 +197,13 @@ def process_image(img_file, hps_type, input_res=512):
     detector = detection.maskrcnn_resnet50_fpn(weights=detection.MaskRCNN_ResNet50_FPN_V2_Weights)
     detector.eval()
     predictions = detector([torch.from_numpy(img_square).permute(2, 0, 1) / 255.])[0]
-    human_ids = torch.logical_and(predictions["labels"] == 1,
-                                  predictions["scores"] > 0.9).nonzero().squeeze(1)
+    
+    if single:
+        top_score = predictions["scores"][predictions["labels"]==1].max() 
+        human_ids = torch.where(predictions["scores"]==top_score)[0]
+    else:
+        human_ids = torch.logical_and(predictions["labels"] == 1,
+                                    predictions["scores"] > 0.9).nonzero().squeeze(1)
     boxes = predictions["boxes"][human_ids, :].detach().cpu().numpy()
 
     masks = predictions["masks"][human_ids, :, :].permute(0, 2, 3, 1).detach().cpu().numpy()
@@ -285,6 +290,7 @@ def process_image(img_file, hps_type, input_res=512):
     }
 
     img_pymafx = {}
+    
     if len(img_pymafx_lst) > 0:
         for idx in range(len(img_pymafx_lst)):
             for key in img_pymafx_lst[idx].keys():

@@ -52,7 +52,6 @@ if __name__ == "__main__":
     parser.add_argument("-loop_smpl", "--loop_smpl", type=int, default=20)
     parser.add_argument("-patience", "--patience", type=int, default=5)
     parser.add_argument("-vis_freq", "--vis_freq", type=int, default=1000)
-    parser.add_argument("-hps_type", "--hps_type", type=str, default="pixie")
     parser.add_argument("-export_video", action="store_true")
     parser.add_argument("-BNI", action="store_false")
     parser.add_argument("-in_dir", "--in_dir", type=str, default="./examples")
@@ -96,8 +95,9 @@ if __name__ == "__main__":
         "image_dir": args.in_dir,
         "seg_dir": args.seg_dir,
         "use_seg": True,  # w/ or w/o segmentation
-        "hps_type": args.hps_type,  # pymafx/pixie
+        "hps_type": cfg.bni.hps_type,  # pymafx/pixie
         "vol_res": cfg.vol_res,
+        "single": True,
     }
 
     dataset = TestDataset(dataset_param, device)
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     pbar = tqdm(dataset)
 
     for data in pbar:
-
+        
         losses = init_loss()
 
         bni_path = osp.join(args.out_dir, cfg.name, "BNI", f"{data['name']}.yaml")
@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
         if osp.exists(bni_path):
             cfg.bni.merge_from_file(bni_path)
-            if cfg.bni.finish:
+            if cfg.bni.finish: 
                 continue
         else:
             cfg.bni.merge_from_list(["finish", True])
@@ -301,7 +301,7 @@ if __name__ == "__main__":
         # 1. SMPL Fitting
 
         per_data_lst[-1].save(osp.join(args.out_dir, cfg.name, f"png/{data['name']}_smpl.png"))
-        per_data_lst[-1].save(osp.join(dropbox_dir, f"{data['name']}_smpl.png"))
+        # per_data_lst[-1].save(osp.join(dropbox_dir, f"{data['name']}_smpl.png"))
 
         rgb_norm_F = blend_rgb_norm(in_tensor["normal_F"], data)
         rgb_norm_B = blend_rgb_norm(in_tensor["normal_B"], data)
@@ -468,7 +468,7 @@ if __name__ == "__main__":
                 face_mesh = apply_vertex_mask(face_mesh, SMPLX_object.front_flame_vertex_mask)
                 face_mesh.vertices[:, 2] -= cfg.bni.thickness
                 # remove face neighbor triangles
-                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, face_mesh, 6e-2,
+                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, face_mesh, cfg.bni.face_thres,
                                                       device, camera_ray=True)
                 full_lst += [face_mesh]
 
@@ -476,7 +476,7 @@ if __name__ == "__main__":
                 # only hands
                 hand_mesh = apply_vertex_mask(hand_mesh, SMPLX_object.mano_vertex_mask)
                 # remove face neighbor triangles
-                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, hand_mesh, 4e-2,
+                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, hand_mesh, cfg.bni.hand_thres,
                                                       device)
                 full_lst += [hand_mesh]
 

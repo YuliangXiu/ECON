@@ -745,7 +745,7 @@ def double_side_bilateral_normal_integration(normal_front,
     z_combined = cp.concatenate((z_front, z_back))
 
     B, B_full = create_boundary_matrix(normal_mask)
-    B_mat = lambda_boundary_consistency * B_full.T @ B_full
+    B_mat = lambda_boundary_consistency * B_full.T @ B_full  #bug
 
     energy_list = []
 
@@ -779,6 +779,7 @@ def double_side_bilateral_normal_integration(normal_front,
             offset_back = cp.mean((z_prior_back - z_combined[num_normals:])[depth_mask_flat])
             z_combined[:num_normals] = z_combined[:num_normals] + offset_front
             z_combined[num_normals:] = z_combined[num_normals:] + offset_back
+
 
         A_mat_combined = hstack([vstack((A_mat_front, csr_matrix((num_normals, num_normals)))), \
                                  vstack((csr_matrix((num_normals, num_normals)), A_mat_back))]) + B_mat

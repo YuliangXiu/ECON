@@ -22,7 +22,6 @@ body_overlap_thres: 0.93
 #   k: 2
 #   lambda1: 1e-3
 #   boundary_consist: 1e-5
-#   poisson_depth: 8
 
 bni:
   k: 4
@@ -30,7 +29,10 @@ bni:
   boundary_consist: 1e-6
   poisson_depth: 10
   use_smpl: ["hand", "face"]
-  # use_smpl: []
   always_ifnet: True
   use_poisson: True
+  hand_thres: 4e-2
+  face_thres: 6e-2
   thickness: 0.02
+  hps_type: "pymafx"
+  finish: False

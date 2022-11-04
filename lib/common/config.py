@@ -95,8 +95,11 @@ _C.bni.poisson_depth = 10
 _C.bni.use_poisson = True
 _C.bni.use_smpl = ["face", "hand"]
 _C.bni.always_ifnet = True
-_C.bni.finish = True
+_C.bni.finish = False
 _C.bni.thickness = 0.00
+_C.bni.hand_thres = 4e-2
+_C.bni.face_thres = 6e-2
+_C.bni.hps_type = "pymafx"
 
 # kernel_size, stride, dilation, padding
 
@@ -195,6 +198,7 @@ _C.dataset.voxel_res = 128
 _C.dataset.train_bsize = 1.0
 _C.dataset.val_bsize = 1.0
 _C.dataset.test_bsize = 1.0
+_C.dataset.single = True
 
 
 def get_cfg_defaults():
