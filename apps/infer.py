@@ -76,7 +76,7 @@ if __name__ == "__main__":
 
     cfg.merge_from_list(cfg_show_list)
     cfg.freeze()
-    
+
     # load model
     normal_model = Normal(cfg).to(device)
     load_normal_networks(normal_model, cfg.normal_path)
@@ -182,7 +182,8 @@ if __name__ == "__main__":
 
         N_body, N_pose = optimed_pose.shape[:2]
 
-        if osp.exists(osp.join(args.out_dir, "econ-if", f"png/{data['name']}_smpl.png")):
+        if osp.exists(osp.join(args.out_dir, "econ-if",
+                               f"png/{data['name']}_smpl.png")) and (cfg.bni.hps_type == 'pymafx'):
 
             smpl_verts_lst = []
             smpl_faces_lst = []
@@ -212,7 +213,7 @@ if __name__ == "__main__":
         else:
             # smpl optimization
             loop_smpl = tqdm(range(args.loop_smpl))
-            
+
             for i in loop_smpl:
 
                 per_loop_lst = []
@@ -345,16 +346,16 @@ if __name__ == "__main__":
             per_data_lst[-1].save(osp.join(args.out_dir, cfg.name, f"png/{data['name']}_smpl.png"))
             # per_data_lst[-1].save(osp.join(dropbox_dir, f"{data['name']}_smpl.png"))
 
-            rgb_norm_F = blend_rgb_norm(in_tensor["normal_F"], data)
-            rgb_norm_B = blend_rgb_norm(in_tensor["normal_B"], data)
+        rgb_norm_F = blend_rgb_norm(in_tensor["normal_F"], data)
+        rgb_norm_B = blend_rgb_norm(in_tensor["normal_B"], data)
 
-            img_overlap_path = osp.join(args.out_dir, cfg.name, f"png/{data['name']}_overlap.png")
-            torchvision.utils.save_image(
-                torch.Tensor([data["img_raw"], rgb_norm_F, rgb_norm_B]).permute(0, 3, 1, 2) / 255.,
-                img_overlap_path)
-            torchvision.utils.save_image(
-                torch.Tensor([data["img_raw"], rgb_norm_F, rgb_norm_B]).permute(0, 3, 1, 2) / 255.,
-                osp.join(dropbox_dir, f"{data['name']}_overlap.png"))
+        img_overlap_path = osp.join(args.out_dir, cfg.name, f"png/{data['name']}_overlap.png")
+        torchvision.utils.save_image(
+            torch.Tensor([data["img_raw"], rgb_norm_F, rgb_norm_B]).permute(0, 3, 1, 2) / 255.,
+            img_overlap_path)
+        torchvision.utils.save_image(
+            torch.Tensor([data["img_raw"], rgb_norm_F, rgb_norm_B]).permute(0, 3, 1, 2) / 255.,
+            osp.join(dropbox_dir, f"{data['name']}_overlap.png"))
 
         smpl_obj_lst = []
 
@@ -362,7 +363,7 @@ if __name__ == "__main__":
 
             smpl_obj = trimesh.Trimesh(
                 in_tensor["smpl_verts"].detach().cpu()[idx] * torch.tensor([1.0, -1.0, 1.0]),
-                in_tensor["smpl_faces"].detach().cpu()[0],
+                in_tensor["smpl_faces"].detach().cpu()[0][:, [0, 2, 1]],
                 process=False,
                 maintains_order=True,
             )
@@ -497,20 +498,12 @@ if __name__ == "__main__":
                 # 2. keep the front-FLAME+MANO faces
                 # 3. remove eyeball faces
 
-                (xy, z) = side_verts.split([2, 1], dim=-1)
-                F_vis = get_visibility(xy,
-                                       z,
-                                       side_faces[..., [0, 2, 1]],
-                                       img_res=2**9,
-                                       faces_per_pixel=1)
-                B_vis = get_visibility(xy, -z, side_faces, img_res=2**9, faces_per_pixel=1)
-
                 full_lst = []
 
                 if "face" in cfg.bni.use_smpl:
                     # only face
                     face_mesh = apply_vertex_mask(face_mesh, SMPLX_object.front_flame_vertex_mask)
-                    face_mesh.vertices[:, 2] -= cfg.bni.thickness
+                    face_mesh.vertices = face_mesh.vertices - np.array([0, 0, cfg.bni.thickness])
                     # remove face neighbor triangles
                     BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh,
                                                           None,
@@ -518,25 +511,46 @@ if __name__ == "__main__":
                                                           cfg.bni.face_thres,
                                                           device,
                                                           camera_ray=True)
+                    face_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_face.obj")
                     full_lst += [face_mesh]
 
                 if "hand" in cfg.bni.use_smpl:
+
                     # only hands
                     hand_mesh = apply_vertex_mask(hand_mesh, SMPLX_object.mano_vertex_mask)
                     # remove face neighbor triangles
                     BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, hand_mesh,
                                                           cfg.bni.hand_thres, device)
+                    side_mesh = part_removal(side_mesh, torch.zeros_like(side_verts[:, 0:1]),
+                                             hand_mesh, cfg.bni.hand_thres, device)
+                    hand_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_hand.obj")
                     full_lst += [hand_mesh]
 
                 full_lst += [BNI_object.F_B_trimesh]
 
                 # initial side_mesh could be SMPLX or IF-net
-                side_mesh = part_removal(side_mesh,
-                                         torch.logical_or(F_vis, B_vis),
-                                         sum([face_mesh, hand_mesh]),
-                                         4e-2,
-                                         device,
-                                         clean=False)
+                if False:
+                    (xy, z) = side_verts.split([2, 1], dim=-1)
+                    F_vis = get_visibility(xy,
+                                           z,
+                                           side_faces[..., [0, 2, 1]],
+                                           img_res=2**9,
+                                           faces_per_pixel=1)
+                    B_vis = get_visibility(xy, -z, side_faces, img_res=2**9, faces_per_pixel=1)
+
+                    side_mesh = part_removal(side_mesh,
+                                             torch.logical_or(F_vis, B_vis),
+                                             sum([face_mesh, hand_mesh]),
+                                             4e-2,
+                                             device,
+                                             clean=False)
+                else:
+                    side_mesh = part_removal(side_mesh,
+                                             torch.zeros_like(side_verts[:, 0:1]),
+                                             sum(full_lst),
+                                             1e-2,
+                                             device,
+                                             clean=False)
 
                 full_lst += [side_mesh]
 
@@ -544,16 +558,25 @@ if __name__ == "__main__":
                 BNI_object.F_B_trimesh.export(
                     f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_BNI.obj")
 
+                BNI_object.F_trimesh.export(
+                    f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_F.obj")
+
+                BNI_object.B_trimesh.export(
+                    f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_B.obj")
+
                 side_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_side.obj")
+
+                final_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_full.obj"
 
                 if cfg.bni.use_poisson:
                     final_mesh = poisson(
                         sum(full_lst),
-                        f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_full.obj",
+                        final_path,
                         cfg.bni.poisson_depth,
                     )
                 else:
                     final_mesh = sum(full_lst)
+                    final_mesh.export(final_path)
 
                 dataset.render.load_meshes(final_mesh.vertices, final_mesh.faces)
                 rotate_recon_lst = dataset.render.get_image(cam_type="four")

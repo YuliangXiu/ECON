@@ -840,6 +840,9 @@ def double_side_bilateral_normal_integration(normal_front,
 
     depth_map_back_est = cp.ones_like(normal_mask, float) * cp.nan
     depth_map_back_est[normal_mask] = z_back
+    
+    # manually cut the intersection
+    normal_mask[depth_map_front_est>=depth_map_back_est] = False
 
     vertices_front = cp.asnumpy(
         map_depth_map_to_point_clouds(depth_map_front_est, normal_mask, K=None,
@@ -852,8 +855,8 @@ def double_side_bilateral_normal_integration(normal_front,
     faces_back = np.concatenate((facets_back[:, [1, 4, 3]], facets_back[:, [1, 3, 2]]), axis=0)
     faces_front = np.concatenate((facets_back[:, [1, 2, 3]], facets_back[:, [1, 3, 4]]), axis=0)
 
-    vertices_front, faces_front = remove_stretched_faces(vertices_front, faces_front)
-    vertices_back, faces_back = remove_stretched_faces(vertices_back, faces_back)
+    # vertices_front, faces_front = remove_stretched_faces(vertices_front, faces_front)
+    # vertices_back, faces_back = remove_stretched_faces(vertices_back, faces_back)
 
     front_mesh = clean_floats(trimesh.Trimesh(vertices_front, faces_front))
     back_mesh = clean_floats(trimesh.Trimesh(vertices_back, faces_back))

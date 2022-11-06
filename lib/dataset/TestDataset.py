@@ -65,7 +65,8 @@ class TestDataset:
         keep_lst = sorted(glob.glob(f"{self.image_dir}/*"))
         img_fmts = ["jpg", "png", "jpeg", "JPG", "bmp"]
 
-        self.subject_list = sorted([item for item in keep_lst if item.split(".")[-1] in img_fmts])[193:]
+        self.subject_list = sorted([item for item in keep_lst if item.split(".")[-1] in img_fmts], reverse=True)
+        # self.subject_list = [f"{self.image_dir}/304e9c4798a8c3967de7c74c24ef2e38.jpg"]
 
         # smpl related
         self.smpl_data = SMPLX()

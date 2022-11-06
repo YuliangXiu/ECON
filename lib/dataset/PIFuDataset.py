@@ -182,7 +182,7 @@ class PIFuDataset:
             subject_list += subject_list[:self.bsize - len(subject_list) % self.bsize]
             print(colored(f"total: {len(subject_list)}", "yellow"))
 
-        # subject_list = ["thuman2/0008"]
+        # subject_list = ["renderpeople/rp_serena_posed_027"]
         return subject_list
 
     def __len__(self):

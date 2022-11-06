@@ -13,7 +13,7 @@ batch_size: 1
 
 # user defined
 vol_res: 256      # IF-Net volume resolution
-mcube_res: 512
+mcube_res: 256
 clean_mesh: True  # if True, will remove floating pieces
 cloth_overlap_thres: 0.50
 body_overlap_thres: 0.93

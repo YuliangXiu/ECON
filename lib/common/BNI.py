@@ -80,3 +80,13 @@ class BNI:
                                            F_B_faces.long(),
                                            process=False,
                                            maintain_order=True)
+
+        self.F_trimesh = trimesh.Trimesh(F_verts.float(),
+                                         bni_result["F_faces"].long(),
+                                         process=False,
+                                         maintain_order=True)
+
+        self.B_trimesh = trimesh.Trimesh(B_verts.float(),
+                                         bni_result["B_faces"].long(),
+                                         process=False,
+                                         maintain_order=True)

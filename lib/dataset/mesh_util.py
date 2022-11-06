@@ -359,7 +359,7 @@ def remesh(obj, obj_path):
     ms.load_new_mesh(obj_path)
     # ms.meshing_decimation_quadric_edge_collapse(targetfacenum=100000)
     ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.Percentage(0.5), adaptive=True)
-    # ms.apply_coord_laplacian_smoothing()
+    ms.apply_coord_laplacian_smoothing()
     ms.save_current_mesh(obj_path[:-4]+"_remesh.obj")
     polished_mesh = trimesh.load_mesh(obj_path[:-4]+"_remesh.obj")
 
@@ -368,7 +368,6 @@ def remesh(obj, obj_path):
 
 
 def poisson(mesh, obj_path, depth=10):
-    
     
     if osp.exists(obj_path):
         final_mesh = trimesh.load(obj_path)

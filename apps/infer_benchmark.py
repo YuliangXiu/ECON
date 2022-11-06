@@ -90,13 +90,13 @@ if __name__ == "__main__":
     # load model
     normal_model = Normal(cfg).to(device)
     load_normal_networks(normal_model, cfg.normal_path)
-
-    # load IFGeo model
-    ifnet_model = IFGeo(cfg).to(device)
-    load_networks(ifnet_model, mlp_path=cfg.ifnet_path)
-
     normal_model.netG.eval()
-    ifnet_model.netG.eval()
+
+    if cfg.bni.always_ifnet:
+        # load IFGeo model
+        ifnet_model = IFGeo(cfg).to(device)
+        load_networks(ifnet_model, mlp_path=cfg.ifnet_path)
+        ifnet_model.netG.eval()
 
     # SMPLX object
     SMPLX_object = SMPLX()
@@ -128,15 +128,16 @@ if __name__ == "__main__":
         current_dir = osp.join(export_dir, data['dataset'], data['subject'])
         os.makedirs(current_dir, exist_ok=True)
         
-        pbar.set_description(current_name)
+        # pbar.set_description(current_name)
 
         # current_name = f"{data['subject']}-{data['rotation']:03d}"
         # current_dir = osp.join(export_dir, data['dataset'])
 
         final_path = osp.join(current_dir, f"{current_name}_final.obj")
 
-        # if not osp.exists(final_path):
-        if data['dataset'] == "renderpeople":
+        if not osp.exists(final_path):
+            print(f"{final_path} not found")
+        # if data['dataset'] =s= "renderpeople":
 
             in_tensor = data.copy()
 
@@ -278,38 +279,40 @@ if __name__ == "__main__":
         else:
             final_mesh = trimesh.load(final_path)
 
-    #     # evaluation
+        # evaluation
 
-    #     result_eval = {
-    #         "verts_gt": data["verts"][0],
-    #         "faces_gt": data["faces"][0],
-    #         "verts_pr": final_mesh.vertices,
-    #         "faces_pr": final_mesh.faces,
-    #         "calib": data["calib"][0],
-    #     }
+        result_eval = {
+            "verts_gt": data["verts"][0],
+            "faces_gt": data["faces"][0],
+            "verts_pr": final_mesh.vertices,
+            "faces_pr": final_mesh.faces,
+            "calib": data["calib"][0],
+        }
 
-    #     evaluator.set_mesh(result_eval, scale=False)
-    #     chamfer, p2s = evaluator.calculate_chamfer_p2s(num_samples=1000)
-    #     nc = evaluator.calculate_normal_consist(osp.join(current_dir, f"{current_name}_nc.png"))
+        evaluator.set_mesh(result_eval, scale=False)
+        chamfer, p2s = evaluator.calculate_chamfer_p2s(num_samples=1000)
+        nc = evaluator.calculate_normal_consist(osp.join(current_dir, f"{current_name}_nc.png"))
 
-    #     if data["dataset"] not in benchmark.keys():
-    #         benchmark[data["dataset"]] = {
-    #             "chamfer": [chamfer.item()],
-    #             "p2s": [p2s.item()],
-    #             "nc": [nc.item()],
-    #             "subject": [f"{data['subject']}-{data['rotation']}"],
-    #         }
-    #     else:
-    #         benchmark[data["dataset"]]["chamfer"] += [chamfer.item()]
-    #         benchmark[data["dataset"]]["p2s"] += [p2s.item()]
-    #         benchmark[data["dataset"]]["nc"] += [nc.item()]
-    #         benchmark[data["dataset"]]["subject"] += [f"{data['subject']}-{data['rotation']}"]
+        if data["dataset"] not in benchmark.keys():
+            benchmark[data["dataset"]] = {
+                "chamfer": [chamfer.item()],
+                "p2s": [p2s.item()],
+                "nc": [nc.item()],
+                "subject": [f"{data['subject']}-{data['rotation']}"],
+            }
+        else:
+            benchmark[data["dataset"]]["chamfer"] += [chamfer.item()]
+            benchmark[data["dataset"]]["p2s"] += [p2s.item()]
+            benchmark[data["dataset"]]["nc"] += [nc.item()]
+            benchmark[data["dataset"]]["subject"] += [f"{data['subject']}-{data['rotation']}"]
 
-    #     pbar.set_description(
-    #         f"{current_name} | {chamfer.item():.3f} | {p2s.item():.3f} | {nc.item():.3f}")
+        pbar.set_description(
+            f"{current_name} | {chamfer.item():.3f} | {p2s.item():.3f} | {nc.item():.3f}")
+        if chamfer.item() >= 1.5:
+            print(current_name)
 
-    # np.save(osp.join(export_dir, "metric.npy"), benchmark, allow_pickle=True)
+    np.save(osp.join(export_dir, "metric.npy"), benchmark, allow_pickle=True)
 
-    # for dataset in benchmark.keys():
-    #     for metric in ["chamfer", "p2s", "nc"]:
-    #         print(f"{dataset}-{metric}: {sum(benchmark[dataset][metric])/300:.3f}")
+    for dataset in benchmark.keys():
+        for metric in ["chamfer", "p2s", "nc"]:
+            print(f"{dataset}-{metric}: {sum(benchmark[dataset][metric])/300:.3f}")
