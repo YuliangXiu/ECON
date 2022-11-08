@@ -366,6 +366,18 @@ def remesh(obj, obj_path):
     return polished_mesh
 
 
+def poisson_remesh(obj_path):
+    
+    ms = pymeshlab.MeshSet()
+    ms.load_new_mesh(obj_path)
+    ms.meshing_decimation_quadric_edge_collapse(targetfacenum=100000)
+    ms.apply_coord_laplacian_smoothing()
+    ms.save_current_mesh(obj_path)
+    polished_mesh = trimesh.load_mesh(obj_path)
+
+    return polished_mesh
+
+
 
 def poisson(mesh, obj_path, depth=10):
     

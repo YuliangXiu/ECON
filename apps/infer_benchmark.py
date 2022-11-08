@@ -74,29 +74,11 @@ if __name__ == "__main__":
         [1.0, 100.0],
     ]
 
-    # cfg_test_list += ["dataset.types",
-    #     ["cape"],
-    #     "dataset.scales",
-    #     [100.0],]
-
-    # cfg_test_list += ["dataset.types",
-    #     ["renderpeople"],
-    #     "dataset.scales",
-    #     [1.0],]
-
     cfg.merge_from_list(cfg_test_list)
     cfg.freeze()
 
-    # load model
-    normal_model = Normal(cfg).to(device)
-    load_normal_networks(normal_model, cfg.normal_path)
-    normal_model.netG.eval()
-
-    if cfg.bni.always_ifnet:
-        # load IFGeo model
-        ifnet_model = IFGeo(cfg).to(device)
-        load_networks(ifnet_model, mlp_path=cfg.ifnet_path)
-        ifnet_model.netG.eval()
+    normal_model = None
+    ifnet_model = None
 
     # SMPLX object
     SMPLX_object = SMPLX()
@@ -113,12 +95,6 @@ if __name__ == "__main__":
     benchmark = {}
 
     for data in pbar:
-        
-        # dict_keys(['dataset', 'subject', 'rotation', 'scale',
-        # 'smplx_param', 'smpl_param', 'calib',
-        # 'image', 'T_normal_F', 'T_normal_B',
-        # 'verts', 'faces',
-        # 'smpl_vis', 'smpl_joint', 'smpl_verts', 'smpl_faces'])
 
         for key in data.keys():
             if torch.is_tensor(data[key]):
@@ -127,7 +103,7 @@ if __name__ == "__main__":
         current_name = f"{data['dataset']}-{data['subject']}-{data['rotation']}"
         current_dir = osp.join(export_dir, data['dataset'], data['subject'])
         os.makedirs(current_dir, exist_ok=True)
-        
+
         # pbar.set_description(current_name)
 
         # current_name = f"{data['subject']}-{data['rotation']:03d}"
@@ -136,8 +112,19 @@ if __name__ == "__main__":
         final_path = osp.join(current_dir, f"{current_name}_final.obj")
 
         if not osp.exists(final_path):
-            print(f"{final_path} not found")
-        # if data['dataset'] =s= "renderpeople":
+
+            # print(f"{final_path} not found")
+            # if data['dataset'] == "renderpeople":
+
+            if normal_model is None:
+                normal_model = Normal(cfg).to(device)
+                load_normal_networks(normal_model, cfg.normal_path)
+                normal_model.netG.eval()
+
+            if ifnet_model is None and cfg.bni.always_ifnet:
+                ifnet_model = IFGeo(cfg).to(device)
+                load_networks(ifnet_model, mlp_path=cfg.ifnet_path)
+                ifnet_model.netG.eval()
 
             in_tensor = data.copy()
 
@@ -228,37 +215,49 @@ if __name__ == "__main__":
             # 2. keep the front-FLAME+MANO faces
             # 3. remove eyeball faces
 
-            (xy, z) = side_verts.split([2, 1], dim=-1)
-            F_vis = get_visibility(xy, z, side_faces[..., [0, 2, 1]], img_res=2**8)
-            B_vis = get_visibility(xy, -z, side_faces, img_res=2**8)
-
             full_lst = []
 
             if "face" in cfg.bni.use_smpl and is_smplx:
                 # only face
                 face_mesh = apply_vertex_mask(face_mesh, SMPLX_object.front_flame_vertex_mask)
+                face_mesh.vertices = face_mesh.vertices - np.array([0, 0, cfg.bni.thickness])
                 # remove face neighbor triangles
-                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, face_mesh, 4e-2,
-                                                      device)
+                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh,
+                                                      None,
+                                                      face_mesh,
+                                                      cfg.bni.face_thres,
+                                                      device,
+                                                      camera_ray=True)
                 full_lst += [face_mesh]
 
             if "hand" in cfg.bni.use_smpl and is_smplx:
                 # only hands
                 hand_mesh = apply_vertex_mask(hand_mesh, SMPLX_object.mano_vertex_mask)
                 # remove face neighbor triangles
-                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, hand_mesh, 4e-2,
-                                                      device)
+                BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, hand_mesh,
+                                                      cfg.bni.hand_thres, device)
                 full_lst += [hand_mesh]
 
             full_lst += [BNI_object.F_B_trimesh]
 
             # initial side_mesh could be SMPLX or IF-net
-            side_mesh = part_removal(side_mesh,
-                                     torch.logical_or(F_vis, B_vis),
-                                     sum(full_lst),
-                                     1e-2,
-                                     device,
-                                     clean=False)
+            if True:
+                (xy, z) = side_verts.split([2, 1], dim=-1)
+                F_vis = get_visibility(xy, z, side_faces[..., [0, 2, 1]], img_res=2**8)
+                B_vis = get_visibility(xy, -z, side_faces, img_res=2**8)
+                side_mesh = part_removal(side_mesh,
+                                         torch.logical_or(F_vis, B_vis),
+                                         sum(full_lst),
+                                         1e-2,
+                                         device,
+                                         clean=False)
+            else:
+                side_mesh = part_removal(side_mesh,
+                                         torch.zeros_like(side_verts[:, 0:1]),
+                                         sum(full_lst),
+                                         1e-2,
+                                         device,
+                                         clean=False)
 
             full_lst += [side_mesh]
 
@@ -278,40 +277,58 @@ if __name__ == "__main__":
                 final_mesh.export(final_path)
         else:
             final_mesh = trimesh.load(final_path)
+        #     if final_mesh.faces.shape[0] > 5e4:
+        #         final_mesh = poisson_remesh(final_path)
 
         # evaluation
+        metric_path = osp.join(export_dir, "metric.npy")
 
-        result_eval = {
-            "verts_gt": data["verts"][0],
-            "faces_gt": data["faces"][0],
-            "verts_pr": final_mesh.vertices,
-            "faces_pr": final_mesh.faces,
-            "calib": data["calib"][0],
-        }
+        if osp.exists(metric_path):
+            benchmark = np.load(metric_path, allow_pickle=True).item()
+            
+        if benchmark == {} or data["dataset"] not in benchmark.keys(
+        ) or f"{data['subject']}-{data['rotation']}" not in benchmark[
+                data["dataset"]]["subject"] or data["dataset"] == 'renderpeople':
 
-        evaluator.set_mesh(result_eval, scale=False)
-        chamfer, p2s = evaluator.calculate_chamfer_p2s(num_samples=1000)
-        nc = evaluator.calculate_normal_consist(osp.join(current_dir, f"{current_name}_nc.png"))
-
-        if data["dataset"] not in benchmark.keys():
-            benchmark[data["dataset"]] = {
-                "chamfer": [chamfer.item()],
-                "p2s": [p2s.item()],
-                "nc": [nc.item()],
-                "subject": [f"{data['subject']}-{data['rotation']}"],
+            result_eval = {
+                "verts_gt": data["verts"][0],
+                "faces_gt": data["faces"][0],
+                "verts_pr": final_mesh.vertices,
+                "faces_pr": final_mesh.faces,
+                "calib": data["calib"][0],
             }
+
+            evaluator.set_mesh(result_eval, scale=False)
+            chamfer, p2s = evaluator.calculate_chamfer_p2s(num_samples=1000)
+            nc = evaluator.calculate_normal_consist(osp.join(current_dir, f"{current_name}_nc.png"))
+
+            if data["dataset"] not in benchmark.keys():
+                benchmark[data["dataset"]] = {
+                    "chamfer": [chamfer.item()],
+                    "p2s": [p2s.item()],
+                    "nc": [nc.item()],
+                    "subject": [f"{data['subject']}-{data['rotation']}"],
+                }
+            else:
+                benchmark[data["dataset"]]["chamfer"] += [chamfer.item()]
+                benchmark[data["dataset"]]["p2s"] += [p2s.item()]
+                benchmark[data["dataset"]]["nc"] += [nc.item()]
+                benchmark[data["dataset"]]["subject"] += [f"{data['subject']}-{data['rotation']}"]
+
+            np.save(metric_path, benchmark, allow_pickle=True)
+
         else:
-            benchmark[data["dataset"]]["chamfer"] += [chamfer.item()]
-            benchmark[data["dataset"]]["p2s"] += [p2s.item()]
-            benchmark[data["dataset"]]["nc"] += [nc.item()]
-            benchmark[data["dataset"]]["subject"] += [f"{data['subject']}-{data['rotation']}"]
+
+            subject_idx = benchmark[data["dataset"]]["subject"].index(
+                f"{data['subject']}-{data['rotation']}")
+            chamfer = torch.tensor(benchmark[data["dataset"]]["chamfer"][subject_idx])
+            p2s = torch.tensor(benchmark[data["dataset"]]["p2s"][subject_idx])
+            nc = torch.tensor(benchmark[data["dataset"]]["nc"][subject_idx])
 
         pbar.set_description(
             f"{current_name} | {chamfer.item():.3f} | {p2s.item():.3f} | {nc.item():.3f}")
-        if chamfer.item() >= 1.5:
-            print(current_name)
-
-    np.save(osp.join(export_dir, "metric.npy"), benchmark, allow_pickle=True)
+        # if chamfer.item() >= 1.5:
+        #     print(current_name)
 
     for dataset in benchmark.keys():
         for metric in ["chamfer", "p2s", "nc"]:

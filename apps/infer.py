@@ -182,14 +182,20 @@ if __name__ == "__main__":
 
         N_body, N_pose = optimed_pose.shape[:2]
 
-        if osp.exists(osp.join(args.out_dir, "econ-if",
-                               f"png/{data['name']}_smpl.png")) and (cfg.bni.hps_type == 'pymafx'):
+        pymafx_smpl_path = osp.join(args.out_dir, "econ-if", f"png/{data['name']}_smpl.png")
+        pixie_smpl_path = osp.join(args.out_dir, "econ-if-hf", f"png/{data['name']}_smpl.png")
+
+        if (cfg.bni.hps_type == 'pymafx' and
+                osp.exists(pymafx_smpl_path)) or (cfg.bni.hps_type == 'pixie' and
+                                                  osp.exists(pixie_smpl_path)):
+
+            model_name = "econ-if" if cfg.bni.hps_type == 'pymafx' else "econ-if-hf"
 
             smpl_verts_lst = []
             smpl_faces_lst = []
             for idx in range(N_body):
 
-                smpl_obj = f"{args.out_dir}/econ-if/obj/{data['name']}_smpl_{idx:02d}.obj"
+                smpl_obj = f"{args.out_dir}/{model_name}/obj/{data['name']}_smpl_{idx:02d}.obj"
                 smpl_mesh = trimesh.load(smpl_obj)
                 smpl_verts = torch.tensor(smpl_mesh.vertices).to(device).float()
                 smpl_faces = torch.tensor(smpl_mesh.faces).to(device).long()
@@ -339,7 +345,7 @@ if __name__ == "__main__":
                 optimizer_smpl.step()
                 scheduler_smpl.step(smpl_loss)
                 in_tensor["smpl_verts"] = smpl_verts * torch.tensor([1.0, 1.0, -1.0]).to(device)
-
+                in_tensor["smpl_faces"] = in_tensor["smpl_faces"][:, :, [0, 2, 1]]
             # visualize the optimization process
             # 1. SMPL Fitting
 
@@ -367,21 +373,22 @@ if __name__ == "__main__":
                 process=False,
                 maintains_order=True,
             )
-            smpl_obj.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_smpl_{idx:02d}.obj")
+            smpl_obj_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_smpl_{idx:02d}.obj"
+            if not osp.exists(smpl_obj_path):
+                smpl_obj.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_smpl_{idx:02d}.obj")
+                smpl_info = {
+                    "betas": optimed_betas,
+                    "pose": optimed_pose,
+                    "orient": optimed_orient,
+                    "trans": optimed_trans,
+                }
+
+                np.save(
+                    f"{args.out_dir}/{cfg.name}/obj/{data['name']}_smpl.npy",
+                    smpl_info,
+                    allow_pickle=True,
+                )
             smpl_obj_lst.append(smpl_obj)
-
-        smpl_info = {
-            "betas": optimed_betas,
-            "pose": optimed_pose,
-            "orient": optimed_orient,
-            "trans": optimed_trans,
-        }
-
-        np.save(
-            f"{args.out_dir}/{cfg.name}/obj/{data['name']}_smpl.npy",
-            smpl_info,
-            allow_pickle=True,
-        )
 
         del optimizer_smpl
         del optimed_betas
@@ -398,7 +405,7 @@ if __name__ == "__main__":
 
         batch_smpl_verts = in_tensor["smpl_verts"].detach() * torch.tensor([1.0, -1.0, 1.0],
                                                                            device=device)
-        batch_smpl_faces = in_tensor["smpl_faces"].detach()
+        batch_smpl_faces = in_tensor["smpl_faces"].detach()[:, :, [0, 2, 1]]
 
         if args.BNI:
 
@@ -443,10 +450,7 @@ if __name__ == "__main__":
 
                 if cfg.bni.always_ifnet:
 
-                    if not cfg.bni.always_ifnet:
-                        print(
-                            colored(f"Low overlap: {body_overlap[idx]:.2f}, shape completion\n",
-                                    "green"))
+                    side_mesh_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_IF.obj"
 
                     side_mesh = apply_face_mask(side_mesh, ~SMPLX_object.smplx_eyeball_fid_mask)
 
@@ -479,7 +483,6 @@ if __name__ == "__main__":
                     verts_IF /= (ifnet_model.resolutions[-1] - 1) / 2.0
 
                     side_mesh = trimesh.Trimesh(verts_IF, faces_IF)
-                    side_mesh_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_IF.obj"
                     side_mesh = remesh(side_mesh, side_mesh_path)
 
                 else:
@@ -578,13 +581,13 @@ if __name__ == "__main__":
                     final_mesh = sum(full_lst)
                     final_mesh.export(final_path)
 
-                dataset.render.load_meshes(final_mesh.vertices, final_mesh.faces)
-                rotate_recon_lst = dataset.render.get_image(cam_type="four")
-                per_loop_lst.extend([in_tensor['image'][idx:idx + 1]] + rotate_recon_lst)
+                # dataset.render.load_meshes(final_mesh.vertices, final_mesh.faces)
+                # rotate_recon_lst = dataset.render.get_image(cam_type="four")
+                # per_loop_lst.extend([in_tensor['image'][idx:idx + 1]] + rotate_recon_lst)
 
-                # for video rendering
-                in_tensor["BNI_verts"].append(torch.tensor(final_mesh.vertices).float())
-                in_tensor["BNI_faces"].append(torch.tensor(final_mesh.faces).long())
+                # # for video rendering
+                # in_tensor["BNI_verts"].append(torch.tensor(final_mesh.vertices).float())
+                # in_tensor["BNI_faces"].append(torch.tensor(final_mesh.faces).long())
 
         else:
 
@@ -628,31 +631,32 @@ if __name__ == "__main__":
                 rotate_recon_lst = dataset.render.get_image(cam_type="four")
                 per_loop_lst.extend([in_tensor['image'][idx:idx + 1]] + rotate_recon_lst)
 
-        # always export visualized png regardless of the cloth refinment
+        # # always export visualized png regardless of the cloth refinment
 
-        per_data_lst.append(get_optim_grid_image(per_loop_lst, None, nrow=5, type="cloth"))
+        if len(per_loop_lst) > 0:
 
-        # visualize the final result
-        per_data_lst[-1].save(osp.join(args.out_dir, cfg.name, f"png/{data['name']}_cloth.png"))
-        per_data_lst[-1].save(osp.join(dropbox_dir, f"{data['name']}_cloth.png"))
+            per_data_lst.append(get_optim_grid_image(per_loop_lst, None, nrow=5, type="cloth"))
+            # visualize the final result
+            per_data_lst[-1].save(osp.join(args.out_dir, cfg.name, f"png/{data['name']}_cloth.png"))
+            per_data_lst[-1].save(osp.join(dropbox_dir, f"{data['name']}_cloth.png"))
 
-        os.makedirs(osp.join(args.out_dir, cfg.name, "vid"), exist_ok=True)
-        in_tensor["uncrop_param"] = data["uncrop_param"]
-        in_tensor["img_raw"] = data["img_raw"]
-        torch.save(in_tensor, osp.join(args.out_dir, cfg.name, "vid/in_tensor.pt"))
+        # os.makedirs(osp.join(args.out_dir, cfg.name, "vid"), exist_ok=True)
+        # in_tensor["uncrop_param"] = data["uncrop_param"]
+        # in_tensor["img_raw"] = data["img_raw"]
+        # torch.save(in_tensor, osp.join(args.out_dir, cfg.name, "vid/in_tensor.pt"))
 
-        # always export visualized video regardless of the cloth refinment
-        if args.export_video:
+        # # always export visualized video regardless of the cloth refinment
+        # if args.export_video:
 
-            torch.cuda.empty_cache()
+        #     torch.cuda.empty_cache()
 
-            # visualize the final results in self-rotation mode
-            verts_lst = in_tensor["body_verts"] + in_tensor["BNI_verts"]
-            faces_lst = in_tensor["body_faces"] + in_tensor["BNI_faces"]
+        #     # visualize the final results in self-rotation mode
+        #     verts_lst = in_tensor["body_verts"] + in_tensor["BNI_verts"]
+        #     faces_lst = in_tensor["body_faces"] + in_tensor["BNI_faces"]
 
-            # self-rotated video
-            dataset.render.load_meshes(verts_lst, faces_lst)
-            dataset.render.get_rendered_video_multi(
-                in_tensor,
-                osp.join(args.out_dir, cfg.name, f"vid/{data['name']}_cloth.mp4"),
-            )
+        #     # self-rotated video
+        #     dataset.render.load_meshes(verts_lst, faces_lst)
+        #     dataset.render.get_rendered_video_multi(
+        #         in_tensor,
+        #         osp.join(args.out_dir, cfg.name, f"vid/{data['name']}_cloth.mp4"),
+        #     )

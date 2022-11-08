@@ -855,8 +855,8 @@ def double_side_bilateral_normal_integration(normal_front,
     faces_back = np.concatenate((facets_back[:, [1, 4, 3]], facets_back[:, [1, 3, 2]]), axis=0)
     faces_front = np.concatenate((facets_back[:, [1, 2, 3]], facets_back[:, [1, 3, 4]]), axis=0)
 
-    # vertices_front, faces_front = remove_stretched_faces(vertices_front, faces_front)
-    # vertices_back, faces_back = remove_stretched_faces(vertices_back, faces_back)
+    vertices_front, faces_front = remove_stretched_faces(vertices_front, faces_front)
+    vertices_back, faces_back = remove_stretched_faces(vertices_back, faces_back)
 
     front_mesh = clean_floats(trimesh.Trimesh(vertices_front, faces_front))
     back_mesh = clean_floats(trimesh.Trimesh(vertices_back, faces_back))

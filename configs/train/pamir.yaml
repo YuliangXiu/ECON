@@ -1,4 +1,4 @@
-name: pamir
+name: pamir-thuman
 ckpt_dir: "./data/ckpt/"
 resume_path: "./data/ckpt/pamir/last.ckpt"
 normal_path: "./data/ckpt/normal.ckpt"

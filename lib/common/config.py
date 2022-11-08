@@ -99,7 +99,7 @@ _C.bni.finish = False
 _C.bni.thickness = 0.00
 _C.bni.hand_thres = 4e-2
 _C.bni.face_thres = 6e-2
-_C.bni.hps_type = "pymafx"
+_C.bni.hps_type = "pixie"
 
 # kernel_size, stride, dilation, padding
 
