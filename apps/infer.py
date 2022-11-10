@@ -183,13 +183,13 @@ if __name__ == "__main__":
         N_body, N_pose = optimed_pose.shape[:2]
 
         pymafx_smpl_path = osp.join(args.out_dir, "econ-if", f"png/{data['name']}_smpl.png")
-        pixie_smpl_path = osp.join(args.out_dir, "econ-if-hf", f"png/{data['name']}_smpl.png")
+        pixie_smpl_path = osp.join(args.out_dir, "econ-if", f"png/{data['name']}_smpl.png")
 
         if (cfg.bni.hps_type == 'pymafx' and
                 osp.exists(pymafx_smpl_path)) or (cfg.bni.hps_type == 'pixie' and
                                                   osp.exists(pixie_smpl_path)):
 
-            model_name = "econ-if" if cfg.bni.hps_type == 'pymafx' else "econ-if-hf"
+            model_name = "econ-if" if cfg.bni.hps_type == 'pymafx' else "econ-if"
 
             smpl_verts_lst = []
             smpl_faces_lst = []
@@ -207,15 +207,13 @@ if __name__ == "__main__":
 
             # render optimized mesh as normal [-1,1]
             in_tensor["T_normal_F"], in_tensor["T_normal_B"] = dataset.render_normal(
-                batch_smpl_verts,
-                batch_smpl_faces,
-            )
-
-            in_tensor["smpl_verts"] = batch_smpl_verts * torch.tensor([1., -1., 1.]).to(device)
-            in_tensor["smpl_faces"] = batch_smpl_faces[:, :, [0, 2, 1]]
+                batch_smpl_verts, batch_smpl_faces)
 
             with torch.no_grad():
                 in_tensor["normal_F"], in_tensor["normal_B"] = normal_model.netG(in_tensor)
+
+            in_tensor["smpl_verts"] = batch_smpl_verts * torch.tensor([1., -1., 1.]).to(device)
+            in_tensor["smpl_faces"] = batch_smpl_faces[:, :, [0, 2, 1]]
         else:
             # smpl optimization
             loop_smpl = tqdm(range(args.loop_smpl))
@@ -276,8 +274,6 @@ if __name__ == "__main__":
                 diff_F_smpl = torch.abs(in_tensor["T_normal_F"] - in_tensor["normal_F"])
                 diff_B_smpl = torch.abs(in_tensor["T_normal_B"] - in_tensor["normal_B"])
 
-                losses["normal"]["value"] = (diff_F_smpl + diff_B_smpl).mean() / 2.0
-
                 # silhouette loss
                 smpl_arr = torch.cat([T_mask_F, T_mask_B], dim=-1)
                 gt_arr = in_tensor["mask"].repeat(1, 1, 2)
@@ -305,7 +301,16 @@ if __name__ == "__main__":
                 body_overlap = (gt_arr * smpl_arr_fake.gt(0.0)).sum(
                     dim=[1, 2]) / smpl_arr_fake.gt(0.0).sum(dim=[1, 2])
 
+                body_overlap_mask = (gt_arr * smpl_arr_fake).unsqueeze(1)
+                losses["normal"]["value"] = (
+                    diff_F_smpl * body_overlap_mask[..., :512] +
+                    diff_B_smpl * body_overlap_mask[..., 512:]).mean() / 2.0
+
                 body_overlap_flag = body_overlap < cfg.body_overlap_thres
+                losses["silhouette"]["weight"] = [0 if flag else 1.0 for flag in body_overlap_flag]
+                # losses["normal"]["weight"] = [0.1 if flag else 1.0 for flag in body_overlap_flag]
+                occluded_idx = torch.where(body_overlap_flag)[0]
+                ghum_conf[occluded_idx] *= ghum_conf[occluded_idx] > 0.95
                 losses["joint"]["value"] = (torch.norm(ghum_lmks - smpl_lmks, dim=2) *
                                             ghum_conf).mean(dim=1)
 
@@ -344,13 +349,20 @@ if __name__ == "__main__":
                 smpl_loss.backward()
                 optimizer_smpl.step()
                 scheduler_smpl.step(smpl_loss)
-                in_tensor["smpl_verts"] = smpl_verts * torch.tensor([1.0, 1.0, -1.0]).to(device)
-                in_tensor["smpl_faces"] = in_tensor["smpl_faces"][:, :, [0, 2, 1]]
-            # visualize the optimization process
-            # 1. SMPL Fitting
 
+            in_tensor["smpl_verts"] = smpl_verts * torch.tensor([1.0, 1.0, -1.0]).to(device)
+            in_tensor["smpl_faces"] = in_tensor["smpl_faces"][:, :, [0, 2, 1]]
             per_data_lst[-1].save(osp.join(args.out_dir, cfg.name, f"png/{data['name']}_smpl.png"))
+
             # per_data_lst[-1].save(osp.join(dropbox_dir, f"{data['name']}_smpl.png"))
+
+        # Image.fromarray(((in_tensor['normal_F'][0].permute(1, 2, 0).detach().cpu().numpy() + 1.0) *
+        #                  255 * 0.5).astype(np.uint8)).save(
+        #                      osp.join(args.out_dir, cfg.name, f"png/{data['name']}_F_normal.png"))
+
+        # Image.fromarray(((in_tensor['normal_B'][0].permute(1, 2, 0).detach().cpu().numpy() + 1.0) *
+        #                  255 * 0.5).astype(np.uint8)).save(
+        #                      osp.join(args.out_dir, cfg.name, f"png/{data['name']}_B_normal.png"))
 
         rgb_norm_F = blend_rgb_norm(in_tensor["normal_F"], data)
         rgb_norm_B = blend_rgb_norm(in_tensor["normal_B"], data)
@@ -359,9 +371,9 @@ if __name__ == "__main__":
         torchvision.utils.save_image(
             torch.Tensor([data["img_raw"], rgb_norm_F, rgb_norm_B]).permute(0, 3, 1, 2) / 255.,
             img_overlap_path)
-        torchvision.utils.save_image(
-            torch.Tensor([data["img_raw"], rgb_norm_F, rgb_norm_B]).permute(0, 3, 1, 2) / 255.,
-            osp.join(dropbox_dir, f"{data['name']}_overlap.png"))
+        # torchvision.utils.save_image(
+        #     torch.Tensor([data["img_raw"], rgb_norm_F, rgb_norm_B]).permute(0, 3, 1, 2) / 255.,
+        #     osp.join(dropbox_dir, f"{data['name']}_overlap.png"))
 
         smpl_obj_lst = []
 
@@ -500,6 +512,10 @@ if __name__ == "__main__":
                 # 1. keep the faces invisible to front+back cameras
                 # 2. keep the front-FLAME+MANO faces
                 # 3. remove eyeball faces
+                
+                # export intermediate meshes
+                BNI_object.F_B_trimesh.export(
+                    f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_BNI.obj")
 
                 full_lst = []
 
@@ -514,6 +530,12 @@ if __name__ == "__main__":
                                                           cfg.bni.face_thres,
                                                           device,
                                                           camera_ray=True)
+                    side_mesh = part_removal(side_mesh,
+                                             torch.zeros_like(side_verts[:, 0:1]),
+                                             face_mesh,
+                                             0.03,
+                                             device,
+                                             camera_ray=True)
                     face_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_face.obj")
                     full_lst += [face_mesh]
 
@@ -522,10 +544,18 @@ if __name__ == "__main__":
                     # only hands
                     hand_mesh = apply_vertex_mask(hand_mesh, SMPLX_object.mano_vertex_mask)
                     # remove face neighbor triangles
-                    BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh, None, hand_mesh,
-                                                          cfg.bni.hand_thres, device)
-                    side_mesh = part_removal(side_mesh, torch.zeros_like(side_verts[:, 0:1]),
-                                             hand_mesh, cfg.bni.hand_thres, device)
+                    BNI_object.F_B_trimesh = part_removal(BNI_object.F_B_trimesh,
+                                                          None,
+                                                          hand_mesh,
+                                                          cfg.bni.hand_thres,
+                                                          device,
+                                                          camera_ray=True)
+                    side_mesh = part_removal(side_mesh,
+                                             torch.zeros_like(side_verts[:, 0:1]),
+                                             hand_mesh,
+                                             cfg.bni.hand_thres,
+                                             device,
+                                             camera_ray=True)
                     hand_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_hand.obj")
                     full_lst += [hand_mesh]
 
@@ -533,6 +563,9 @@ if __name__ == "__main__":
 
                 # initial side_mesh could be SMPLX or IF-net
                 if False:
+                    side_verts = torch.tensor(side_mesh.vertices).float().to(device)
+                    side_faces = torch.tensor(side_mesh.faces).long().to(device)
+
                     (xy, z) = side_verts.split([2, 1], dim=-1)
                     F_vis = get_visibility(xy,
                                            z,
@@ -543,8 +576,8 @@ if __name__ == "__main__":
 
                     side_mesh = part_removal(side_mesh,
                                              torch.logical_or(F_vis, B_vis),
-                                             sum([face_mesh, hand_mesh]),
-                                             4e-2,
+                                             sum(full_lst),
+                                             1e-2,
                                              device,
                                              clean=False)
                 else:
@@ -557,9 +590,9 @@ if __name__ == "__main__":
 
                 full_lst += [side_mesh]
 
-                # export intermediate meshes
-                BNI_object.F_B_trimesh.export(
-                    f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_BNI.obj")
+                # # export intermediate meshes
+                # BNI_object.F_B_trimesh.export(
+                #     f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_BNI.obj")
 
                 BNI_object.F_trimesh.export(
                     f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_F.obj")
@@ -567,7 +600,7 @@ if __name__ == "__main__":
                 BNI_object.B_trimesh.export(
                     f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_B.obj")
 
-                side_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_side.obj")
+                # side_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_side.obj")
 
                 final_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_full.obj"
 

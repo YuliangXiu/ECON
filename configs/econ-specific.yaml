@@ -1,7 +1,8 @@
-name: econ-if-hf
+name: econ-if
 ckpt_dir: "./data/ckpt/"
 normal_path: "./data/ckpt/normal/last.ckpt"
 ifnet_path: "./data/ckpt/IF-Geo/last-256.ckpt"
+# ifnet_path: "./data/ckpt/IF-Geo/last-128-nobody.ckpt"
 results_path: "./results"
 
 net:
@@ -11,12 +12,15 @@ net:
 test_mode: True
 batch_size: 1
 
+dataset:
+  prior_type: "SMPL"
+
 # user defined
 vol_res: 256      # IF-Net volume resolution
 mcube_res: 256
 clean_mesh: True  # if True, will remove floating pieces
 cloth_overlap_thres: 0.50
-body_overlap_thres: 0.93
+body_overlap_thres: 0.98
 
 # bni:
 #   k: 2
@@ -26,14 +30,14 @@ body_overlap_thres: 0.93
 bni:
   k: 4
   lambda1: 1e-4
-  boundary_consist: 1e-6
+  boundary_consist: 0.0
   poisson_depth: 10
+  # use_smpl: ["hand", "face"]
   use_smpl: ["hand"]
-  # use_smpl: []
-  always_ifnet: False
+  always_ifnet: True
   use_poisson: False
-  hand_thres: 4e-2
+  hand_thres: 3e-2
   face_thres: 6e-2
-  thickness: 0.02
+  thickness: 0.01
   hps_type: "pixie"
   finish: False

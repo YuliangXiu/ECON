@@ -261,15 +261,15 @@ def process_image(img_file, hps_type, single, input_res=512):
         img_icon = transform_to_tensor(512, mean_icon, std_icon)(
             Image.fromarray(img_np)) * torch.tensor(img_mask).permute(2, 0, 1)
         img_hps = transform_to_tensor(224, constants.IMG_NORM_MEAN,
-                                      constants.IMG_NORM_STD)(Image.fromarray(img_crop[...,:3]))
+                                      constants.IMG_NORM_STD)(Image.fromarray(img_np))
 
-        landmarks = get_keypoints(img_crop[...,:3])
+        landmarks = get_keypoints(img_np)
 
         if hps_type == 'pymafx':
             img_pymafx_lst.append(
                 get_pymafx(
                     transform_to_tensor(512, constants.IMG_NORM_MEAN,
-                                        constants.IMG_NORM_STD)(Image.fromarray(img_crop[...,:3])),
+                                        constants.IMG_NORM_STD)(Image.fromarray(img_np)),
                     landmarks))
 
         img_crop_lst.append(torch.tensor(img_crop).permute(2, 0, 1) / 255.0)
@@ -357,7 +357,7 @@ def crop(img, center, scale, res):
     new_img[new_y[0]:new_y[1], new_x[0]:new_x[1]] = img[old_y[0]:old_y[1], old_x[0]:old_x[1]]
     new_img = F.interpolate(torch.tensor(new_img).permute(2, 0, 1).unsqueeze(0),
                             res,
-                            mode='bicubic').permute(0, 2, 3, 1)[0].numpy().astype(np.uint8)
+                            mode='bilinear').permute(0, 2, 3, 1)[0].numpy().astype(np.uint8)
 
     return new_img, (old_x, new_x, old_y, new_y, new_shape)
 

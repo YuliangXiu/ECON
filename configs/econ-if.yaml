@@ -1,12 +1,16 @@
 name: econ-if
 ckpt_dir: "./data/ckpt/"
 normal_path: "./data/ckpt/normal/last.ckpt"
-ifnet_path: "./data/ckpt/IF-Geo/last-256.ckpt"
+ifnet_path: "./data/ckpt/IF-Geo/last-128.ckpt"
+# ifnet_path: "./data/ckpt/IF-Geo/last-128-nobody.ckpt"
 results_path: "./results"
 
 net:
   in_nml: (('image',3), ('T_normal_F',3), ('T_normal_B',3))
   in_geo: (('normal_F',3), ('normal_B',3))
+
+dataset:
+  prior_type: "SMPL"
 
 test_mode: True
 batch_size: 1

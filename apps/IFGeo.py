@@ -40,7 +40,13 @@ class IFGeo(pl.LightningModule):
         self.clean_mesh_flag = cfg.clean_mesh
         self.overfit = cfg.overfit
 
-        self.netG = IFGeoNet(cfg)
+        if cfg.dataset.prior_type == "SMPL":
+            from lib.net.IFGeoNet import IFGeoNet
+            self.netG = IFGeoNet(cfg)
+        else:
+            from lib.net.IFGeoNet_nobody import IFGeoNet
+            self.netG = IFGeoNet(cfg)
+
 
         self.resolutions = (np.logspace(
             start=5,

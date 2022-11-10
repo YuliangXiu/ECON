@@ -885,7 +885,22 @@ def save_normal_tensor(in_tensor, idx, png_path, thickness=0.0):
     depth_B_arr = depth2arr(in_tensor["depth_B"][idx])
 
     BNI_dict = {}
-
+    
+    # normal_F_arr[200:300,200:300,:] *= 0
+    # normal_B_arr[200:300,200:300,:] *= 0
+    # mask_normal_arr[200:300,200:300] *= 0
+    
+    # normal_F_arr[:,:200,:] *= 0
+    # normal_B_arr[:,:200,:] *= 0
+    # mask_normal_arr[:,:200] *= 0
+    
+    # normal_F_arr[:200,:,:] *= 0
+    # normal_B_arr[:200,:,:] *= 0
+    # mask_normal_arr[:200,:] *= 0
+    
+    # Image.fromarray(((normal_F_arr+1.0)*0.5*255).astype(np.uint8)).save(png_path+"_F.png")
+    # Image.fromarray(((normal_B_arr+1.0)*0.5*255).astype(np.uint8)).save(png_path+"_B.png")
+    
     # clothed human
     BNI_dict["normal_F"] = normal_F_arr
     BNI_dict["normal_B"] = normal_B_arr
