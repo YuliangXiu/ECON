@@ -432,6 +432,8 @@ if __name__ == "__main__":
             in_tensor["body_faces"] = []
 
             for idx in range(N_body):
+                
+                final_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_full.obj"
 
                 side_mesh = smpl_obj_lst[idx].copy()
                 face_mesh = smpl_obj_lst[idx].copy()
@@ -461,6 +463,7 @@ if __name__ == "__main__":
                 # replace SMPL by completed mesh as side_mesh
 
                 if cfg.bni.always_ifnet:
+                    # print(colored("Use IF-Nets+\n", "green"))
 
                     side_mesh_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_IF.obj"
 
@@ -498,7 +501,7 @@ if __name__ == "__main__":
                     side_mesh = remesh(side_mesh, side_mesh_path)
 
                 else:
-                    print(colored("High overlap, use SMPL-X body\n", "green"))
+                    # print(colored("High overlap, use SMPL-X body\n", "green"))
                     side_mesh = apply_vertex_mask(
                         side_mesh,
                         (SMPLX_object.front_flame_vertex_mask + SMPLX_object.mano_vertex_mask +
@@ -584,25 +587,24 @@ if __name__ == "__main__":
                     side_mesh = part_removal(side_mesh,
                                              torch.zeros_like(side_verts[:, 0:1]),
                                              sum(full_lst),
-                                             1e-2,
+                                             2e-2,
                                              device,
                                              clean=False)
 
                 full_lst += [side_mesh]
 
                 # # export intermediate meshes
-                # BNI_object.F_B_trimesh.export(
-                #     f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_BNI.obj")
+                BNI_object.F_B_trimesh.export(
+                    f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_BNI.obj")
 
-                BNI_object.F_trimesh.export(
-                    f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_F.obj")
+                # BNI_object.F_trimesh.export(
+                #     f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_F.obj")
 
-                BNI_object.B_trimesh.export(
-                    f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_B.obj")
+                # BNI_object.B_trimesh.export(
+                #     f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_B.obj")
 
-                # side_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_side.obj")
+                side_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_side.obj")
 
-                final_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_full.obj"
 
                 if cfg.bni.use_poisson:
                     final_mesh = poisson(
@@ -614,13 +616,13 @@ if __name__ == "__main__":
                     final_mesh = sum(full_lst)
                     final_mesh.export(final_path)
 
-                # dataset.render.load_meshes(final_mesh.vertices, final_mesh.faces)
-                # rotate_recon_lst = dataset.render.get_image(cam_type="four")
-                # per_loop_lst.extend([in_tensor['image'][idx:idx + 1]] + rotate_recon_lst)
+                dataset.render.load_meshes(final_mesh.vertices, final_mesh.faces)
+                rotate_recon_lst = dataset.render.get_image(cam_type="four")
+                per_loop_lst.extend([in_tensor['image'][idx:idx + 1]] + rotate_recon_lst)
 
-                # # for video rendering
-                # in_tensor["BNI_verts"].append(torch.tensor(final_mesh.vertices).float())
-                # in_tensor["BNI_faces"].append(torch.tensor(final_mesh.faces).long())
+                # for video rendering
+                in_tensor["BNI_verts"].append(torch.tensor(final_mesh.vertices).float())
+                in_tensor["BNI_faces"].append(torch.tensor(final_mesh.faces).long())
 
         else:
 
@@ -673,10 +675,10 @@ if __name__ == "__main__":
             per_data_lst[-1].save(osp.join(args.out_dir, cfg.name, f"png/{data['name']}_cloth.png"))
             per_data_lst[-1].save(osp.join(dropbox_dir, f"{data['name']}_cloth.png"))
 
-        # os.makedirs(osp.join(args.out_dir, cfg.name, "vid"), exist_ok=True)
-        # in_tensor["uncrop_param"] = data["uncrop_param"]
-        # in_tensor["img_raw"] = data["img_raw"]
-        # torch.save(in_tensor, osp.join(args.out_dir, cfg.name, "vid/in_tensor.pt"))
+        os.makedirs(osp.join(args.out_dir, cfg.name, "vid"), exist_ok=True)
+        in_tensor["uncrop_param"] = data["uncrop_param"]
+        in_tensor["img_raw"] = data["img_raw"]
+        torch.save(in_tensor, osp.join(args.out_dir, cfg.name, f"vid/{data['name']}_in_tensor.pt"))
 
         # # always export visualized video regardless of the cloth refinment
         # if args.export_video:

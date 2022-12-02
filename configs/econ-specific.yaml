@@ -22,22 +22,17 @@ clean_mesh: True  # if True, will remove floating pieces
 cloth_overlap_thres: 0.50
 body_overlap_thres: 0.98
 
-# bni:
-#   k: 2
-#   lambda1: 1e-3
-#   boundary_consist: 1e-5
-
 bni:
   k: 4
   lambda1: 1e-4
-  boundary_consist: 0.0
+  boundary_consist: 1e-6
   poisson_depth: 10
-  # use_smpl: ["hand", "face"]
-  use_smpl: ["hand"]
-  always_ifnet: True
-  use_poisson: False
-  hand_thres: 3e-2
+  use_smpl: ["hand", "face"]
+  # use_smpl: ["hand"]
+  always_ifnet: False
+  use_poisson: True
+  hand_thres: 6e-2
   face_thres: 6e-2
-  thickness: 0.01
+  thickness: 0.02
   hps_type: "pixie"
   finish: False

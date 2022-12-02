@@ -120,7 +120,7 @@ class Pytorch3dRasterizer(nn.Module):
             "image_size": image_size,
             "blur_radius": 0.0,
             "faces_per_pixel": 1,
-            "bin_size": None,
+            "bin_size": -1,
             "max_faces_per_bin": None,
             "perspective_correct": False,
         }

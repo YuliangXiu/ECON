@@ -183,7 +183,7 @@ class Render:
             self.raster_settings_mesh = RasterizationSettings(
                 image_size=self.size,
                 blur_radius=np.log(1.0 / 1e-4) * 1e-7,
-                bin_size=0,
+                bin_size=-1,
                 faces_per_pixel=30,
             )
             self.meshRas = MeshRasterizer(cameras=camera, raster_settings=self.raster_settings_mesh)
@@ -199,7 +199,7 @@ class Render:
                 image_size=self.size,
                 blur_radius=np.log(1.0 / 1e-4 - 1.0) * 5e-5,
                 faces_per_pixel=50,
-                bin_size=0,
+                bin_size=-1,
                 cull_backfaces=True,
             )
 
@@ -288,13 +288,16 @@ class Render:
         return list(meshes)
 
     def get_rendered_video_multi(self, data, save_path):
+        
+        width = data["img_raw"].shape[1]
+        height = data["img_raw"].shape[0]
 
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         video = cv2.VideoWriter(
             save_path,
             fourcc,
-            self.fps // self.step,
-            (data["img_raw"].shape[1], 3 * data["img_raw"].shape[0]),
+            self.fps,
+            (width, int(height * 1.5)),
         )
 
         pbar = tqdm(range(len(self.meshes)))
@@ -311,7 +314,7 @@ class Render:
 
             norm_lst = []
 
-            for batch_cams_idx in np.array_split(np.arange(len(self.cam_pos["around"])), 24):
+            for batch_cams_idx in np.array_split(np.arange(len(self.cam_pos["around"])), 12):
 
                 batch_cams = self.get_camera_batch(type='around', idx=batch_cams_idx)
 
@@ -326,14 +329,13 @@ class Render:
         pbar = tqdm(range(len(self.cam_pos["around"])))
         pbar.set_description(colored(f"Video Exporting {os.path.basename(save_path)}...", "blue"))
         for cam_id in pbar:
-            img_lst = [data["img_raw"].astype(np.uint8)]
+            img_raw = data["img_raw"].astype(np.uint8)
+            num_obj = len(mesh_renders) // 2
+            img_smpl = blend_rgb_norm((torch.stack(mesh_renders)[:num_obj, cam_id] - 0.5) * 2.0, data)
+            img_cloth = blend_rgb_norm((torch.stack(mesh_renders)[num_obj:, cam_id] - 0.5) * 2.0, data)
 
-            img_lst += [
-                blend_rgb_norm((torch.stack(mesh_renders)[:6, cam_id] - 0.5) * 2.0, data),
-                blend_rgb_norm((torch.stack(mesh_renders)[6:, cam_id] - 0.5) * 2.0, data)
-            ]
-
-            final_img = np.concatenate(img_lst, axis=0)
+            top_img = cv2.resize(np.concatenate([img_raw, img_smpl], axis=1), (width, height // 2))
+            final_img = np.concatenate([top_img, img_cloth], axis=0)
             video.write(final_img[:, :, ::-1])
 
         video.release()

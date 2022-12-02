@@ -8,6 +8,9 @@ net:
   in_nml: (('image',3), ('T_normal_F',3), ('T_normal_B',3))
   in_geo: (('normal_F',3), ('normal_B',3))
 
+dataset:
+  prior_type: "SMPL"
+
 test_mode: True
 batch_size: 1
 
@@ -30,7 +33,7 @@ bni:
   poisson_depth: 10
   use_smpl: ["hand"]
   # use_smpl: []
-  always_ifnet: False
+  always_ifnet: True
   use_poisson: False
   hand_thres: 4e-2
   face_thres: 6e-2

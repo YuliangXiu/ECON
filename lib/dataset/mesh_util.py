@@ -370,7 +370,7 @@ def poisson_remesh(obj_path):
     
     ms = pymeshlab.MeshSet()
     ms.load_new_mesh(obj_path)
-    ms.meshing_decimation_quadric_edge_collapse(targetfacenum=100000)
+    ms.meshing_decimation_quadric_edge_collapse(targetfacenum=50000)
     ms.apply_coord_laplacian_smoothing()
     ms.save_current_mesh(obj_path)
     polished_mesh = trimesh.load_mesh(obj_path)
@@ -383,8 +383,7 @@ def poisson(mesh, obj_path, depth=10):
     
     if osp.exists(obj_path):
         final_mesh = trimesh.load(obj_path)
-        if final_mesh.is_watertight:
-            return final_mesh
+        return final_mesh
 
     from pypoisson import poisson_reconstruction
     faces, vertices = poisson_reconstruction(mesh.vertices, mesh.vertex_normals, depth=depth)
@@ -394,6 +393,8 @@ def poisson(mesh, obj_path, depth=10):
     comp_num = [new_mesh.vertices.shape[0] for new_mesh in new_mesh_lst]
     final_mesh = new_mesh_lst[comp_num.index(max(comp_num))]
     final_mesh.export(obj_path)
+    
+    final_mesh = poisson_remesh(obj_path)
 
     return final_mesh
 

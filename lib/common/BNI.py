@@ -1,15 +1,8 @@
 from lib.common.BNI_utils import (verts_inverse_transform, depth_inverse_transform,
-                                  double_side_bilateral_normal_integration, mean_value_cordinates,
-                                  find_contour, depth2png, dispCorres, repeat_pts, get_dst_mat)
+                                  double_side_bilateral_normal_integration)
 
 import torch
-import os, cv2
 import trimesh
-import numpy as np
-import os.path as osp
-from scipy.optimize import linear_sum_assignment
-from pytorch3d.structures import Meshes
-from pytorch3d.io import IO
 
 
 class BNI:
@@ -32,12 +25,12 @@ class BNI:
         # k --> smaller, keep continuity
         # lambda --> larger, more depth-awareness
 
-        # self.k = 1e-3
-        # self.lambda1 = 1e-2
-
-        self.k = self.cfg.k
-        self.lambda1 = self.cfg.lambda1
-        self.boundary_consist = self.cfg.boundary_consist
+        # self.k = self.cfg.k
+        # self.lambda1 = self.cfg.lambda1
+        # self.boundary_consist = self.cfg.boundary_consist
+        self.k = self.cfg['k']
+        self.lambda1 = self.cfg['lambda1']
+        self.boundary_consist = self.cfg['boundary_consist']
 
         self.F_B_surface = None
         self.F_B_trimesh = None
@@ -90,3 +83,30 @@ class BNI:
                                          bni_result["B_faces"].long(),
                                          process=False,
                                          maintain_order=True)
+
+
+if __name__ == "__main__":
+
+    import numpy as np
+    import os.path as osp
+    from tqdm import tqdm
+
+    root = "/home/yxiu/Code/ICON/results/pinterest/single/pose/econ-if-hf/BNI"
+    npy_file = f"{root}/1cc428b2a7c91be3e3b7a03a5443c48e_0.npy"
+    bni_dict = np.load(npy_file, allow_pickle=True).item()
+
+    default_cfg = {'k': 2, 'lambda1': 1e-4, 'boundary_consist': 1e-6}
+    
+    # for k in [1, 2, 4, 10, 100]:
+    #     default_cfg['k'] = k
+    # for k in [1e-8, 1e-4, 1e-2, 1e-1, 1]:
+        # default_cfg['lambda1'] = k
+    # for k in [1e-4, 1e-2, 0]:
+        # default_cfg['boundary_consist'] = k
+    bni_object = BNI(osp.dirname(npy_file), osp.basename(npy_file), bni_dict, default_cfg,
+                    torch.device('cuda:0'))
+
+    bni_object.extract_surface()
+    bni_object.F_trimesh.export(osp.join(osp.dirname(npy_file), "F.obj"))
+    bni_object.B_trimesh.export(osp.join(osp.dirname(npy_file), "B.obj"))
+    bni_object.F_B_trimesh.export(osp.join(osp.dirname(npy_file), "BNI.obj"))

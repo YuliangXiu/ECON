@@ -118,7 +118,7 @@ def remove_stretched_faces(verts, faces):
     faces_cam_angles = np.dot(mesh.face_normals, camera_ray)
 
     # cos(90-20)=0.34 cos(90-10)=0.17, 10~20 degree
-    faces_mask = np.abs(faces_cam_angles) > 4e-1
+    faces_mask = np.abs(faces_cam_angles) > 2e-1
 
     mesh.update_faces(faces_mask)
     mesh.remove_unreferenced_vertices()
