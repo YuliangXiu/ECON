@@ -1,0 +1,35 @@
+name: econ
+ckpt_dir: "./data/ckpt/"
+normal_path: "./data/ckpt/normal.ckpt"
+ifnet_path: "./data/ckpt/ifnet.ckpt"
+results_path: "./results"
+
+net:
+  in_nml: (('image',3), ('T_normal_F',3), ('T_normal_B',3))
+  in_geo: (('normal_F',3), ('normal_B',3))
+
+test_mode: True
+batch_size: 1
+
+dataset:
+  prior_type: "SMPL"
+
+# user defined
+vol_res: 256      # IF-Net volume resolution
+mcube_res: 256
+clean_mesh: True  # if True, will remove floating pieces
+cloth_overlap_thres: 0.50
+body_overlap_thres: 0.98
+
+bni:
+  k: 2
+  lambda1: 1e-4
+  boundary_consist: 1e-6
+  poisson_depth: 10
+  use_smpl: ["hand", "face"]
+  use_ifnet: True
+  use_poisson: True
+  hand_thres: 4e-2
+  face_thres: 6e-2
+  thickness: 0.02
+  hps_type: "pixie"
