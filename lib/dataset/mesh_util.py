@@ -24,16 +24,18 @@ import os
 from termcolor import colored
 import os.path as osp
 import _pickle as cPickle
+from scipy.spatial import cKDTree
 
 from pytorch3d.structures import Meshes
 import torch.nn.functional as F
 import lib.smplx as smplx
-from lib.common.imutils import uncrop
-from lib.common.render_utils import Pytorch3dRasterizer
 from pytorch3d.renderer.mesh import rasterize_meshes
 from PIL import Image, ImageFont, ImageDraw
 from pytorch3d.loss import mesh_laplacian_smoothing, mesh_normal_consistency
 import tinyobjloader
+
+from lib.common.imutils import uncrop
+from lib.common.render_utils import Pytorch3dRasterizer
 
 
 class SMPLX:
@@ -55,11 +57,13 @@ class SMPLX:
         self.smplx_flame_vid_path = osp.join(self.current_dir, "smpl_data/FLAME_SMPLX_vertex_ids.npy")
         self.smplx_mano_vid_path = osp.join(self.current_dir, "smpl_data/MANO_SMPLX_vertex_ids.pkl")
         self.front_flame_path = osp.join(self.current_dir, "smpl_data/FLAME_face_mask_ids.npy")
+        self.smplx_vertex_lmkid_path = osp.join(self.current_dir, "smpl_data/smplx_vertex_lmkid.npy")
 
         self.smplx_faces = np.load(self.smplx_faces_path)
         self.smplx_verts = np.load(self.smplx_verts_path)
         self.smpl_verts = np.load(self.smpl_verts_path)
         self.smpl_faces = np.load(self.smpl_faces_path)
+        self.smplx_vertex_lmkid = np.load(self.smplx_vertex_lmkid_path)
 
         self.smplx_eyeball_fid_mask = np.load(self.smplx_eyeball_fid_path)
         self.smplx_mouth_fid = np.load(self.smplx_fill_mouth_fid_path)
@@ -264,28 +268,32 @@ def apply_vertex_face_mask(mesh, vertex_mask, face_mask):
     return mesh
 
 
-def part_removal(full_mesh, vis_mask, part_mesh, thres, device, clean=True, camera_ray=False):
+def part_removal(full_mesh, part_mesh, thres, device, smpl_obj, region, clean=True):
 
-    # thres: face 3e-2, hand 4e-2
+    smpl_tree = cKDTree(smpl_obj.vertices)
+    SMPL_container = SMPLX()
 
     from lib.dataset.PointFeat import PointFeat
+
     part_extractor = PointFeat(
         torch.tensor(part_mesh.vertices).unsqueeze(0).to(device),
         torch.tensor(part_mesh.faces).unsqueeze(0).to(device))
 
-    (part_dist, part_cos) = part_extractor.query(torch.tensor(full_mesh.vertices).unsqueeze(0).to(device))
+    (part_dist, _) = part_extractor.query(torch.tensor(full_mesh.vertices).unsqueeze(0).to(device))
 
-    if camera_ray:
-        remove_mask = torch.logical_and(part_dist < thres, part_cos > 0.5)
-    else:
-        remove_mask = part_dist < thres
+    remove_mask = part_dist < thres
 
-    if vis_mask is not None:
-        BNI_verts_mask = ~(torch.logical_or(remove_mask, vis_mask.to(device))).flatten()
-    else:
-        BNI_verts_mask = ~(remove_mask).flatten()
+    if region == "hand":
+        _, idx = smpl_tree.query(full_mesh.vertices, k=1)
+        full_lmkid = SMPL_container.smplx_vertex_lmkid[idx]
+        remove_mask = torch.logical_and(remove_mask, torch.tensor(full_lmkid >= 20).type_as(remove_mask).unsqueeze(0))
 
-    BNI_part_mask = BNI_verts_mask[full_mesh.faces].any(dim=1)
+    elif region == "face":
+        _, idx = smpl_tree.query(full_mesh.vertices, k=5)
+        face_space_mask = torch.isin(torch.tensor(idx), torch.tensor(SMPL_container.smplx_front_flame_vid))
+        remove_mask = torch.logical_and(remove_mask, face_space_mask.any(dim=1).type_as(remove_mask).unsqueeze(0))
+
+    BNI_part_mask = ~(remove_mask).flatten()[full_mesh.faces].any(dim=1)
     full_mesh.update_faces(BNI_part_mask.detach().cpu())
     full_mesh.remove_unreferenced_vertices()
 
@@ -544,6 +552,7 @@ def poisson_remesh(obj_path):
     ms.meshing_decimation_quadric_edge_collapse(targetfacenum=50000)
     # ms.apply_coord_laplacian_smoothing()
     ms.save_current_mesh(obj_path)
+    ms.save_current_mesh(obj_path.replace(".obj", ".ply"))
     polished_mesh = trimesh.load_mesh(obj_path)
 
     return polished_mesh

@@ -80,7 +80,7 @@ class TestDataset:
 
         self.smpl_model = PIXIE_SMPLX(pixie_cfg.model).to(self.device)
 
-        print(colored(f"Using -- {self.hps_type} -- as HPS Estimator\n", "green"))
+        print(colored(f"Use {self.hps_type.upper()} to estimate human pose and shape", "green"))
 
         self.render = Render(size=512, device=self.device)
 

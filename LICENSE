@@ -39,12 +39,12 @@ You acknowledge that the Data & Software is a valuable scientific resource and a
 
 Citation:
 
-@inproceedings{xiu2022econ,
-  title={{ECON}: {E}xplicit {C}lothed humans {O}btained from {N}ormals},
-  author={Xiu, Yuliang and Yang, Jinlong and Cao, Xu and Tzionas, Dimitrios and Black, Michael J.},
-  booktitle=arXiv,
-  month = Dec,
-  year={2022}
+@misc{xiu2022econ,
+    title={ECON: Explicit Clothed humans Obtained from Normals},
+    author={Xiu, Yuliang and Yang, Jinlong and Cao, Xu and Tzionas, Dimitrios and Black, Michael J.},
+    year={2022}
+    publisher={arXiv},
+    primaryClass={cs.CV}
 }
 
 Commercial licensing opportunities
