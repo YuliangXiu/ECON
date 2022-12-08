@@ -31,6 +31,7 @@ from termcolor import colored
 from tqdm.auto import tqdm
 from apps.Normal import Normal
 from apps.IFGeo import IFGeo
+from pytorch3d.ops import SubdivideMeshes
 from lib.common.config import cfg
 from lib.common.train_util import init_loss, load_normal_networks, load_networks
 from lib.common.BNI import BNI
@@ -91,6 +92,11 @@ if __name__ == "__main__":
         "vol_res": cfg.vol_res,
         "single": args.multi,
     }
+    
+    if cfg.bni.use_ifnet:
+        print(colored("Use IF-Nets (Implicit)+ for completion", "green"))
+    else:
+        print(colored("Use SMPL-X (Explicit) for completion", "green"))
 
     dataset = TestDataset(dataset_param, device)
 
@@ -378,6 +384,7 @@ if __name__ == "__main__":
             side_mesh = smpl_obj_lst[idx].copy()
             face_mesh = smpl_obj_lst[idx].copy()
             hand_mesh = smpl_obj_lst[idx].copy()
+            smplx_mesh = smpl_obj_lst[idx].copy()
 
             # save normals, depths and masks
             BNI_dict = save_normal_tensor(
@@ -404,7 +411,6 @@ if __name__ == "__main__":
             # replace SMPL by completed mesh as side_mesh
 
             if cfg.bni.use_ifnet:
-                print(colored("Use IF-Nets+ for completion\n", "green"))
 
                 side_mesh_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_IF.obj"
 
@@ -436,12 +442,20 @@ if __name__ == "__main__":
                 side_mesh = remesh(side_mesh, side_mesh_path)
 
             else:
-                print(colored("Use SMPL-X body for completion\n", "green"))
                 side_mesh = apply_vertex_mask(
                     side_mesh,
                     (SMPLX_object.front_flame_vertex_mask + SMPLX_object.mano_vertex_mask +
                      SMPLX_object.eyeball_vertex_mask).eq(0).float(),
                 )
+
+                # upsample the side mesh
+                side_sub_mesh = Meshes(
+                    verts=[torch.tensor(side_mesh.vertices).float()],
+                    faces=[torch.tensor(side_mesh.faces).long()],
+                )
+                sm = SubdivideMeshes(side_sub_mesh)
+                new_mesh = sm(side_sub_mesh)
+                side_mesh = trimesh.Trimesh(new_mesh.verts_padded().squeeze(), new_mesh.faces_padded().squeeze())
 
             side_verts = torch.tensor(side_mesh.vertices).float().to(device)
             side_faces = torch.tensor(side_mesh.faces).long().to(device)
@@ -464,9 +478,8 @@ if __name__ == "__main__":
 
                 # remove face neighbor triangles
                 BNI_object.F_B_trimesh = part_removal(
-                    BNI_object.F_B_trimesh, None, face_mesh, cfg.bni.face_thres, device, camera_ray=True)
-                side_mesh = part_removal(
-                    side_mesh, torch.zeros_like(side_verts[:, 0:1]), face_mesh, cfg.bni.face_thres, device, camera_ray=True)
+                    BNI_object.F_B_trimesh, face_mesh, cfg.bni.face_thres, device, smplx_mesh, region="face")
+                side_mesh = part_removal(side_mesh, face_mesh, cfg.bni.face_thres, device, smplx_mesh, region="face")
                 face_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_face.obj")
                 full_lst += [face_mesh]
 
@@ -480,18 +493,18 @@ if __name__ == "__main__":
 
                 # only hands
                 hand_mesh = apply_vertex_mask(hand_mesh, hand_mask)
-                # remove face neighbor triangles
+
+                # remove hand neighbor triangles
                 BNI_object.F_B_trimesh = part_removal(
-                    BNI_object.F_B_trimesh, None, hand_mesh, cfg.bni.hand_thres, device, camera_ray=True)
-                side_mesh = part_removal(
-                    side_mesh, torch.zeros_like(side_verts[:, 0:1]), hand_mesh, cfg.bni.hand_thres, device, camera_ray=True)
+                    BNI_object.F_B_trimesh, hand_mesh, cfg.bni.hand_thres, device, smplx_mesh, region="hand")
+                side_mesh = part_removal(side_mesh, hand_mesh, cfg.bni.hand_thres, device, smplx_mesh, region="hand")
                 hand_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_hand.obj")
                 full_lst += [hand_mesh]
 
             full_lst += [BNI_object.F_B_trimesh]
 
             # initial side_mesh could be SMPLX or IF-net
-            side_mesh = part_removal(side_mesh, torch.zeros_like(side_verts[:, 0:1]), sum(full_lst), 2e-2, device, clean=False)
+            side_mesh = part_removal(side_mesh, sum(full_lst), 2e-2, device, smplx_mesh, region="", clean=False)
 
             full_lst += [side_mesh]
 

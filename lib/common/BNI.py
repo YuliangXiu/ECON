@@ -25,9 +25,6 @@ class BNI:
         # k --> smaller, keep continuity
         # lambda --> larger, more depth-awareness
 
-        # self.k = self.cfg.k
-        # self.lambda1 = self.cfg.lambda1
-        # self.boundary_consist = self.cfg.boundary_consist
         self.k = self.cfg['k']
         self.lambda1 = self.cfg['lambda1']
         self.boundary_consist = self.cfg['boundary_consist']

@@ -25,8 +25,10 @@
     <a href="https://pytorchlightning.ai/"><img alt="Lightning" src="https://img.shields.io/badge/-Lightning-792ee5?logo=pytorchlightning&logoColor=white"></a>
     <br></br>
     <a href=''>
-      <img src='https://img.shields.io/badge/Paper-PDF-green?style=for-the-badge&logo=arXiv&logoColor=green' alt='Paper PDF'>
+      <img src='https://img.shields.io/badge/Paper-PDF (coming soon)-green?style=for-the-badge&logo=arXiv&logoColor=green' alt='Paper PDF'>
     </a>
+    <a href='https://xiuyuliang.cn/econ/'>
+      <img src='https://img.shields.io/badge/ECON-Page-orange?style=for-the-badge&logo=Google%20chrome&logoColor=orange' alt='Project Page'></a>
     <a href="https://discord.gg/Vqa7KBGRyk"><img src="https://img.shields.io/discord/940240966844035082?color=7289DA&labelColor=4a64bd&logo=discord&logoColor=white&style=for-the-badge"></a>
     <a href="https://youtu.be/j5hw4tsWpoY"><img alt="youtube views" title="Subscribe to my YouTube channel" src="https://img.shields.io/youtube/views/j5hw4tsWpoY?logo=youtube&labelColor=ce4630&style=for-the-badge"/></a>
   </p>
@@ -39,9 +41,11 @@ ECON is designed for **"Human digitization from a color image"**, which combines
 <br/>
 
 ## News :triangular_flag_on_post:
-- [2022/03/05] <a href="">arXiv</a> and <a href="#demo">demo</a> are available.
+
+- [2022/12/09] <a href="#demo">Demo</a> is available.
 
 ## TODO
+
 - [ ] Blender add-on for FBX export
 - [ ] Full RGB texture generation
 
@@ -72,29 +76,33 @@ ECON is designed for **"Human digitization from a color image"**, which combines
 
 - See [docs/installation.md](docs/installation.md) to install all the required packages and setup the models
 
-
 ## Demo
 
 ```bash
-# For image-based reconstruction
+# For single-person image-based reconstruction
 python -m apps.infer -cfg ./configs/econ.yaml -in_dir ./examples -out_dir ./results
 
-# For video rendering
+# For multi-person image-based reconstruction (see config/econ.yaml)
+python -m apps.infer -cfg ./configs/econ.yaml -in_dir ./examples -out_dir ./results -multi
+
+# To generate the demo video of reconstruction results
 python -m apps.multi_render -n {filename}
 ```
 
 ## Tricks
-### Some adjustable parameters in *config/econ.yaml*
-- `use_ifnet`
+
+### Some adjustable parameters in _config/econ.yaml_
+
+- `use_ifnet: True`
   - True: use IF-Nets+ for mesh completion ( $\text{ECON}_\text{IF}$ - Better quality)
   - False: use SMPL-X for mesh completion ( $\text{ECON}_\text{EX}$ - Faster speed)
-- `use_smpl`
+- `use_smpl: ["hand", "face"]`
   - [ ]: don't use either hands or face parts from SMPL-X
   - ["hand"]: only use the **visible** hands from SMPL-X
   - ["hand", "face"]: use both **visible** hands and face from SMPL-X
-- `thickness` (default 2cm)
+- `thickness: 2cm`
   - could be increased accordingly in case **xx_full.obj** looks flat
-- `hps_type`
+- `hps_type: pixie`
   - "pixie": more accurate for face and hands
   - "pymafx": more robust for challenging poses
 
@@ -102,16 +110,15 @@ python -m apps.multi_render -n {filename}
 
 ## More Qualitative Results
 
-|![OOD Poses](assets/OOD-poses.jpg)|
-| :----------------------: |
-|_Challenging Poses_|
-|![OOD Clothes](assets/OOD-outfits.jpg)|
-|_Loose Clothes_|
-|![SHHQ](assets/SHHQ.gif)|
-|_ECON Results on [SHHQ Dataset](https://github.com/stylegan-human/StyleGAN-Human)_|
-|![crowd](assets/crowd.gif)|
-|_ECON Results on Multi-Person Image_|
-
+|                         ![OOD Poses](assets/OOD-poses.jpg)                         |
+| :--------------------------------------------------------------------------------: |
+|                                _Challenging Poses_                                 |
+|                       ![OOD Clothes](assets/OOD-outfits.jpg)                       |
+|                                  _Loose Clothes_                                   |
+|                              ![SHHQ](assets/SHHQ.gif)                              |
+| _ECON Results on [SHHQ Dataset](https://github.com/stylegan-human/StyleGAN-Human)_ |
+|                             ![crowd](assets/crowd.gif)                             |
+|                        _ECON Results on Multi-Person Image_                        |
 
 <br/>
 <br/>
@@ -119,14 +126,15 @@ python -m apps.multi_render -n {filename}
 ## Citation
 
 ```bibtex
-@inproceedings{xiu2022econ,
-  title     = {{ECON}: {E}xplicit {C}lothed humans {O}btained from {N}ormals},
-  author    = {Xiu, Yuliang and Yang, Jinlong and Cao, Xu and Tzionas, Dimitrios and Black, Michael J.},
-  booktitle = arXiv,
-  month     = {Dec},
-  year      = {2022},
+@misc{xiu2022econ,
+    title={ECON: Explicit Clothed humans Obtained from Normals},
+    author={Xiu, Yuliang and Yang, Jinlong and Cao, Xu and Tzionas, Dimitrios and Black, Michael J.},
+    year={2022}
+    publisher={arXiv},
+    primaryClass={cs.CV}
 }
 ```
+
 <br/>
 
 ## Acknowledgments
@@ -146,7 +154,7 @@ Some images used in the qualitative examples come from [pinterest.com](https://w
 
 This project has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Skłodowska-Curie grant agreement No.860768 ([CLIPE Project](https://www.clipe-itn.eu)).
 
---------------
+---
 
 <br>
 
@@ -156,10 +164,11 @@ This code and model are available for non-commercial scientific research purpose
 
 ## Disclosure
 
-MJB has received research gift funds from Adobe, Intel, Nvidia, Meta/Facebook, and Amazon.  MJB has financial interests in Amazon, Datagen Technologies, and Meshcapade GmbH.
+MJB has received research gift funds from Adobe, Intel, Nvidia, Meta/Facebook, and Amazon. MJB has financial interests in Amazon, Datagen Technologies, and Meshcapade GmbH.
 
 ## Contact
 
 For technical questions, please contact yuliang.xiu@tue.mpg.de
 
-For commercial licensing, please contact ps-licensing@tue.mpg.de and black@tue.mpg.de
+For commercial licensing, please contact ps-licensing@tue.mpg.de
+
