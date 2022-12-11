@@ -37,6 +37,7 @@ from lib.common.train_util import init_loss, load_normal_networks, load_networks
 from lib.common.BNI import BNI
 from lib.common.BNI_utils import save_normal_tensor
 from lib.dataset.TestDataset import TestDataset
+from lib.common.local_affine import register
 from lib.net.geometry import rot6d_to_rotmat, rotation_matrix_to_angle_axis
 from lib.dataset.mesh_util import *
 from lib.common.voxelize import VoxelGrid
@@ -156,8 +157,8 @@ if __name__ == "__main__":
 
         N_body, N_pose = optimed_pose.shape[:2]
 
-        smpl_path = osp.join(args.out_dir, "econ", f"png/{data['name']}_smpl.png")
-
+        smpl_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_smpl_00.obj"
+        
         if osp.exists(smpl_path):
 
             smpl_verts_lst = []
@@ -182,6 +183,7 @@ if __name__ == "__main__":
 
             in_tensor["smpl_verts"] = batch_smpl_verts * torch.tensor([1., -1., 1.]).to(device)
             in_tensor["smpl_faces"] = batch_smpl_faces[:, :, [0, 2, 1]]
+            
         else:
             # smpl optimization
             loop_smpl = tqdm(range(args.loop_smpl))
@@ -447,15 +449,15 @@ if __name__ == "__main__":
                     (SMPLX_object.front_flame_vertex_mask + SMPLX_object.mano_vertex_mask +
                      SMPLX_object.eyeball_vertex_mask).eq(0).float(),
                 )
-
-                # upsample the side mesh
-                side_sub_mesh = Meshes(
+                
+                #register side_mesh to BNI surfaces
+                side_mesh = Meshes(
                     verts=[torch.tensor(side_mesh.vertices).float()],
                     faces=[torch.tensor(side_mesh.faces).long()],
-                )
-                sm = SubdivideMeshes(side_sub_mesh)
-                new_mesh = sm(side_sub_mesh)
-                side_mesh = trimesh.Trimesh(new_mesh.verts_padded().squeeze(), new_mesh.faces_padded().squeeze())
+                ).to(device)
+                sm = SubdivideMeshes(side_mesh)
+                side_mesh = register(BNI_object.F_B_trimesh, sm(side_mesh), device)
+
 
             side_verts = torch.tensor(side_mesh.vertices).float().to(device)
             side_faces = torch.tensor(side_mesh.faces).long().to(device)

@@ -32,7 +32,7 @@ def init_loss():
     losses = {
         # Cloth: Normal_recon - Normal_pred
         "cloth": {
-            "weight": 1e1,
+            "weight": 1e3,
             "value": 0.0
         },
         # Cloth: [RT]_v1 - [RT]_v2 (v1-edge-v2)

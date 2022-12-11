@@ -552,7 +552,7 @@ def poisson_remesh(obj_path):
     ms.meshing_decimation_quadric_edge_collapse(targetfacenum=50000)
     # ms.apply_coord_laplacian_smoothing()
     ms.save_current_mesh(obj_path)
-    ms.save_current_mesh(obj_path.replace(".obj", ".ply"))
+    # ms.save_current_mesh(obj_path.replace(".obj", ".ply"))
     polished_mesh = trimesh.load_mesh(obj_path)
 
     return polished_mesh
@@ -1013,6 +1013,15 @@ def clean_floats(mesh):
     return sum(clean_mesh_lst)
 
 
+def keep_largest(mesh):
+    mesh_lst = mesh.split(only_watertight=False)
+    keep_mesh = mesh_lst[0]
+    for mesh in mesh_lst:
+        if mesh.vertices.shape[0] > keep_mesh.vertices.shape[0]:
+            keep_mesh = mesh
+    return keep_mesh
+
+
 def mesh_move(mesh_lst, step, scale=1.0):
 
     trans = np.array([1.0, 0.0, 0.0]) * step
@@ -1036,3 +1045,16 @@ def rescale_smpl(fitted_path, scale=100, translate=(0, 0, 0)):
     fitted_body.apply_transform(resize_matrix)
 
     return np.array(fitted_body.vertices)
+
+
+def get_joint_mesh(joints, radius=2.0):
+
+    ball = trimesh.creation.icosphere(radius=radius)
+    combined = None
+    for joint in joints:
+        ball_new = trimesh.Trimesh(vertices=ball.vertices + joint, faces=ball.faces, process=False)
+        if combined is None:
+            combined = ball_new
+        else:
+            combined = sum([combined, ball_new])
+    return combined
