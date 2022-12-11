@@ -4,7 +4,7 @@
 
   <h1 align="center">ECON: Explicit Clothed humans Obtained from Normals</h1>
   <p align="center">
-    <a href="https://ps.is.tuebingen.mpg.de/person/yxiu"><strong>Yuliang Xiu</strong></a>
+    <a href="http://xiuyuliang.cn/"><strong>Yuliang Xiu</strong></a>
     ·
     <a href="https://ps.is.tuebingen.mpg.de/person/jyang"><strong>Jinlong Yang</strong></a>
     ·
@@ -28,7 +28,7 @@
       <img src='https://img.shields.io/badge/Paper-PDF (coming soon)-green?style=for-the-badge&logo=arXiv&logoColor=green' alt='Paper PDF'>
     </a>
     <a href='https://xiuyuliang.cn/econ/'>
-      <img src='https://img.shields.io/badge/ECON-Page-orange?style=for-the-badge&logo=Google%20chrome&logoColor=orange' alt='Project Page'></a>
+      <img src='https://img.shields.io/badge/ECON-Page-orange?style=for-the-badge&logo=Google%20chrome&logoColor=white' alt='Project Page'></a>
     <a href="https://discord.gg/Vqa7KBGRyk"><img src="https://img.shields.io/discord/940240966844035082?color=7289DA&labelColor=4a64bd&logo=discord&logoColor=white&style=for-the-badge"></a>
     <a href="https://youtu.be/j5hw4tsWpoY"><img alt="youtube views" title="Subscribe to my YouTube channel" src="https://img.shields.io/youtube/views/j5hw4tsWpoY?logo=youtube&labelColor=ce4630&style=for-the-badge"/></a>
   </p>
