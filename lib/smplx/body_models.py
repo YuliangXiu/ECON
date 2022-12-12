@@ -1151,6 +1151,7 @@ class SMPLX(SMPLH):
         pose2rot: bool = True,
         return_joint_transformation: bool = False,
         return_vertex_transformation: bool = False,
+        pose_type: str = 'posed',
         **kwargs,
     ) -> SMPLXOutput:
         """
@@ -1240,9 +1241,30 @@ class SMPLX(SMPLH):
             dim=1,
         )
 
+        if pose_type == "t-pose":
+            full_pose *= 0.0
+        elif pose_type == "da-pose":
+            body_pose = torch.zeros_like(body_pose).view(body_pose.shape[0], -1, 3)
+            body_pose[:, 0] = torch.tensor([0., 0., 30 * np.pi / 180.])
+            body_pose[:, 1] = torch.tensor([0., 0., -30 * np.pi / 180.])
+            body_pose = body_pose.view(body_pose.shape[0], -1)
+
+            full_pose = torch.cat(
+                [
+                    global_orient * 0.,
+                    body_pose,
+                    jaw_pose * 0.,
+                    leye_pose * 0.,
+                    reye_pose * 0.,
+                    left_hand_pose * 0.,
+                    right_hand_pose * 0.,
+                ],
+                dim=1,
+            )
+
         # Add the mean pose of the model. Does not affect the body, only the
         # hands when flat_hand_mean == False
-        full_pose += self.pose_mean
+        # full_pose += self.pose_mean
 
         batch_size = max(betas.shape[0], global_orient.shape[0], body_pose.shape[0])
         # Concatenate the shape and expression coefficients

@@ -23,6 +23,8 @@
   <br>
     <a href="https://pytorch.org/get-started/locally/"><img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-ee4c2c?logo=pytorch&logoColor=white"></a>
     <a href="https://pytorchlightning.ai/"><img alt="Lightning" src="https://img.shields.io/badge/-Lightning-792ee5?logo=pytorchlightning&logoColor=white"></a>
+    <a href="https://cupy.dev/"><img alt="cupy" src="https://img.shields.io/badge/-Cupy-46C02B?logo=numpy&logoColor=white"></a>
+    <a href="https://twitter.com/yuliangxiu"><img alt='Twitter' src="https://img.shields.io/twitter/follow/yuliangxiu?label=%40yuliangxiu"></a>
     <br></br>
     <a href=''>
       <img src='https://img.shields.io/badge/Paper-PDF (coming soon)-green?style=for-the-badge&logo=arXiv&logoColor=green' alt='Paper PDF'>
@@ -36,7 +38,7 @@
 
 <br/>
 
-ECON is designed for **"Human digitization from a color image"**, which combines the best properties of implicit and explicit representations, to infer high-fidelity 3D clothed humans from in-the-wild images, even with **loose clothing** or in **challenging poses**. ECON also supports batch reconstruction from **multi-person** photos.
+ECON is designed for "Human digitization from a color image", which combines the best properties of implicit and explicit representations, to infer high-fidelity 3D clothed humans from in-the-wild images, even with **loose clothing** or in **challenging poses**. ECON also supports **multi-person reconstruction** and **SMPL-X based animation**.
 <br/>
 <br/>
 
@@ -60,6 +62,9 @@ ECON is designed for **"Human digitization from a color image"**, which combines
     </li>
     <li>
       <a href="#demo">Demo</a>
+    </li>
+    <li>
+      <a href="#applications">Applications</a>
     </li>
     <li>
       <a href="#tricks">Tricks</a>
@@ -87,6 +92,9 @@ python -m apps.infer -cfg ./configs/econ.yaml -in_dir ./examples -out_dir ./resu
 
 # To generate the demo video of reconstruction results
 python -m apps.multi_render -n {filename}
+
+# To animate the reconstruction with SMPL-X pose parameters
+python -m apps.avatarizer -n {filename}
 ```
 
 ## Tricks
@@ -101,24 +109,28 @@ python -m apps.multi_render -n {filename}
   - ["hand"]: only use the **visible** hands from SMPL-X
   - ["hand", "face"]: use both **visible** hands and face from SMPL-X
 - `thickness: 2cm`
-  - could be increased accordingly in case **xx_full.obj** looks flat
-- `hps_type: pixie`
+  - could be increased accordingly in case final reconstruction **xx_full.obj** looks flat
+- `hps_type: PIXIE`
   - "pixie": more accurate for face and hands
   - "pymafx": more robust for challenging poses
+- `k: 4`
+  - could be reduced accordingly in case the surface of **xx_full.obj** has discontinous artifacts
 
 <br/>
 
 ## More Qualitative Results
 
-|                         ![OOD Poses](assets/OOD-poses.jpg)                         |
-| :--------------------------------------------------------------------------------: |
-|                                _Challenging Poses_                                 |
-|                       ![OOD Clothes](assets/OOD-outfits.jpg)                       |
-|                                  _Loose Clothes_                                   |
-|                              ![SHHQ](assets/SHHQ.gif)                              |
-| _ECON Results on [SHHQ Dataset](https://github.com/stylegan-human/StyleGAN-Human)_ |
-|                             ![crowd](assets/crowd.gif)                             |
-|                        _ECON Results on Multi-Person Image_                        |
+|   ![OOD Poses](assets/OOD-poses.jpg)   |
+| :------------------------------------: |
+|          _Challenging Poses_           |
+| ![OOD Clothes](assets/OOD-outfits.jpg) |
+|            _Loose Clothes_             |
+
+## Applications
+
+|                                        ![SHHQ](assets/SHHQ.gif)                                        |         ![crowd](assets/crowd.gif)          |
+| :----------------------------------------------------------------------------------------------------: | :-----------------------------------------: |
+| _ECON could provide pseudo 3D GT for [SHHQ Dataset](https://github.com/stylegan-human/StyleGAN-Human)_ | _ECON supports multi-person reconstruction_ |
 
 <br/>
 <br/>
@@ -127,7 +139,7 @@ python -m apps.multi_render -n {filename}
 
 ```bibtex
 @misc{xiu2022econ,
-    title={ECON: Explicit Clothed humans Obtained from Normals},
+    title={{ECON: Explicit Clothed humans Obtained from Normals}},
     author={Xiu, Yuliang and Yang, Jinlong and Cao, Xu and Tzionas, Dimitrios and Black, Michael J.},
     year={2022}
     publisher={arXiv},
@@ -146,6 +158,7 @@ Here are some great resources we benefit from:
 - [ICON](https://github.com/YuliangXiu/ICON) for Body Fitting
 - [MonoPortDataset](https://github.com/Project-Splinter/MonoPortDataset) for Data Processing
 - [rembg](https://github.com/danielgatis/rembg) for Human Segmentation
+- [PyTorch-NICP](https://github.com/wuhaozhe/pytorch-nicp) for non-rigid registration
 - [smplx](https://github.com/vchoutas/smplx), [PyMAF-X](https://www.liuyebin.com/pymaf-x/), [PIXIE](https://github.com/YadiraF/PIXIE) for Human Pose & Shape Estimation
 - [CAPE](https://github.com/qianlim/CAPE) and [THuman](https://github.com/ZhengZerong/DeepHuman/tree/master/THUmanDataset) for Dataset
 - [PyTorch3D](https://github.com/facebookresearch/pytorch3d) for Differential Rendering
@@ -171,4 +184,3 @@ MJB has received research gift funds from Adobe, Intel, Nvidia, Meta/Facebook, a
 For technical questions, please contact yuliang.xiu@tue.mpg.de
 
 For commercial licensing, please contact ps-licensing@tue.mpg.de
-
