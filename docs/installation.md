@@ -27,7 +27,7 @@ conda activate econ
 pip install -r requirements.txt
 
 # install libmesh & libvoxelize
-cd lib/commmon/libmesh
+cd lib/common/libmesh
 python setup.py build_ext --inplace
 cd ../libvoxelize
 python setup.py build_ext --inplace

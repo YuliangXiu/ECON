@@ -100,7 +100,7 @@ if __name__ == "__main__":
         print(colored("Use SMPL-X (Explicit) for completion", "green"))
 
     dataset = TestDataset(dataset_param, device)
-
+    
     print(colored(f"Dataset Size: {len(dataset)}", "green"))
 
     pbar = tqdm(dataset)

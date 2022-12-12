@@ -233,6 +233,7 @@ def lbs(
 def general_lbs(
     pose: Tensor,
     v_template: Tensor,
+    posedirs: Tensor,
     J_regressor: Tensor,
     parents: Tensor,
     lbs_weights: Tensor,
@@ -246,6 +247,8 @@ def general_lbs(
         The pose parameters in axis-angle format
     v_template torch.tensor BxVx3
         The template mesh that will be deformed
+    posedirs : torch.tensor Px(V * 3)
+        The pose PCA coefficients
     J_regressor : torch.tensor JxV
         The regressor array that is used to calculate the joints from
         the position of the vertices
@@ -277,10 +280,21 @@ def general_lbs(
     # NxJx3 array
     J = vertices2joints(J_regressor, v_template)
 
+    # Add pose blend shapes
+    # N x J x 3 x 3
+    ident = torch.eye(3, dtype=dtype, device=device)
+
     if pose2rot:
         rot_mats = batch_rodrigues(pose.view(-1, 3)).view([batch_size, -1, 3, 3])
+        pose_feature = (rot_mats[:, 1:, :, :] - ident).view([batch_size, -1])
+        # (N x P) x (P, V * 3) -> N x V x 3
+        pose_offsets = torch.matmul(pose_feature, posedirs).view(batch_size, -1, 3)
     else:
         rot_mats = pose.view(batch_size, -1, 3, 3)
+        pose_feature = pose[:, 1:].view(batch_size, -1, 3, 3) - ident
+        pose_offsets = torch.matmul(pose_feature.view(batch_size, -1), posedirs).view(batch_size, -1, 3)
+
+    v_posed = pose_offsets + v_template
 
     # 4. Get the global joint location
     J_transformed, A = batch_rigid_transform(rot_mats, J, parents, dtype=dtype)
@@ -292,13 +306,13 @@ def general_lbs(
     num_joints = J_regressor.shape[0]
     T = torch.matmul(W, A.view(batch_size, num_joints, 16)).view(batch_size, -1, 4, 4)
 
-    homogen_coord = torch.ones([batch_size, v_template.shape[1], 1], dtype=dtype, device=device)
-    v_posed_homo = torch.cat([v_template, homogen_coord], dim=2)
+    homogen_coord = torch.ones([batch_size, v_posed.shape[1], 1], dtype=dtype, device=device)
+    v_posed_homo = torch.cat([v_posed, homogen_coord], dim=2)
     v_homo = torch.matmul(T, torch.unsqueeze(v_posed_homo, dim=-1))
 
     verts = v_homo[:, :, :3, 0]
 
-    return verts, J
+    return verts, J_transformed
 
 
 def vertices2joints(J_regressor: Tensor, vertices: Tensor) -> Tensor:
