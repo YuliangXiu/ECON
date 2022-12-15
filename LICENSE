@@ -39,12 +39,11 @@ You acknowledge that the Data & Software is a valuable scientific resource and a
 
 Citation:
 
-@misc{xiu2022econ,
-    title={ECON: Explicit Clothed humans Obtained from Normals},
+@article{xiu2022econ,
+    title={{ECON: Explicit Clothed humans Obtained from Normals}},
     author={Xiu, Yuliang and Yang, Jinlong and Cao, Xu and Tzionas, Dimitrios and Black, Michael J.},
     year={2022}
-    publisher={arXiv},
-    primaryClass={cs.CV}
+    journal={{arXiv}:2212.07422},
 }
 
 Commercial licensing opportunities

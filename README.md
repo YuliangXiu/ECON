@@ -26,8 +26,8 @@
     <a href="https://cupy.dev/"><img alt="cupy" src="https://img.shields.io/badge/-Cupy-46C02B?logo=numpy&logoColor=white"></a>
     <a href="https://twitter.com/yuliangxiu"><img alt='Twitter' src="https://img.shields.io/twitter/follow/yuliangxiu?label=%40yuliangxiu"></a>
     <br></br>
-    <a href=''>
-      <img src='https://img.shields.io/badge/Paper-PDF (coming soon)-green?style=for-the-badge&logo=arXiv&logoColor=green' alt='Paper PDF'>
+    <a href="https://arxiv.org/abs/2212.07422">
+      <img src='https://img.shields.io/badge/Paper-PDF-green?style=for-the-badge&logo=arXiv&logoColor=green' alt='Paper PDF'>
     </a>
     <a href='https://xiuyuliang.cn/econ/'>
       <img src='https://img.shields.io/badge/ECON-Page-orange?style=for-the-badge&logo=Google%20chrome&logoColor=white' alt='Project Page'></a>
@@ -44,7 +44,7 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 ## News :triangular_flag_on_post:
 
-- [2022/12/09] <a href="#demo">Demo</a> is available.
+- [2022/12/15] Both <a href="#demo">demo</a> and <a href="https://arxiv.org/abs/2212.07422">arXiv</a> are available.
 
 ## TODO
 
@@ -138,12 +138,11 @@ python -m apps.avatarizer -n {filename}
 ## Citation
 
 ```bibtex
-@misc{xiu2022econ,
+@article{xiu2022econ,
     title={{ECON: Explicit Clothed humans Obtained from Normals}},
     author={Xiu, Yuliang and Yang, Jinlong and Cao, Xu and Tzionas, Dimitrios and Black, Michael J.},
     year={2022}
-    publisher={arXiv},
-    primaryClass={cs.CV}
+    journal={{arXiv}:2212.07422},
 }
 ```
 
@@ -177,7 +176,7 @@ This code and model are available for non-commercial scientific research purpose
 
 ## Disclosure
 
-MJB has received research gift funds from Adobe, Intel, Nvidia, Meta/Facebook, and Amazon. MJB has financial interests in Amazon, Datagen Technologies, and Meshcapade GmbH.
+MJB has received research gift funds from Adobe, Intel, Nvidia, Meta/Facebook, and Amazon. MJB has financial interests in Amazon, Datagen Technologies, and Meshcapade GmbH. While MJB is a part-time employee of Meshcapade, his research was performed solely at, and funded solely by, the Max Planck Society.
 
 ## Contact
 
