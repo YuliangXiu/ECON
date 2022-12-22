@@ -28,10 +28,10 @@
     <br></br>
      <a href='https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing' style='padding-left: 0.5rem;'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a><br></br>
     <a href="https://arxiv.org/abs/2212.07422">
-      <img src='https://img.shields.io/badge/Paper-PDF-green?style=for-the-badge&logo=arXiv&logoColor=green' alt='Paper PDF'>
+      <img src='https://img.shields.io/badge/Paper-PDF-green?style=for-the-badge&logo=adobeacrobatreader&logoWidth=20&logoColor=white&labelColor=66cc00&color=94DD15' alt='Paper PDF'>
     </a>
     <a href='https://xiuyuliang.cn/econ/'>
-      <img src='https://img.shields.io/badge/ECON-Page-orange?style=for-the-badge&logo=Google%20chrome&logoColor=white' alt='Project Page'></a>
+      <img src='https://img.shields.io/badge/ECON-Page-orange?style=for-the-badge&logo=Google%20chrome&logoColor=white&labelColor=D35400' alt='Project Page'></a>
     <a href="https://discord.gg/Vqa7KBGRyk"><img src="https://img.shields.io/discord/940240966844035082?color=7289DA&labelColor=4a64bd&logo=discord&logoColor=white&style=for-the-badge"></a>
     <a href="https://youtu.be/j5hw4tsWpoY"><img alt="youtube views" title="Subscribe to my YouTube channel" src="https://img.shields.io/youtube/views/j5hw4tsWpoY?logo=youtube&labelColor=ce4630&style=for-the-badge"/></a>
   </p>
@@ -156,9 +156,12 @@ We thank [Lea Hering](https://is.mpg.de/person/lhering) and [Radek Daněček](ht
 
 Here are some great resources we benefit from:
 
-- [ICON](https://github.com/YuliangXiu/ICON) for Body Fitting
-- [MonoPortDataset](https://github.com/Project-Splinter/MonoPortDataset) for Data Processing
+- [ICON](https://github.com/YuliangXiu/ICON) for SMPL-X Body Fitting
+- [BiNI](https://github.com/hoshino042/bilateral_normal_integration) for Bilateral Normal Integration
+- [MonoPortDataset](https://github.com/Project-Splinter/MonoPortDataset) for Data Processing, [MonoPort](https://github.com/Project-Splinter/MonoPort) for fast implicit surface query
 - [rembg](https://github.com/danielgatis/rembg) for Human Segmentation
+- [pypoisson](https://github.com/mmolero/pypoisson) for poisson reconstruction
+- [MediaPipe](https://google.github.io/mediapipe/getting_started/python.html) for full-body landmark estimation
 - [PyTorch-NICP](https://github.com/wuhaozhe/pytorch-nicp) for non-rigid registration
 - [smplx](https://github.com/vchoutas/smplx), [PyMAF-X](https://www.liuyebin.com/pymaf-x/), [PIXIE](https://github.com/YadiraF/PIXIE) for Human Pose & Shape Estimation
 - [CAPE](https://github.com/qianlim/CAPE) and [THuman](https://github.com/ZhengZerong/DeepHuman/tree/master/THUmanDataset) for Dataset
