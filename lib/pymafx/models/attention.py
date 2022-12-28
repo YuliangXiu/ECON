@@ -16,6 +16,7 @@ from .transformers.bert.modeling_bert import BertPreTrainedModel, BertEmbeddings
 # import src.modeling.data.config as cfg
 # from src.modeling._gcnn import GraphConvolution, GraphResBlock
 from .transformers.bert.modeling_utils import prune_linear_layer
+
 LayerNormClass = torch.nn.LayerNorm
 BertLayerNorm = torch.nn.LayerNorm
 from .transformers.bert import BertConfig
@@ -27,7 +28,8 @@ class BertSelfAttention(nn.Module):
         if config.hidden_size % config.num_attention_heads != 0:
             raise ValueError(
                 "The hidden size (%d) is not a multiple of the number of attention "
-                "heads (%d)" % (config.hidden_size, config.num_attention_heads))
+                "heads (%d)" % (config.hidden_size, config.num_attention_heads)
+            )
         self.output_attentions = config.output_attentions
 
         self.num_attention_heads = config.num_attention_heads
@@ -45,8 +47,7 @@ class BertSelfAttention(nn.Module):
         x = x.view(*new_x_shape)
         return x.permute(0, 2, 1, 3)
 
-    def forward(self, hidden_states, attention_mask, head_mask=None,
-            history_state=None):
+    def forward(self, hidden_states, attention_mask, head_mask=None, history_state=None):
         if history_state is not None:
             raise
             x_states = torch.cat([history_state, hidden_states], dim=1)
@@ -85,11 +86,12 @@ class BertSelfAttention(nn.Module):
         context_layer = torch.matmul(attention_probs, value_layer)
 
         context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
-        new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
+        new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size, )
         context_layer = context_layer.view(*new_context_layer_shape)
 
-        outputs = (context_layer, attention_probs) if self.output_attentions else (context_layer,)
+        outputs = (context_layer, attention_probs) if self.output_attentions else (context_layer, )
         return outputs
+
 
 class BertAttention(nn.Module):
     def __init__(self, config):
@@ -114,12 +116,10 @@ class BertAttention(nn.Module):
         self.self.num_attention_heads = self.self.num_attention_heads - len(heads)
         self.self.all_head_size = self.self.attention_head_size * self.self.num_attention_heads
 
-    def forward(self, input_tensor, attention_mask, head_mask=None,
-            history_state=None):
-        self_outputs = self.self(input_tensor, attention_mask, head_mask,
-                history_state)
+    def forward(self, input_tensor, attention_mask, head_mask=None, history_state=None):
+        self_outputs = self.self(input_tensor, attention_mask, head_mask, history_state)
         attention_output = self.output(self_outputs[0], input_tensor)
-        outputs = (attention_output,) + self_outputs[1:]  # add attentions if we output them
+        outputs = (attention_output, ) + self_outputs[1:]    # add attentions if we output them
         return outputs
 
 
@@ -131,10 +131,8 @@ class AttLayer(nn.Module):
         self.intermediate = BertIntermediate(config)
         self.output = BertOutput(config)
 
-    def MHA(self, hidden_states, attention_mask, head_mask=None,
-                history_state=None):
-        attention_outputs = self.attention(hidden_states, attention_mask,
-                head_mask, history_state)
+    def MHA(self, hidden_states, attention_mask, head_mask=None, history_state=None):
+        attention_outputs = self.attention(hidden_states, attention_mask, head_mask, history_state)
         attention_output = attention_outputs[0]
 
         # print('attention_output', hidden_states.shape, attention_output.shape)
@@ -143,12 +141,11 @@ class AttLayer(nn.Module):
         # print('intermediate_output', intermediate_output.shape)
         layer_output = self.output(intermediate_output, attention_output)
         # print('layer_output', layer_output.shape)
-        outputs = (layer_output,) + attention_outputs[1:]  # add attentions if we output them
+        outputs = (layer_output, ) + attention_outputs[1:]    # add attentions if we output them
         return outputs
 
-    def forward(self, hidden_states, attention_mask, head_mask=None,
-                history_state=None):
-        return self.MHA(hidden_states, attention_mask, head_mask,history_state)
+    def forward(self, hidden_states, attention_mask, head_mask=None, history_state=None):
+        return self.MHA(hidden_states, attention_mask, head_mask, history_state)
 
 
 class AttEncoder(nn.Module):
@@ -158,34 +155,32 @@ class AttEncoder(nn.Module):
         self.output_hidden_states = config.output_hidden_states
         self.layer = nn.ModuleList([AttLayer(config) for _ in range(config.num_hidden_layers)])
 
-    def forward(self, hidden_states, attention_mask, head_mask=None,
-                encoder_history_states=None):
+    def forward(self, hidden_states, attention_mask, head_mask=None, encoder_history_states=None):
         all_hidden_states = ()
         all_attentions = ()
         for i, layer_module in enumerate(self.layer):
             if self.output_hidden_states:
-                all_hidden_states = all_hidden_states + (hidden_states,)
+                all_hidden_states = all_hidden_states + (hidden_states, )
 
             history_state = None if encoder_history_states is None else encoder_history_states[i]
-            layer_outputs = layer_module(
-                    hidden_states, attention_mask, head_mask[i],
-                    history_state)
+            layer_outputs = layer_module(hidden_states, attention_mask, head_mask[i], history_state)
             hidden_states = layer_outputs[0]
 
             if self.output_attentions:
-                all_attentions = all_attentions + (layer_outputs[1],)
+                all_attentions = all_attentions + (layer_outputs[1], )
 
         # Add last layer
         if self.output_hidden_states:
-            all_hidden_states = all_hidden_states + (hidden_states,)
+            all_hidden_states = all_hidden_states + (hidden_states, )
 
-        outputs = (hidden_states,)
+        outputs = (hidden_states, )
         if self.output_hidden_states:
-            outputs = outputs + (all_hidden_states,)
+            outputs = outputs + (all_hidden_states, )
         if self.output_attentions:
-            outputs = outputs + (all_attentions,)
+            outputs = outputs + (all_attentions, )
 
-        return outputs  # outputs, (hidden states), (attentions)
+        return outputs    # outputs, (hidden states), (attentions)
+
 
 class EncoderBlock(BertPreTrainedModel):
     def __init__(self, config):
@@ -195,7 +190,7 @@ class EncoderBlock(BertPreTrainedModel):
         self.encoder = AttEncoder(config)
         # self.pooler = BertPooler(config)
         self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size)
-        self.img_dim = config.img_feature_dim 
+        self.img_dim = config.img_feature_dim
 
         try:
             self.use_img_layernorm = config.use_img_layernorm
@@ -217,25 +212,31 @@ class EncoderBlock(BertPreTrainedModel):
         for layer, heads in heads_to_prune.items():
             self.encoder.layer[layer].attention.prune_heads(heads)
 
-    def forward(self, img_feats, input_ids=None, token_type_ids=None, attention_mask=None,
-            position_ids=None, head_mask=None):
+    def forward(
+        self,
+        img_feats,
+        input_ids=None,
+        token_type_ids=None,
+        attention_mask=None,
+        position_ids=None,
+        head_mask=None
+    ):
 
         batch_size = len(img_feats)
         seq_length = len(img_feats[0])
-        input_ids = torch.zeros([batch_size, seq_length],dtype=torch.long).to(img_feats.device)
+        input_ids = torch.zeros([batch_size, seq_length], dtype=torch.long).to(img_feats.device)
 
         if position_ids is None:
             position_ids = torch.arange(seq_length, dtype=torch.long, device=input_ids.device)
             position_ids = position_ids.unsqueeze(0).expand_as(input_ids)
             # print('-------------------')
             # print('position_ids', seq_length, position_ids.shape)
-            #  494 torch.Size([2, 494])   
+            #  494 torch.Size([2, 494])
 
         position_embeddings = self.position_embeddings(position_ids)
         # print('position_embeddings', position_embeddings.shape, self.config.max_position_embeddings, self.config.hidden_size)
-        # torch.Size([2, 494, 1024]) 512 1024  
+        # torch.Size([2, 494, 1024]) 512 1024
         #  torch.Size([2, 494, 256]) 512 256
-
 
         if attention_mask is None:
             attention_mask = torch.ones_like(input_ids)
@@ -255,7 +256,9 @@ class EncoderBlock(BertPreTrainedModel):
             raise NotImplementedError
 
         # extended_attention_mask = extended_attention_mask.to(dtype=next(self.parameters()).dtype) # fp16 compatibility
-        extended_attention_mask = extended_attention_mask.to(dtype=img_feats.dtype) # fp16 compatibility
+        extended_attention_mask = extended_attention_mask.to(
+            dtype=img_feats.dtype
+        )    # fp16 compatibility
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
 
         if head_mask is not None:
@@ -264,15 +267,19 @@ class EncoderBlock(BertPreTrainedModel):
                 head_mask = head_mask.unsqueeze(0).unsqueeze(0).unsqueeze(-1).unsqueeze(-1)
                 head_mask = head_mask.expand(self.config.num_hidden_layers, -1, -1, -1, -1)
             elif head_mask.dim() == 2:
-                head_mask = head_mask.unsqueeze(1).unsqueeze(-1).unsqueeze(-1)  # We can specify head_mask for each layer
-            head_mask = head_mask.to(dtype=next(self.parameters()).dtype) # switch to fload if need + fp16 compatibility
+                head_mask = head_mask.unsqueeze(1).unsqueeze(-1).unsqueeze(
+                    -1
+                )    # We can specify head_mask for each layer
+            head_mask = head_mask.to(
+                dtype=next(self.parameters()).dtype
+            )    # switch to fload if need + fp16 compatibility
         else:
             head_mask = [None] * self.config.num_hidden_layers
 
         # Project input token features to have spcified hidden size
-        # print('img_feats', img_feats.shape)   # torch.Size([2, 494, 2051])   
+        # print('img_feats', img_feats.shape)   # torch.Size([2, 494, 2051])
         img_embedding_output = self.img_embedding(img_feats)
-        # print('img_embedding_output', img_embedding_output.shape)   # torch.Size([2, 494, 1024]) 
+        # print('img_embedding_output', img_embedding_output.shape)   # torch.Size([2, 494, 1024])
 
         # We empirically observe that adding an additional learnable position embedding leads to more stable training
         embeddings = position_embeddings + img_embedding_output
@@ -282,21 +289,27 @@ class EncoderBlock(BertPreTrainedModel):
         # embeddings = self.dropout(embeddings)
 
         # print('extended_attention_mask', extended_attention_mask.shape)  # torch.Size([2, 1, 1, 494])
-        encoder_outputs = self.encoder(embeddings,
-                extended_attention_mask, head_mask=head_mask)
+        encoder_outputs = self.encoder(embeddings, extended_attention_mask, head_mask=head_mask)
         sequence_output = encoder_outputs[0]
 
-        outputs = (sequence_output,)
+        outputs = (sequence_output, )
         if self.config.output_hidden_states:
             all_hidden_states = encoder_outputs[1]
-            outputs = outputs + (all_hidden_states,)
+            outputs = outputs + (all_hidden_states, )
         if self.config.output_attentions:
             all_attentions = encoder_outputs[-1]
-            outputs = outputs + (all_attentions,)
+            outputs = outputs + (all_attentions, )
 
         return outputs
 
-def get_att_block(img_feature_dim=2048, output_feat_dim=512, hidden_feat_dim=1024, num_attention_heads=4, num_hidden_layers=1):
+
+def get_att_block(
+    img_feature_dim=2048,
+    output_feat_dim=512,
+    hidden_feat_dim=1024,
+    num_attention_heads=4,
+    num_hidden_layers=1
+):
 
     config_class = BertConfig
     config = config_class.from_pretrained('lib/pymafx/models/transformers/bert/bert-base-uncased/')
@@ -316,7 +329,7 @@ def get_att_block(img_feature_dim=2048, output_feat_dim=512, hidden_feat_dim=102
     # init a transformer encoder and append it to a list
     assert config.hidden_size % config.num_attention_heads == 0
 
-    att_model = EncoderBlock(config=config) 
+    att_model = EncoderBlock(config=config)
 
     return att_model
 
@@ -333,16 +346,31 @@ class Graphormer(BertPreTrainedModel):
         self.residual = nn.Linear(config.img_feature_dim, self.config.output_feature_dim)
         self.apply(self.init_weights)
 
-    def forward(self, img_feats, input_ids=None, token_type_ids=None, attention_mask=None, masked_lm_labels=None,
-            next_sentence_label=None, position_ids=None, head_mask=None):
+    def forward(
+        self,
+        img_feats,
+        input_ids=None,
+        token_type_ids=None,
+        attention_mask=None,
+        masked_lm_labels=None,
+        next_sentence_label=None,
+        position_ids=None,
+        head_mask=None
+    ):
         '''
         # self.bert has three outputs
         # predictions[0]: output tokens
         # predictions[1]: all_hidden_states, if enable "self.config.output_hidden_states"
         # predictions[2]: attentions, if enable "self.config.output_attentions"
         '''
-        predictions = self.bert(img_feats=img_feats, input_ids=input_ids, position_ids=position_ids, token_type_ids=token_type_ids,
-                            attention_mask=attention_mask, head_mask=head_mask)
+        predictions = self.bert(
+            img_feats=img_feats,
+            input_ids=input_ids,
+            position_ids=position_ids,
+            token_type_ids=token_type_ids,
+            attention_mask=attention_mask,
+            head_mask=head_mask
+        )
 
         # We use "self.cls_head" to perform dimensionality reduction. We don't use it for classification.
         pred_score = self.cls_head(predictions[0])
@@ -354,5 +382,3 @@ class Graphormer(BertPreTrainedModel):
             return pred_score, predictions[1], predictions[-1]
         else:
             return pred_score
-
- 

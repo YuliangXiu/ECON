@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from skimage.transform import resize
 # Use a non-interactive backend
 import matplotlib
+
 matplotlib.use('Agg')
 
 from .renderer import OpenDRenderer, PyRenderer
@@ -37,8 +38,10 @@ def iuv_map2img(U_uv, V_uv, Index_UV, AnnIndex=None, uv_rois=None, ind_mapping=N
         for part_id in range(1, K):
             CurrentU = U_uv[batch_id, part_id]
             CurrentV = V_uv[batch_id, part_id]
-            output[1, Index_UV_max[batch_id] == part_id] = CurrentU[Index_UV_max[batch_id] == part_id]
-            output[2, Index_UV_max[batch_id] == part_id] = CurrentV[Index_UV_max[batch_id] == part_id]
+            output[1,
+                   Index_UV_max[batch_id] == part_id] = CurrentU[Index_UV_max[batch_id] == part_id]
+            output[2,
+                   Index_UV_max[batch_id] == part_id] = CurrentV[Index_UV_max[batch_id] == part_id]
 
         if uv_rois is None:
             outputs.append(output.unsqueeze(0))
@@ -53,19 +56,34 @@ def iuv_map2img(U_uv, V_uv, Index_UV, AnnIndex=None, uv_rois=None, ind_mapping=N
                 new_size = [heatmap_size, max(int(heatmap_size * aspect_ratio), 1)]
                 output = F.interpolate(output.unsqueeze(0), size=new_size, mode='nearest')
                 paddingleft = int(0.5 * (heatmap_size - new_size[1]))
-                output = F.pad(output, pad=(paddingleft, heatmap_size - new_size[1] - paddingleft, 0, 0))
+                output = F.pad(
+                    output, pad=(paddingleft, heatmap_size - new_size[1] - paddingleft, 0, 0)
+                )
             else:
                 new_size = [max(int(heatmap_size / aspect_ratio), 1), heatmap_size]
                 output = F.interpolate(output.unsqueeze(0), size=new_size, mode='nearest')
                 paddingtop = int(0.5 * (heatmap_size - new_size[0]))
-                output = F.pad(output, pad=(0, 0, paddingtop, heatmap_size - new_size[0] - paddingtop))
+                output = F.pad(
+                    output, pad=(0, 0, paddingtop, heatmap_size - new_size[0] - paddingtop)
+                )
 
             outputs.append(output)
 
     return torch.cat(outputs, dim=0)
 
 
-def vis_smpl_iuv(image, cam_pred, vert_pred, face, pred_uv, vert_errors_batch, image_name, save_path, opt, ratio=1):
+def vis_smpl_iuv(
+    image,
+    cam_pred,
+    vert_pred,
+    face,
+    pred_uv,
+    vert_errors_batch,
+    image_name,
+    save_path,
+    opt,
+    ratio=1
+):
 
     # save_path = os.path.join('./notebooks/output/demo_results-wild', ids[f_id][0])
     if not os.path.exists(save_path):
@@ -82,9 +100,9 @@ def vis_smpl_iuv(image, cam_pred, vert_pred, face, pred_uv, vert_errors_batch, i
     for draw_i in range(len(cam_pred)):
         err_val = '{:06d}_'.format(int(10 * vert_errors_batch[draw_i]))
         draw_name = err_val + image_name[draw_i]
-        K = np.array([[focal_length, 0., orig_size / 2.],
-                      [0., focal_length, orig_size / 2.],
-                      [0., 0., 1.]])
+        K = np.array(
+            [[focal_length, 0., orig_size / 2.], [0., focal_length, orig_size / 2.], [0., 0., 1.]]
+        )
 
         # img_orig, img_resized, img_smpl, render_smpl_rgba = dr_render(
         #     image[draw_i],
@@ -100,13 +118,14 @@ def vis_smpl_iuv(image, cam_pred, vert_pred, face, pred_uv, vert_errors_batch, i
             mesh_filename = None
 
         img_orig = np.moveaxis(image[draw_i], 0, -1)
-        img_smpl, img_resized = dr_render(vert_pred[draw_i],
-                        img=img_orig,
-                        cam=cam_pred[draw_i],
-                        iwp_mode=True,
-                        scale_ratio=4.,
-                        mesh_filename=mesh_filename,
-                    )
+        img_smpl, img_resized = dr_render(
+            vert_pred[draw_i],
+            img=img_orig,
+            cam=cam_pred[draw_i],
+            iwp_mode=True,
+            scale_ratio=4.,
+            mesh_filename=mesh_filename,
+        )
 
         ones_img = np.ones(img_smpl.shape[:2]) * 255
         ones_img = ones_img[:, :, None]
@@ -117,7 +136,9 @@ def vis_smpl_iuv(image, cam_pred, vert_pred, face, pred_uv, vert_errors_batch, i
         render_img = np.concatenate((img_resized_rgba, img_smpl_rgba), axis=1)
         render_img[render_img < 0] = 0
         render_img[render_img > 255] = 255
-        matplotlib.image.imsave(os.path.join(save_path, draw_name[:-4] + '.png'), render_img.astype(np.uint8))
+        matplotlib.image.imsave(
+            os.path.join(save_path, draw_name[:-4] + '.png'), render_img.astype(np.uint8)
+        )
 
         if pred_uv is not None:
             # estimated global IUV
@@ -126,4 +147,6 @@ def vis_smpl_iuv(image, cam_pred, vert_pred, face, pred_uv, vert_errors_batch, i
             global_iuv = resize(global_iuv, img_resized.shape[:2])
             global_iuv[global_iuv > 1] = 1
             global_iuv[global_iuv < 0] = 0
-            matplotlib.image.imsave(os.path.join(save_path, 'pred_uv_' + draw_name[:-4] + '.png'), global_iuv)
+            matplotlib.image.imsave(
+                os.path.join(save_path, 'pred_uv_' + draw_name[:-4] + '.png'), global_iuv
+            )

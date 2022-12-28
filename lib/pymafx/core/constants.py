@@ -43,23 +43,23 @@ SPIN_JOINT_NAMES = [
     # 24 Ground Truth joints (superset of joints from different datasets)
     'Right Ankle',
     'Right Knee',
-    'Right Hip',  # 2
+    'Right Hip',    # 2
     'Left Hip',
-    'Left Knee',  # 4
+    'Left Knee',    # 4
     'Left Ankle',
-    'Right Wrist',  # 6
+    'Right Wrist',    # 6
     'Right Elbow',
-    'Right Shoulder',  # 8
+    'Right Shoulder',    # 8
     'Left Shoulder',
-    'Left Elbow',  # 10
+    'Left Elbow',    # 10
     'Left Wrist',
-    'Neck (LSP)',  # 12
+    'Neck (LSP)',    # 12
     'Top of Head (LSP)',
-    'Pelvis (MPII)',  # 14
+    'Pelvis (MPII)',    # 14
     'Thorax (MPII)',
-    'Spine (H36M)',  # 16
+    'Spine (H36M)',    # 16
     'Jaw (H36M)',
-    'Head (H36M)',  # 18
+    'Head (H36M)',    # 18
     'Nose',
     'Left Eye',
     'Right Eye',
@@ -278,8 +278,8 @@ FACIAL_LANDMARKS = [
     'left_mouth_3',
     'left_mouth_2',
     'left_mouth_1',
-    'left_mouth_5',  # 59 in OpenPose output
-    'left_mouth_4',  # 58 in OpenPose output
+    'left_mouth_5',    # 59 in OpenPose output
+    'left_mouth_4',    # 58 in OpenPose output
     'mouth_bottom',
     'right_mouth_4',
     'right_mouth_5',

@@ -61,7 +61,7 @@ ModelOutput = namedtuple(
         "jaw_pose",
     ],
 )
-ModelOutput.__new__.__defaults__ = (None,) * len(ModelOutput._fields)
+ModelOutput.__new__.__defaults__ = (None, ) * len(ModelOutput._fields)
 
 
 class SMPL(nn.Module):
@@ -234,7 +234,9 @@ class SMPL(nn.Module):
                     default_body_pose = body_pose.clone().detach()
                 else:
                     default_body_pose = torch.tensor(body_pose, dtype=dtype)
-            self.register_parameter("body_pose", nn.Parameter(default_body_pose, requires_grad=True))
+            self.register_parameter(
+                "body_pose", nn.Parameter(default_body_pose, requires_grad=True)
+            )
 
         if create_transl:
             if transl is None:
@@ -403,7 +405,6 @@ class SMPL(nn.Module):
 
 
 class SMPLLayer(SMPL):
-
     def __init__(self, *args, **kwargs) -> None:
         # Just create a SMPL module without any member variables
         super(SMPLLayer, self).__init__(
@@ -465,11 +466,16 @@ class SMPLLayer(SMPL):
         device, dtype = self.shapedirs.device, self.shapedirs.dtype
         if global_orient is None:
             global_orient = (
-                torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous())
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous()
+            )
         if body_pose is None:
             body_pose = (
-                torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, self.NUM_BODY_JOINTS, -1,
-                                                                                 -1).contiguous())
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3,
+                                            3).expand(batch_size, self.NUM_BODY_JOINTS, -1,
+                                                      -1).contiguous()
+            )
         if betas is None:
             betas = torch.zeros([batch_size, self.num_betas], dtype=dtype, device=device)
         if transl is None:
@@ -630,7 +636,9 @@ class SMPLH(SMPL):
         self.np_left_hand_components = left_hand_components
         self.np_right_hand_components = right_hand_components
         if self.use_pca:
-            self.register_buffer("left_hand_components", torch.tensor(left_hand_components, dtype=dtype))
+            self.register_buffer(
+                "left_hand_components", torch.tensor(left_hand_components, dtype=dtype)
+            )
             self.register_buffer(
                 "right_hand_components",
                 torch.tensor(right_hand_components, dtype=dtype),
@@ -733,7 +741,9 @@ class SMPLH(SMPL):
 
         if self.use_pca:
             left_hand_pose = torch.einsum("bi,ij->bj", [left_hand_pose, self.left_hand_components])
-            right_hand_pose = torch.einsum("bi,ij->bj", [right_hand_pose, self.right_hand_components])
+            right_hand_pose = torch.einsum(
+                "bi,ij->bj", [right_hand_pose, self.right_hand_components]
+            )
 
         full_pose = torch.cat([global_orient, body_pose, left_hand_pose, right_hand_pose], dim=1)
 
@@ -775,7 +785,6 @@ class SMPLH(SMPL):
 
 
 class SMPLHLayer(SMPLH):
-
     def __init__(self, *args, **kwargs) -> None:
         """SMPL+H as a layer model constructor"""
         super(SMPLHLayer, self).__init__(
@@ -857,15 +866,24 @@ class SMPLHLayer(SMPLH):
         device, dtype = self.shapedirs.device, self.shapedirs.dtype
         if global_orient is None:
             global_orient = (
-                torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous())
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous()
+            )
         if body_pose is None:
-            body_pose = (torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, 21, -1, -1).contiguous())
+            body_pose = (
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, 21, -1, -1).contiguous()
+            )
         if left_hand_pose is None:
             left_hand_pose = (
-                torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, 15, -1, -1).contiguous())
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, 15, -1, -1).contiguous()
+            )
         if right_hand_pose is None:
             right_hand_pose = (
-                torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, 15, -1, -1).contiguous())
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, 15, -1, -1).contiguous()
+            )
         if betas is None:
             betas = torch.zeros([batch_size, self.num_betas], dtype=dtype, device=device)
         if transl is None:
@@ -926,7 +944,7 @@ class SMPLX(SMPLH):
     which includes joints for the neck, jaw, eyeballs and fingers.
     """
 
-    NUM_BODY_JOINTS = SMPLH.NUM_BODY_JOINTS  # 21
+    NUM_BODY_JOINTS = SMPLH.NUM_BODY_JOINTS    # 21
     NUM_HAND_JOINTS = 15
     NUM_FACE_JOINTS = 3
     NUM_JOINTS = NUM_BODY_JOINTS + 2 * NUM_HAND_JOINTS + NUM_FACE_JOINTS
@@ -1092,7 +1110,9 @@ class SMPLX(SMPLH):
 
         if create_expression:
             if expression is None:
-                default_expression = torch.zeros([batch_size, self.num_expression_coeffs], dtype=dtype)
+                default_expression = torch.zeros(
+                    [batch_size, self.num_expression_coeffs], dtype=dtype
+                )
             else:
                 default_expression = torch.tensor(expression, dtype=dtype)
             expression_param = nn.Parameter(default_expression, requires_grad=True)
@@ -1226,7 +1246,9 @@ class SMPLX(SMPLH):
 
         if self.use_pca:
             left_hand_pose = torch.einsum("bi,ij->bj", [left_hand_pose, self.left_hand_components])
-            right_hand_pose = torch.einsum("bi,ij->bj", [right_hand_pose, self.right_hand_components])
+            right_hand_pose = torch.einsum(
+                "bi,ij->bj", [right_hand_pose, self.right_hand_components]
+            )
 
         full_pose = torch.cat(
             [
@@ -1315,7 +1337,9 @@ class SMPLX(SMPLH):
             dyn_lmk_faces_idx, dyn_lmk_bary_coords = lmk_idx_and_bcoords
 
             lmk_faces_idx = torch.cat([lmk_faces_idx, dyn_lmk_faces_idx], 1)
-            lmk_bary_coords = torch.cat([lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords], 1)
+            lmk_bary_coords = torch.cat(
+                [lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords], 1
+            )
 
         landmarks = vertices2landmarks(vertices, self.faces_tensor, lmk_faces_idx, lmk_bary_coords)
 
@@ -1350,7 +1374,6 @@ class SMPLX(SMPLH):
 
 
 class SMPLXLayer(SMPLX):
-
     def __init__(self, *args, **kwargs) -> None:
         # Just create a SMPLX module without any member variables
         super(SMPLXLayer, self).__init__(
@@ -1454,25 +1477,45 @@ class SMPLXLayer(SMPLX):
 
         if global_orient is None:
             global_orient = (
-                torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous())
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous()
+            )
         if body_pose is None:
             body_pose = (
-                torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, self.NUM_BODY_JOINTS, -1,
-                                                                                 -1).contiguous())
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3,
+                                            3).expand(batch_size, self.NUM_BODY_JOINTS, -1,
+                                                      -1).contiguous()
+            )
         if left_hand_pose is None:
             left_hand_pose = (
-                torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, 15, -1, -1).contiguous())
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, 15, -1, -1).contiguous()
+            )
         if right_hand_pose is None:
             right_hand_pose = (
-                torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, 15, -1, -1).contiguous())
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, 15, -1, -1).contiguous()
+            )
         if jaw_pose is None:
-            jaw_pose = (torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous())
+            jaw_pose = (
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous()
+            )
         if leye_pose is None:
-            leye_pose = (torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous())
+            leye_pose = (
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous()
+            )
         if reye_pose is None:
-            reye_pose = (torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous())
+            reye_pose = (
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous()
+            )
         if expression is None:
-            expression = torch.zeros([batch_size, self.num_expression_coeffs], dtype=dtype, device=device)
+            expression = torch.zeros(
+                [batch_size, self.num_expression_coeffs], dtype=dtype, device=device
+            )
         if betas is None:
             betas = torch.zeros([batch_size, self.num_betas], dtype=dtype, device=device)
         if transl is None:
@@ -1521,7 +1564,9 @@ class SMPLXLayer(SMPLX):
             dyn_lmk_faces_idx, dyn_lmk_bary_coords = lmk_idx_and_bcoords
 
             lmk_faces_idx = torch.cat([lmk_faces_idx, dyn_lmk_faces_idx], 1)
-            lmk_bary_coords = torch.cat([lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords], 1)
+            lmk_bary_coords = torch.cat(
+                [lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords], 1
+            )
 
         landmarks = vertices2landmarks(vertices, self.faces_tensor, lmk_faces_idx, lmk_bary_coords)
 
@@ -1646,7 +1691,9 @@ class MANO(SMPL):
         )
 
         # add only MANO tips to the extra joints
-        self.vertex_joint_selector.extra_joints_idxs = to_tensor(list(VERTEX_IDS["mano"].values()), dtype=torch.long)
+        self.vertex_joint_selector.extra_joints_idxs = to_tensor(
+            list(VERTEX_IDS["mano"].values()), dtype=torch.long
+        )
 
         self.use_pca = use_pca
         self.num_pca_comps = num_pca_comps
@@ -1765,7 +1812,6 @@ class MANO(SMPL):
 
 
 class MANOLayer(MANO):
-
     def __init__(self, *args, **kwargs) -> None:
         """MANO as a layer model constructor"""
         super(MANOLayer, self).__init__(
@@ -1795,11 +1841,16 @@ class MANOLayer(MANO):
         if global_orient is None:
             batch_size = 1
             global_orient = (
-                torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous())
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous()
+            )
         else:
             batch_size = global_orient.shape[0]
         if hand_pose is None:
-            hand_pose = (torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, 15, -1, -1).contiguous())
+            hand_pose = (
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, 15, -1, -1).contiguous()
+            )
         if betas is None:
             betas = torch.zeros([batch_size, self.num_betas], dtype=dtype, device=device)
         if transl is None:
@@ -1993,7 +2044,9 @@ class FLAME(SMPL):
 
         if create_expression:
             if expression is None:
-                default_expression = torch.zeros([batch_size, self.num_expression_coeffs], dtype=dtype)
+                default_expression = torch.zeros(
+                    [batch_size, self.num_expression_coeffs], dtype=dtype
+                )
             else:
                 default_expression = torch.tensor(expression, dtype=dtype)
             expression_param = nn.Parameter(default_expression, requires_grad=True)
@@ -2012,7 +2065,8 @@ class FLAME(SMPL):
         self.register_buffer("lmk_bary_coords", torch.tensor(lmk_bary_coords, dtype=dtype))
         if self.use_face_contour:
             face_contour_path = os.path.join(model_path, "flame_dynamic_embedding.npy")
-            contour_embeddings = np.load(face_contour_path, allow_pickle=True, encoding="latin1")[()]
+            contour_embeddings = np.load(face_contour_path, allow_pickle=True,
+                                         encoding="latin1")[()]
 
             dynamic_lmk_faces_idx = np.array(contour_embeddings["lmk_face_idx"], dtype=np.int64)
             dynamic_lmk_faces_idx = torch.tensor(dynamic_lmk_faces_idx, dtype=torch.long)
@@ -2148,7 +2202,9 @@ class FLAME(SMPL):
             )
             dyn_lmk_faces_idx, dyn_lmk_bary_coords = lmk_idx_and_bcoords
             lmk_faces_idx = torch.cat([lmk_faces_idx, dyn_lmk_faces_idx], 1)
-            lmk_bary_coords = torch.cat([lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords], 1)
+            lmk_bary_coords = torch.cat(
+                [lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords], 1
+            )
 
         landmarks = vertices2landmarks(vertices, self.faces_tensor, lmk_faces_idx, lmk_bary_coords)
 
@@ -2179,7 +2235,6 @@ class FLAME(SMPL):
 
 
 class FLAMELayer(FLAME):
-
     def __init__(self, *args, **kwargs) -> None:
         """ FLAME as a layer model constructor """
         super(FLAMELayer, self).__init__(
@@ -2248,21 +2303,37 @@ class FLAMELayer(FLAME):
         if global_orient is None:
             batch_size = 1
             global_orient = (
-                torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous())
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous()
+            )
         else:
             batch_size = global_orient.shape[0]
         if neck_pose is None:
-            neck_pose = (torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, 1, -1, -1).contiguous())
+            neck_pose = (
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, 1, -1, -1).contiguous()
+            )
         if jaw_pose is None:
-            jaw_pose = (torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous())
+            jaw_pose = (
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous()
+            )
         if leye_pose is None:
-            leye_pose = (torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous())
+            leye_pose = (
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous()
+            )
         if reye_pose is None:
-            reye_pose = (torch.eye(3, device=device, dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous())
+            reye_pose = (
+                torch.eye(3, device=device,
+                          dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous()
+            )
         if betas is None:
             betas = torch.zeros([batch_size, self.num_betas], dtype=dtype, device=device)
         if expression is None:
-            expression = torch.zeros([batch_size, self.num_expression_coeffs], dtype=dtype, device=device)
+            expression = torch.zeros(
+                [batch_size, self.num_expression_coeffs], dtype=dtype, device=device
+            )
         if transl is None:
             transl = torch.zeros([batch_size, 3], dtype=dtype, device=device)
 
@@ -2296,7 +2367,9 @@ class FLAMELayer(FLAME):
             )
             dyn_lmk_faces_idx, dyn_lmk_bary_coords = lmk_idx_and_bcoords
             lmk_faces_idx = torch.cat([lmk_faces_idx, dyn_lmk_faces_idx], 1)
-            lmk_bary_coords = torch.cat([lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords], 1)
+            lmk_bary_coords = torch.cat(
+                [lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords], 1
+            )
 
         landmarks = vertices2landmarks(vertices, self.faces_tensor, lmk_faces_idx, lmk_bary_coords)
 
@@ -2391,7 +2464,9 @@ def build_layer(model_path: str,
         raise ValueError(f"Unknown model type {model_type}, exiting!")
 
 
-def create(model_path: str, model_type: str = "smpl", **kwargs) -> Union[SMPL, SMPLH, SMPLX, MANO, FLAME]:
+def create(model_path: str,
+           model_type: str = "smpl",
+           **kwargs) -> Union[SMPL, SMPLH, SMPLX, MANO, FLAME]:
     """Method for creating a model from a path and a model type
 
     Parameters

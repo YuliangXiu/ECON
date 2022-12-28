@@ -3,6 +3,7 @@ import sys, os
 from math import radians
 import mathutils
 import bmesh
+
 print(sys.exec_prefix)
 from tqdm import tqdm
 import numpy as np
@@ -29,7 +30,6 @@ shadows = False
 # diffuse_color = (18/255., 139/255., 142/255.,1)     #correct
 # diffuse_color = (251/255., 60/255., 60/255.,1)    #wrong
 
-
 smooth = False
 
 wireframe = False
@@ -47,12 +47,15 @@ compositor_alpha = 0.7
 # Helper functions
 ##################################################
 
+
 def blender_print(*args, **kwargs):
-    print (*args, **kwargs, file=sys.stderr)
+    print(*args, **kwargs, file=sys.stderr)
+
 
 def using_app():
     ''' Returns if script is running through Blender application (GUI or background processing)'''
     return (not sys.argv[0].endswith('.py'))
+
 
 def setup_diffuse_transparent_material(target, color, object_transparent, backface_transparent):
     ''' Sets up diffuse/transparent material with backface culling in cycles'''
@@ -110,7 +113,9 @@ def setup_diffuse_transparent_material(target, color, object_transparent, backfa
     links.new(node_mix_backface.outputs[0], node_output.inputs[0])
     return
 
+
 ##################################################
+
 
 def setup_scene():
     global render
@@ -150,12 +155,13 @@ def setup_scene():
         if cycles_gpu:
             print('Activating GPU acceleration')
             bpy.context.preferences.addons['cycles'].preferences.compute_device_type = 'CUDA'
-            
-            if bpy.app.version[0] >= 3:
-                cuda_devices = bpy.context.preferences.addons['cycles'].preferences.get_devices_for_type(compute_device_type = 'CUDA')
-            else:
-                (cuda_devices, opencl_devices) = bpy.context.preferences.addons['cycles'].preferences.get_devices()
 
+            if bpy.app.version[0] >= 3:
+                cuda_devices = bpy.context.preferences.addons[
+                    'cycles'].preferences.get_devices_for_type(compute_device_type='CUDA')
+            else:
+                (cuda_devices, opencl_devices
+                ) = bpy.context.preferences.addons['cycles'].preferences.get_devices()
 
             if (len(cuda_devices) < 1):
                 print('ERROR: CUDA GPU acceleration not available')
@@ -178,7 +184,7 @@ def setup_scene():
             if bpy.app.version[0] < 3:
                 scene.render.tile_x = 64
                 scene.render.tile_y = 64
-                
+
     # Disable Blender 3 denoiser to properly measure Cycles render speed
     if bpy.app.version[0] >= 3:
         scene.cycles.use_denoising = False
@@ -226,7 +232,6 @@ def setup_scene():
             bpy.ops.mesh.mark_freestyle_edge(clear=True)
             bpy.ops.object.mode_set(mode='OBJECT')
 
-
     # Setup freestyle mode for wireframe overlay rendering
     if wireframe:
         scene.render.use_freestyle = True
@@ -245,7 +250,9 @@ def setup_scene():
         # Output transparent image when no background is used
         scene.render.image_settings.color_mode = 'RGBA'
 
+
 ##################################################
+
 
 def setup_compositing():
 
@@ -275,6 +282,7 @@ def setup_compositing():
 
     links.new(blend_node.outputs[0], tree.nodes['Composite'].inputs[0])
 
+
 def render_file(input_file, input_dir, output_file, output_dir, yaw, correct):
     '''Render image of given model file'''
     global smooth
@@ -288,13 +296,13 @@ def render_file(input_file, input_dir, output_file, output_dir, yaw, correct):
     # Import object into scene
     bpy.ops.import_scene.obj(filepath=path)
     object = bpy.context.selected_objects[0]
-    
+
     object.rotation_euler = (radians(90.0), 0.0, radians(yaw))
-    z_bottom = np.min(np.array([vert.co for vert in object.data.vertices])[:,1])
+    z_bottom = np.min(np.array([vert.co for vert in object.data.vertices])[:, 1])
     # z_top = np.max(np.array([vert.co for vert in object.data.vertices])[:,1])
     # blender_print(radians(90.0), z_bottom, z_top)
     object.location -= mathutils.Vector((0.0, 0.0, z_bottom))
-    
+
     if quads:
         bpy.context.view_layer.objects.active = object
         bpy.ops.object.mode_set(mode='EDIT')
@@ -309,11 +317,11 @@ def render_file(input_file, input_dir, output_file, output_dir, yaw, correct):
     bpy.ops.object.mode_set(mode='EDIT')
     bpy.ops.mesh.mark_freestyle_edge(clear=False)
     bpy.ops.object.mode_set(mode='OBJECT')
-    
+
     if correct:
-        diffuse_color = (18/255., 139/255., 142/255.,1)     #correct
+        diffuse_color = (18 / 255., 139 / 255., 142 / 255., 1)    #correct
     else:
-        diffuse_color = (251/255., 60/255., 60/255.,1)    #wrong
+        diffuse_color = (251 / 255., 60 / 255., 60 / 255., 1)    #wrong
 
     setup_diffuse_transparent_material(object, diffuse_color, object_transparent, mouth_transparent)
 
@@ -336,10 +344,10 @@ def render_file(input_file, input_dir, output_file, output_dir, yaw, correct):
     bpy.ops.render.render(write_still=True)
 
     # Remove temporary output redirection
-#    sys.stdout.flush()
-#    os.close(1)
-#    os.dup(old)
-#    os.close(old)
+    #    sys.stdout.flush()
+    #    os.close(1)
+    #    os.dup(old)
+    #    os.close(old)
 
     # Delete last selected object from scene
     object.select_set(True)
@@ -351,7 +359,7 @@ def process_file(input_file, input_dir, output_file, output_dir, correct=True):
     global quality_preview
 
     if not input_file.endswith('.obj'):
-        print('ERROR: Invalid input: ' + input_file )
+        print('ERROR: Invalid input: ' + input_file)
         return
 
     print('Processing: ' + input_file)
@@ -361,7 +369,7 @@ def process_file(input_file, input_dir, output_file, output_dir, correct=True):
     if quality_preview:
         output_file = output_file.replace('.png', '-preview.png')
 
-    angle = 360.0/views
+    angle = 360.0 / views
     pbar = tqdm(range(0, views))
     for view in pbar:
         pbar.set_description(f"{os.path.basename(output_file)} | View:{str(view)}")
@@ -369,8 +377,7 @@ def process_file(input_file, input_dir, output_file, output_dir, correct=True):
         output_file_view = f"{output_file}/{view:03d}.png"
         if not os.path.exists(os.path.join(output_dir, output_file_view)):
             render_file(input_file, input_dir, output_file_view, output_dir, yaw, correct)
-        
+
     cmd = "ffmpeg -loglevel quiet -r 30 -f lavfi -i color=c=white:s=512x512 -i " + os.path.join(output_dir, output_file, '%3d.png') + \
         " -shortest -filter_complex \"[0:v][1:v]overlay=shortest=1,format=yuv420p[out]\" -map \"[out]\" -y " + output_dir+"/"+output_file+".mp4"
     os.system(cmd)
-        

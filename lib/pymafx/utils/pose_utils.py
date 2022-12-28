@@ -7,6 +7,7 @@ from __future__ import print_function
 import numpy as np
 import torch
 
+
 def compute_similarity_transform(S1, S2):
     """
     Computes a similarity transform (sR, t) that takes
@@ -19,7 +20,7 @@ def compute_similarity_transform(S1, S2):
         S1 = S1.T
         S2 = S2.T
         transposed = True
-    assert(S2.shape[1] == S1.shape[1])
+    assert (S2.shape[1] == S1.shape[1])
 
     # 1. Remove mean.
     mu1 = S1.mean(axis=1, keepdims=True)
@@ -47,15 +48,16 @@ def compute_similarity_transform(S1, S2):
     scale = np.trace(R.dot(K)) / var1
 
     # 6. Recover translation.
-    t = mu2 - scale*(R.dot(mu1))
+    t = mu2 - scale * (R.dot(mu1))
 
     # 7. Error:
-    S1_hat = scale*R.dot(S1) + t
+    S1_hat = scale * R.dot(S1) + t
 
     if transposed:
         S1_hat = S1_hat.T
 
     return S1_hat
+
 
 def compute_similarity_transform_batch(S1, S2):
     """Batched version of compute_similarity_transform."""
@@ -64,10 +66,11 @@ def compute_similarity_transform_batch(S1, S2):
         S1_hat[i] = compute_similarity_transform(S1[i], S2[i])
     return S1_hat
 
+
 def reconstruction_error(S1, S2, reduction='mean'):
     """Do Procrustes alignment and compute reconstruction error."""
     S1_hat = compute_similarity_transform_batch(S1, S2)
-    re = np.sqrt( ((S1_hat - S2)** 2).sum(axis=-1)).mean(axis=-1)
+    re = np.sqrt(((S1_hat - S2)**2).sum(axis=-1)).mean(axis=-1)
     if reduction == 'mean':
         re = re.mean()
     elif reduction == 'sum':
@@ -112,6 +115,7 @@ def axis_angle_add(theta, roll_axis, alpha):
     c_n = (c_angle / c_sin) * c_sin_n
 
     return c_n
+
 
 def axis_angle_add_np(theta, roll_axis, alpha):
     """Composition of two axis-angle rotations (NumPy version)

@@ -24,7 +24,6 @@ torch.backends.cudnn.benchmark = True
 
 
 class IFGeo(pl.LightningModule):
-
     def __init__(self, cfg):
         super(IFGeo, self).__init__()
 
@@ -44,14 +43,15 @@ class IFGeo(pl.LightningModule):
             from lib.net.IFGeoNet_nobody import IFGeoNet
             self.netG = IFGeoNet(cfg)
 
-
-        self.resolutions = (np.logspace(
-            start=5,
-            stop=np.log2(self.mcube_res),
-            base=2,
-            num=int(np.log2(self.mcube_res) - 4),
-            endpoint=True,
-        ) + 1.0)
+        self.resolutions = (
+            np.logspace(
+                start=5,
+                stop=np.log2(self.mcube_res),
+                base=2,
+                num=int(np.log2(self.mcube_res) - 4),
+                endpoint=True,
+            ) + 1.0
+        )
 
         self.resolutions = self.resolutions.astype(np.int16).tolist()
 
@@ -82,9 +82,9 @@ class IFGeo(pl.LightningModule):
 
         if self.cfg.optim == "Adadelta":
 
-            optimizer_G = torch.optim.Adadelta(optim_params_G,
-                                               lr=self.lr_G,
-                                               weight_decay=weight_decay)
+            optimizer_G = torch.optim.Adadelta(
+                optim_params_G, lr=self.lr_G, weight_decay=weight_decay
+            )
 
         elif self.cfg.optim == "Adam":
 
@@ -103,19 +103,13 @@ class IFGeo(pl.LightningModule):
             raise NotImplementedError
 
         # set scheduler
-        scheduler_G = torch.optim.lr_scheduler.MultiStepLR(optimizer_G,
-                                                           milestones=self.cfg.schedule,
-                                                           gamma=self.cfg.gamma)
+        scheduler_G = torch.optim.lr_scheduler.MultiStepLR(
+            optimizer_G, milestones=self.cfg.schedule, gamma=self.cfg.gamma
+        )
 
         return [optimizer_G], [scheduler_G]
 
     def training_step(self, batch, batch_idx):
-
-        # cfg log
-        if self.cfg.devices == 1:
-            if not self.cfg.fast_dev and self.global_step == 0:
-                export_cfg(self.logger, osp.join(self.cfg.results_path, self.cfg.name), self.cfg)
-                self.logger.experiment.config.update(convert_to_dict(self.cfg))
 
         self.netG.train()
 
@@ -127,12 +121,9 @@ class IFGeo(pl.LightningModule):
             "loss": error_G,
         }
 
-        self.log_dict(metrics_log,
-                      prog_bar=True,
-                      logger=True,
-                      on_step=True,
-                      on_epoch=False,
-                      sync_dist=True)
+        self.log_dict(
+            metrics_log, prog_bar=True, logger=True, on_step=True, on_epoch=False, sync_dist=True
+        )
 
         return metrics_log
 
@@ -143,12 +134,14 @@ class IFGeo(pl.LightningModule):
             "train/avgloss": batch_mean(outputs, "loss"),
         }
 
-        self.log_dict(metrics_log,
-                      prog_bar=False,
-                      logger=True,
-                      on_step=False,
-                      on_epoch=True,
-                      rank_zero_only=True)
+        self.log_dict(
+            metrics_log,
+            prog_bar=False,
+            logger=True,
+            on_step=False,
+            on_epoch=True,
+            rank_zero_only=True
+        )
 
     def validation_step(self, batch, batch_idx):
 
@@ -162,12 +155,9 @@ class IFGeo(pl.LightningModule):
             "val/loss": error_G,
         }
 
-        self.log_dict(metrics_log,
-                      prog_bar=True,
-                      logger=False,
-                      on_step=True,
-                      on_epoch=False,
-                      sync_dist=True)
+        self.log_dict(
+            metrics_log, prog_bar=True, logger=False, on_step=True, on_epoch=False, sync_dist=True
+        )
 
         return metrics_log
 
@@ -178,9 +168,11 @@ class IFGeo(pl.LightningModule):
             "val/avgloss": batch_mean(outputs, "val/loss"),
         }
 
-        self.log_dict(metrics_log,
-                      prog_bar=False,
-                      logger=True,
-                      on_step=False,
-                      on_epoch=True,
-                      rank_zero_only=True)
+        self.log_dict(
+            metrics_log,
+            prog_bar=False,
+            logger=True,
+            on_step=False,
+            on_epoch=True,
+            rank_zero_only=True
+        )

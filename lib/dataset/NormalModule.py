@@ -22,7 +22,6 @@ import pytorch_lightning as pl
 
 
 class NormalModule(pl.LightningDataModule):
-
     def __init__(self, cfg):
         super(NormalModule, self).__init__()
         self.cfg = cfg
@@ -40,7 +39,7 @@ class NormalModule(pl.LightningDataModule):
         self.train_dataset = NormalDataset(cfg=self.cfg, split="train")
         self.val_dataset = NormalDataset(cfg=self.cfg, split="val")
         self.test_dataset = NormalDataset(cfg=self.cfg, split="test")
-        
+
         self.data_size = {
             "train": len(self.train_dataset),
             "val": len(self.val_dataset),
@@ -69,7 +68,7 @@ class NormalModule(pl.LightningDataModule):
         )
 
         return val_data_loader
-    
+
     def val_dataloader(self):
 
         test_data_loader = DataLoader(

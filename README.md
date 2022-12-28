@@ -103,20 +103,23 @@ python -m apps.avatarizer -n {filename}
 
 ### Some adjustable parameters in _config/econ.yaml_
 
-- `use_ifnet: True`
-  - True: use IF-Nets+ for mesh completion ( $\text{ECON}_\text{IF}$ - Better quality)
-  - False: use SMPL-X for mesh completion ( $\text{ECON}_\text{EX}$ - Faster speed)
+- `use_ifnet: False`
+  - True: use IF-Nets+ for mesh completion ( $\text{ECON}_\text{IF}$ - Better quality, **~2min / img**)
+  - False: use SMPL-X for mesh completion ( $\text{ECON}_\text{EX}$ - Faster speed, **~1.5min / img**)
 - `use_smpl: ["hand", "face"]`
   - [ ]: don't use either hands or face parts from SMPL-X
   - ["hand"]: only use the **visible** hands from SMPL-X
   - ["hand", "face"]: use both **visible** hands and face from SMPL-X
 - `thickness: 2cm`
   - could be increased accordingly in case final reconstruction **xx_full.obj** looks flat
+- `k: 4`
+  - could be reduced accordingly in case the surface of **xx_full.obj** has discontinous artifacts
 - `hps_type: PIXIE`
   - "pixie": more accurate for face and hands
   - "pymafx": more robust for challenging poses
-- `k: 4`
-  - could be reduced accordingly in case the surface of **xx_full.obj** has discontinous artifacts
+- `texture_src: image`
+  - "image": direct mapping the aligned pixels to final mesh
+  - "SD": use Stable Diffusion to generate full texture (TODO)
 
 <br/>
 
@@ -160,7 +163,6 @@ Here are some great resources we benefit from:
 - [BiNI](https://github.com/hoshino042/bilateral_normal_integration) for Bilateral Normal Integration
 - [MonoPortDataset](https://github.com/Project-Splinter/MonoPortDataset) for Data Processing, [MonoPort](https://github.com/Project-Splinter/MonoPort) for fast implicit surface query
 - [rembg](https://github.com/danielgatis/rembg) for Human Segmentation
-- [pypoisson](https://github.com/mmolero/pypoisson) for poisson reconstruction
 - [MediaPipe](https://google.github.io/mediapipe/getting_started/python.html) for full-body landmark estimation
 - [PyTorch-NICP](https://github.com/wuhaozhe/pytorch-nicp) for non-rigid registration
 - [smplx](https://github.com/vchoutas/smplx), [PyMAF-X](https://www.liuyebin.com/pymaf-x/), [PIXIE](https://github.com/YadiraF/PIXIE) for Human Pose & Shape Estimation

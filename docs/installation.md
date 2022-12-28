@@ -9,12 +9,11 @@ cd ECON
 
 ## Environment
 
-- Ubuntu 20 / 18
-- GCC=7 (required by [pypoisson](https://github.com/mmolero/pypoisson/issues/13))
+- Ubuntu 20 / 18, (Windows as well, see [issue#7](https://github.com/YuliangXiu/ECON/issues/7))
 - **CUDA=11.4, GPU Memory > 12GB**
 - Python = 3.8
 - PyTorch >= 1.13.0 (official [Get Started](https://pytorch.org/get-started/locally/))
-- CUPY >= 11.3.0 (offcial [Installation](https://docs.cupy.dev/en/stable/install.html#installing-cupy-from-pypi))
+- Cupy >= 11.3.0 (offcial [Installation](https://docs.cupy.dev/en/stable/install.html#installing-cupy-from-pypi))
 - PyTorch3D (official [INSTALL.md](https://github.com/facebookresearch/pytorch3d/blob/main/INSTALL.md), recommend [install-from-local-clone](https://github.com/facebookresearch/pytorch3d/blob/main/INSTALL.md#2-install-from-a-local-clone))
 
 ```bash

@@ -20,6 +20,4 @@ faces_lst = in_tensor["body_faces"] + in_tensor["BNI_faces"]
 
 # self-rotated video
 render.load_meshes(verts_lst, faces_lst)
-render.get_rendered_video_multi(
-    in_tensor,
-    f"{root}/{args.name}_cloth.mp4")
+render.get_rendered_video_multi(in_tensor, f"{root}/{args.name}_cloth.mp4")

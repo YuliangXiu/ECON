@@ -100,6 +100,7 @@ _C.bni.thickness = 0.00
 _C.bni.hand_thres = 4e-2
 _C.bni.face_thres = 6e-2
 _C.bni.hps_type = "pixie"
+_C.bni.texture_src = "image"
 
 # kernel_size, stride, dilation, padding
 
@@ -170,10 +171,10 @@ _C.dataset.rp_type = "pifu900"
 _C.dataset.th_type = "train"
 _C.dataset.input_size = 512
 _C.dataset.rotation_num = 3
-_C.dataset.num_precomp = 10  # Number of segmentation classifiers
-_C.dataset.num_multiseg = 500  # Number of categories per classifier
-_C.dataset.num_knn = 10  # for loss/error
-_C.dataset.num_knn_dis = 20  # for accuracy
+_C.dataset.num_precomp = 10    # Number of segmentation classifiers
+_C.dataset.num_multiseg = 500    # Number of categories per classifier
+_C.dataset.num_knn = 10    # for loss/error
+_C.dataset.num_knn_dis = 20    # for accuracy
 _C.dataset.num_verts_max = 20000
 _C.dataset.zray_type = False
 _C.dataset.online_smpl = False
@@ -210,8 +211,7 @@ def get_cfg_defaults():
 
 # Alternatively, provide a way to import the defaults as
 # a global singleton:
-cfg = _C  # users can `from config import cfg`
-
+cfg = _C    # users can `from config import cfg`
 
 # cfg = get_cfg_defaults()
 # cfg.merge_from_file('./configs/example.yaml')
@@ -244,9 +244,7 @@ def parse_args(args):
 def parse_args_extend(args):
     if args.resume:
         if not os.path.exists(args.log_dir):
-            raise ValueError(
-                "Experiment are set to resume mode, but log directory does not exist."
-            )
+            raise ValueError("Experiment are set to resume mode, but log directory does not exist.")
 
         # load log's cfg
         cfg_file = os.path.join(args.log_dir, "cfg.yaml")

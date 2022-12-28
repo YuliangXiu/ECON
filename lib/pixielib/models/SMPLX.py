@@ -209,452 +209,468 @@ extra_names = [
 SMPLX_names += extra_names
 
 part_indices = {}
-part_indices["body"] = np.array([
-    0,
-    1,
-    2,
-    3,
-    4,
-    5,
-    6,
-    7,
-    8,
-    9,
-    10,
-    11,
-    12,
-    13,
-    14,
-    15,
-    16,
-    17,
-    18,
-    19,
-    20,
-    21,
-    22,
-    23,
-    24,
-    123,
-    124,
-    125,
-    126,
-    127,
-    132,
-    134,
-    135,
-    136,
-    137,
-    138,
-    143,
-])
-part_indices["torso"] = np.array([
-    0,
-    1,
-    2,
-    3,
-    6,
-    9,
-    12,
-    13,
-    14,
-    15,
-    16,
-    17,
-    18,
-    19,
-    22,
-    23,
-    24,
-    55,
-    56,
-    57,
-    58,
-    59,
-    76,
-    77,
-    78,
-    79,
-    80,
-    81,
-    82,
-    83,
-    84,
-    85,
-    86,
-    87,
-    88,
-    89,
-    90,
-    91,
-    92,
-    93,
-    94,
-    95,
-    96,
-    97,
-    98,
-    99,
-    100,
-    101,
-    102,
-    103,
-    104,
-    105,
-    106,
-    107,
-    108,
-    109,
-    110,
-    111,
-    112,
-    113,
-    114,
-    115,
-    116,
-    117,
-    118,
-    119,
-    120,
-    121,
-    122,
-    123,
-    124,
-    125,
-    126,
-    127,
-    128,
-    129,
-    130,
-    131,
-    132,
-    133,
-    134,
-    135,
-    136,
-    137,
-    138,
-    139,
-    140,
-    141,
-    142,
-    143,
-    144,
-])
-part_indices["head"] = np.array([
-    12,
-    15,
-    22,
-    23,
-    24,
-    55,
-    56,
-    57,
-    58,
-    59,
-    60,
-    61,
-    62,
-    63,
-    64,
-    65,
-    66,
-    67,
-    68,
-    69,
-    70,
-    71,
-    72,
-    73,
-    74,
-    75,
-    76,
-    77,
-    78,
-    79,
-    80,
-    81,
-    82,
-    83,
-    84,
-    85,
-    86,
-    87,
-    88,
-    89,
-    90,
-    91,
-    92,
-    93,
-    94,
-    95,
-    96,
-    97,
-    98,
-    99,
-    100,
-    101,
-    102,
-    103,
-    104,
-    105,
-    106,
-    107,
-    108,
-    109,
-    110,
-    111,
-    112,
-    113,
-    114,
-    115,
-    116,
-    117,
-    118,
-    119,
-    120,
-    121,
-    122,
-    123,
-    125,
-    126,
-    134,
-    136,
-    137,
-])
-part_indices["face"] = np.array([
-    55,
-    56,
-    57,
-    58,
-    59,
-    60,
-    61,
-    62,
-    63,
-    64,
-    65,
-    66,
-    67,
-    68,
-    69,
-    70,
-    71,
-    72,
-    73,
-    74,
-    75,
-    76,
-    77,
-    78,
-    79,
-    80,
-    81,
-    82,
-    83,
-    84,
-    85,
-    86,
-    87,
-    88,
-    89,
-    90,
-    91,
-    92,
-    93,
-    94,
-    95,
-    96,
-    97,
-    98,
-    99,
-    100,
-    101,
-    102,
-    103,
-    104,
-    105,
-    106,
-    107,
-    108,
-    109,
-    110,
-    111,
-    112,
-    113,
-    114,
-    115,
-    116,
-    117,
-    118,
-    119,
-    120,
-    121,
-    122,
-])
-part_indices["upper"] = np.array([
-    12,
-    13,
-    14,
-    55,
-    56,
-    57,
-    58,
-    59,
-    60,
-    61,
-    62,
-    63,
-    64,
-    65,
-    66,
-    67,
-    68,
-    69,
-    70,
-    71,
-    72,
-    73,
-    74,
-    75,
-    76,
-    77,
-    78,
-    79,
-    80,
-    81,
-    82,
-    83,
-    84,
-    85,
-    86,
-    87,
-    88,
-    89,
-    90,
-    91,
-    92,
-    93,
-    94,
-    95,
-    96,
-    97,
-    98,
-    99,
-    100,
-    101,
-    102,
-    103,
-    104,
-    105,
-    106,
-    107,
-    108,
-    109,
-    110,
-    111,
-    112,
-    113,
-    114,
-    115,
-    116,
-    117,
-    118,
-    119,
-    120,
-    121,
-    122,
-])
-part_indices["hand"] = np.array([
-    20,
-    21,
-    25,
-    26,
-    27,
-    28,
-    29,
-    30,
-    31,
-    32,
-    33,
-    34,
-    35,
-    36,
-    37,
-    38,
-    39,
-    40,
-    41,
-    42,
-    43,
-    44,
-    45,
-    46,
-    47,
-    48,
-    49,
-    50,
-    51,
-    52,
-    53,
-    54,
-    128,
-    129,
-    130,
-    131,
-    133,
-    139,
-    140,
-    141,
-    142,
-    144,
-])
-part_indices["left_hand"] = np.array([
-    20,
-    25,
-    26,
-    27,
-    28,
-    29,
-    30,
-    31,
-    32,
-    33,
-    34,
-    35,
-    36,
-    37,
-    38,
-    39,
-    128,
-    129,
-    130,
-    131,
-    133,
-])
-part_indices["right_hand"] = np.array([
-    21,
-    40,
-    41,
-    42,
-    43,
-    44,
-    45,
-    46,
-    47,
-    48,
-    49,
-    50,
-    51,
-    52,
-    53,
-    54,
-    139,
-    140,
-    141,
-    142,
-    144,
-])
+part_indices["body"] = np.array(
+    [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        123,
+        124,
+        125,
+        126,
+        127,
+        132,
+        134,
+        135,
+        136,
+        137,
+        138,
+        143,
+    ]
+)
+part_indices["torso"] = np.array(
+    [
+        0,
+        1,
+        2,
+        3,
+        6,
+        9,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        22,
+        23,
+        24,
+        55,
+        56,
+        57,
+        58,
+        59,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141,
+        142,
+        143,
+        144,
+    ]
+)
+part_indices["head"] = np.array(
+    [
+        12,
+        15,
+        22,
+        23,
+        24,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        125,
+        126,
+        134,
+        136,
+        137,
+    ]
+)
+part_indices["face"] = np.array(
+    [
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+    ]
+)
+part_indices["upper"] = np.array(
+    [
+        12,
+        13,
+        14,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+    ]
+)
+part_indices["hand"] = np.array(
+    [
+        20,
+        21,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        128,
+        129,
+        130,
+        131,
+        133,
+        139,
+        140,
+        141,
+        142,
+        144,
+    ]
+)
+part_indices["left_hand"] = np.array(
+    [
+        20,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        128,
+        129,
+        130,
+        131,
+        133,
+    ]
+)
+part_indices["right_hand"] = np.array(
+    [
+        21,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        139,
+        140,
+        141,
+        142,
+        144,
+    ]
+)
 # kinematic tree
 head_kin_chain = [15, 12, 9, 6, 3, 0]
 
@@ -691,13 +707,12 @@ class SMPLX(nn.Module):
     Given smplx parameters, this class generates a differentiable SMPLX function
     which outputs a mesh and 3D joints
     """
-
     def __init__(self, config):
         super(SMPLX, self).__init__()
         # print("creating the SMPLX Decoder")
         ss = np.load(config.smplx_model_path, allow_pickle=True)
         smplx_model = Struct(**ss)
-        
+
         self.dtype = torch.float32
         self.register_buffer(
             "faces_tensor",
@@ -705,8 +720,8 @@ class SMPLX(nn.Module):
         )
         # The vertices of the template model
         self.register_buffer(
-            "v_template",
-            to_tensor(to_np(smplx_model.v_template), dtype=self.dtype))
+            "v_template", to_tensor(to_np(smplx_model.v_template), dtype=self.dtype)
+        )
         # The shape components and expression
         # expression space is the same as FLAME
         shapedirs = to_tensor(to_np(smplx_model.shapedirs), dtype=self.dtype)
@@ -721,21 +736,18 @@ class SMPLX(nn.Module):
         # The pose components
         num_pose_basis = smplx_model.posedirs.shape[-1]
         posedirs = np.reshape(smplx_model.posedirs, [-1, num_pose_basis]).T
-        self.register_buffer("posedirs",
-                             to_tensor(to_np(posedirs), dtype=self.dtype))
+        self.register_buffer("posedirs", to_tensor(to_np(posedirs), dtype=self.dtype))
         self.register_buffer(
-            "J_regressor",
-            to_tensor(to_np(smplx_model.J_regressor), dtype=self.dtype))
+            "J_regressor", to_tensor(to_np(smplx_model.J_regressor), dtype=self.dtype)
+        )
         parents = to_tensor(to_np(smplx_model.kintree_table[0])).long()
         parents[0] = -1
         self.register_buffer("parents", parents)
-        self.register_buffer(
-            "lbs_weights",
-            to_tensor(to_np(smplx_model.weights), dtype=self.dtype))
+        self.register_buffer("lbs_weights", to_tensor(to_np(smplx_model.weights), dtype=self.dtype))
         # for face keypoints
         self.register_buffer(
-            "lmk_faces_idx",
-            torch.tensor(smplx_model.lmk_faces_idx, dtype=torch.long))
+            "lmk_faces_idx", torch.tensor(smplx_model.lmk_faces_idx, dtype=torch.long)
+        )
         self.register_buffer(
             "lmk_bary_coords",
             torch.tensor(smplx_model.lmk_bary_coords, dtype=self.dtype),
@@ -746,24 +758,20 @@ class SMPLX(nn.Module):
         )
         self.register_buffer(
             "dynamic_lmk_bary_coords",
-            torch.tensor(smplx_model.dynamic_lmk_bary_coords,
-                         dtype=self.dtype),
+            torch.tensor(smplx_model.dynamic_lmk_bary_coords, dtype=self.dtype),
         )
         # pelvis to head, to calculate head yaw angle, then find the dynamic landmarks
-        self.register_buffer("head_kin_chain",
-                             torch.tensor(head_kin_chain, dtype=torch.long))
+        self.register_buffer("head_kin_chain", torch.tensor(head_kin_chain, dtype=torch.long))
 
         # -- initialize parameters
         # shape and expression
         self.register_buffer(
             "shape_params",
-            nn.Parameter(torch.zeros([1, config.n_shape], dtype=self.dtype),
-                         requires_grad=False),
+            nn.Parameter(torch.zeros([1, config.n_shape], dtype=self.dtype), requires_grad=False),
         )
         self.register_buffer(
             "expression_params",
-            nn.Parameter(torch.zeros([1, config.n_exp], dtype=self.dtype),
-                         requires_grad=False),
+            nn.Parameter(torch.zeros([1, config.n_exp], dtype=self.dtype), requires_grad=False),
         )
         # pose: represented as rotation matrx [number of joints, 3, 3]
         self.register_buffer(
@@ -824,8 +832,7 @@ class SMPLX(nn.Module):
         )
 
         if config.extra_joint_path:
-            self.extra_joint_selector = JointsFromVerticesSelector(
-                fname=config.extra_joint_path)
+            self.extra_joint_selector = JointsFromVerticesSelector(fname=config.extra_joint_path)
         self.use_joint_regressor = True
         self.keypoint_names = SMPLX_names
         if self.use_joint_regressor:
@@ -843,7 +850,8 @@ class SMPLX(nn.Module):
             self.register_buffer("target_idxs", torch.from_numpy(target))
             self.register_buffer(
                 "extra_joint_regressor",
-                torch.from_numpy(j14_regressor).to(torch.float32))
+                torch.from_numpy(j14_regressor).to(torch.float32)
+            )
             self.part_indices = part_indices
 
     def forward(
@@ -880,23 +888,17 @@ class SMPLX(nn.Module):
         if expression_params is None:
             expression_params = self.expression_params.expand(batch_size, -1)
         if global_pose is None:
-            global_pose = self.global_pose.unsqueeze(0).expand(
-                batch_size, -1, -1, -1)
+            global_pose = self.global_pose.unsqueeze(0).expand(batch_size, -1, -1, -1)
         if body_pose is None:
-            body_pose = self.body_pose.unsqueeze(0).expand(
-                batch_size, -1, -1, -1)
+            body_pose = self.body_pose.unsqueeze(0).expand(batch_size, -1, -1, -1)
         if jaw_pose is None:
-            jaw_pose = self.jaw_pose.unsqueeze(0).expand(
-                batch_size, -1, -1, -1)
+            jaw_pose = self.jaw_pose.unsqueeze(0).expand(batch_size, -1, -1, -1)
         if eye_pose is None:
-            eye_pose = self.eye_pose.unsqueeze(0).expand(
-                batch_size, -1, -1, -1)
+            eye_pose = self.eye_pose.unsqueeze(0).expand(batch_size, -1, -1, -1)
         if left_hand_pose is None:
-            left_hand_pose = self.left_hand_pose.unsqueeze(0).expand(
-                batch_size, -1, -1, -1)
+            left_hand_pose = self.left_hand_pose.unsqueeze(0).expand(batch_size, -1, -1, -1)
         if right_hand_pose is None:
-            right_hand_pose = self.right_hand_pose.unsqueeze(0).expand(
-                batch_size, -1, -1, -1)
+            right_hand_pose = self.right_hand_pose.unsqueeze(0).expand(batch_size, -1, -1, -1)
 
         shape_components = torch.cat([shape_params, expression_params], dim=1)
         full_pose = torch.cat(
@@ -910,8 +912,7 @@ class SMPLX(nn.Module):
             ],
             dim=1,
         )
-        template_vertices = self.v_template.unsqueeze(0).expand(
-            batch_size, -1, -1)
+        template_vertices = self.v_template.unsqueeze(0).expand(batch_size, -1, -1)
         # smplx
         vertices, joints = lbs(
             shape_components,
@@ -926,10 +927,8 @@ class SMPLX(nn.Module):
             pose2rot=False,
         )
         # face dynamic landmarks
-        lmk_faces_idx = self.lmk_faces_idx.unsqueeze(dim=0).expand(
-            batch_size, -1)
-        lmk_bary_coords = self.lmk_bary_coords.unsqueeze(dim=0).expand(
-            batch_size, -1, -1)
+        lmk_faces_idx = self.lmk_faces_idx.unsqueeze(dim=0).expand(batch_size, -1)
+        lmk_bary_coords = self.lmk_bary_coords.unsqueeze(dim=0).expand(batch_size, -1, -1)
         dyn_lmk_faces_idx, dyn_lmk_bary_coords = find_dynamic_lmk_idx_and_bcoords(
             vertices,
             full_pose,
@@ -939,14 +938,12 @@ class SMPLX(nn.Module):
         )
         lmk_faces_idx = torch.cat([lmk_faces_idx, dyn_lmk_faces_idx], 1)
         lmk_bary_coords = torch.cat([lmk_bary_coords, dyn_lmk_bary_coords], 1)
-        landmarks = vertices2landmarks(vertices, self.faces_tensor,
-                                       lmk_faces_idx, lmk_bary_coords)
+        landmarks = vertices2landmarks(vertices, self.faces_tensor, lmk_faces_idx, lmk_bary_coords)
 
         final_joint_set = [joints, landmarks]
         if hasattr(self, "extra_joint_selector"):
             # Add any extra joints that might be needed
-            extra_joints = self.extra_joint_selector(vertices,
-                                                     self.faces_tensor)
+            extra_joints = self.extra_joint_selector(vertices, self.faces_tensor)
             final_joint_set.append(extra_joints)
         # Create the final joint set
         joints = torch.cat(final_joint_set, dim=1)
@@ -978,16 +975,15 @@ class SMPLX(nn.Module):
             # -> Left elbow -> Left wrist
             kin_chain = [20, 18, 16, 13, 9, 6, 3, 0]
         else:
-            raise NotImplementedError(
-                f"pose_abs2rel does not support: {abs_joint}")
+            raise NotImplementedError(f"pose_abs2rel does not support: {abs_joint}")
 
         batch_size = global_pose.shape[0]
         dtype = global_pose.dtype
         device = global_pose.device
         full_pose = torch.cat([global_pose, body_pose], dim=1)
-        rel_rot_mat = (torch.eye(3, device=device,
-                                 dtype=dtype).unsqueeze_(dim=0).repeat(
-                                     batch_size, 1, 1))
+        rel_rot_mat = (
+            torch.eye(3, device=device, dtype=dtype).unsqueeze_(dim=0).repeat(batch_size, 1, 1)
+        )
         for idx in kin_chain[1:]:
             rel_rot_mat = torch.bmm(full_pose[:, idx], rel_rot_mat)
 
@@ -1027,11 +1023,8 @@ class SMPLX(nn.Module):
             # -> Left elbow -> Left wrist
             kin_chain = [20, 18, 16, 13, 9, 6, 3, 0]
         else:
-            raise NotImplementedError(
-                f"pose_rel2abs does not support: {abs_joint}")
-        rel_rot_mat = torch.eye(3,
-                                device=full_pose.device,
-                                dtype=full_pose.dtype).unsqueeze_(dim=0)
+            raise NotImplementedError(f"pose_rel2abs does not support: {abs_joint}")
+        rel_rot_mat = torch.eye(3, device=full_pose.device, dtype=full_pose.dtype).unsqueeze_(dim=0)
         for idx in kin_chain:
             rel_rot_mat = torch.matmul(full_pose[:, idx], rel_rot_mat)
         abs_pose = rel_rot_mat[:, None, :, :]

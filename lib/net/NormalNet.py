@@ -35,7 +35,6 @@ class NormalNet(BasePIFuNet):
         4. Classification.
         5. During training, error is calculated on all stacks.
     """
-
     def __init__(self, cfg):
 
         super(NormalNet, self).__init__()
@@ -65,9 +64,11 @@ class NormalNet(BasePIFuNet):
             item[0] for item in self.opt.in_nml if "_B" in item[0] or item[0] == "image"
         ]
         self.in_nmlF_dim = sum(
-            [item[1] for item in self.opt.in_nml if "_F" in item[0] or item[0] == "image"])
+            [item[1] for item in self.opt.in_nml if "_F" in item[0] or item[0] == "image"]
+        )
         self.in_nmlB_dim = sum(
-            [item[1] for item in self.opt.in_nml if "_B" in item[0] or item[0] == "image"])
+            [item[1] for item in self.opt.in_nml if "_B" in item[0] or item[0] == "image"]
+        )
 
         self.netF = define_G(self.in_nmlF_dim, 3, 64, "global", 4, 9, 1, 3, "instance")
         self.netB = define_G(self.in_nmlB_dim, 3, 64, "global", 4, 9, 1, 3, "instance")
@@ -134,18 +135,20 @@ class NormalNet(BasePIFuNet):
         if 'mrf' in self.F_losses:
             mrf_F_loss = self.mrf_loss(
                 F.interpolate(prd_F, scale_factor=scale_factor, mode='bicubic', align_corners=True),
-                F.interpolate(tgt_F, scale_factor=scale_factor, mode='bicubic', align_corners=True))
+                F.interpolate(tgt_F, scale_factor=scale_factor, mode='bicubic', align_corners=True)
+            )
             total_loss["netF"] += self.F_losses_ratio[self.F_losses.index('mrf')] * mrf_F_loss
             total_loss["mrf_F"] = self.F_losses_ratio[self.F_losses.index('mrf')] * mrf_F_loss
         if 'mrf' in self.B_losses:
             mrf_B_loss = self.mrf_loss(
                 F.interpolate(prd_B, scale_factor=scale_factor, mode='bicubic', align_corners=True),
-                F.interpolate(tgt_B, scale_factor=scale_factor, mode='bicubic', align_corners=True))
+                F.interpolate(tgt_B, scale_factor=scale_factor, mode='bicubic', align_corners=True)
+            )
             total_loss["netB"] += self.B_losses_ratio[self.B_losses.index('mrf')] * mrf_B_loss
             total_loss["mrf_B"] = self.B_losses_ratio[self.B_losses.index('mrf')] * mrf_B_loss
 
         if 'gan' in self.ALL_losses:
-            
+
             total_loss["netD"] = 0.0
 
             pred_fake = self.netD.forward(prd_B)
@@ -154,8 +157,8 @@ class NormalNet(BasePIFuNet):
             loss_D_real = self.gan_loss(pred_real, True)
             loss_G_fake = self.gan_loss(pred_fake, True)
 
-            total_loss["netD"] += 0.5 * (
-                loss_D_fake + loss_D_real) * self.B_losses_ratio[self.B_losses.index('gan')]
+            total_loss["netD"] += 0.5 * (loss_D_fake + loss_D_real
+                                        ) * self.B_losses_ratio[self.B_losses.index('gan')]
             total_loss["D_fake"] = loss_D_fake * self.B_losses_ratio[self.B_losses.index('gan')]
             total_loss["D_real"] = loss_D_real * self.B_losses_ratio[self.B_losses.index('gan')]
 
@@ -167,8 +170,8 @@ class NormalNet(BasePIFuNet):
                 for i in range(2):
                     for j in range(len(pred_fake[i]) - 1):
                         loss_G_GAN_Feat += self.l1_loss(pred_fake[i][j], pred_real[i][j].detach())
-                total_loss["netB"] += loss_G_GAN_Feat * self.B_losses_ratio[self.B_losses.index(
-                    'gan_feat')]
+                total_loss["netB"] += loss_G_GAN_Feat * self.B_losses_ratio[
+                    self.B_losses.index('gan_feat')]
                 total_loss["G_GAN_Feat"] = loss_G_GAN_Feat * self.B_losses_ratio[
                     self.B_losses.index('gan_feat')]
 
