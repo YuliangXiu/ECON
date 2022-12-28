@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from skimage.transform import resize
 # Use a non-interactive backend
 import matplotlib
+
 matplotlib.use('Agg')
 
 from .renderer import OpenDRenderer, PyRenderer
@@ -82,9 +83,7 @@ def vis_smpl_iuv(image, cam_pred, vert_pred, face, pred_uv, vert_errors_batch, i
     for draw_i in range(len(cam_pred)):
         err_val = '{:06d}_'.format(int(10 * vert_errors_batch[draw_i]))
         draw_name = err_val + image_name[draw_i]
-        K = np.array([[focal_length, 0., orig_size / 2.],
-                      [0., focal_length, orig_size / 2.],
-                      [0., 0., 1.]])
+        K = np.array([[focal_length, 0., orig_size / 2.], [0., focal_length, orig_size / 2.], [0., 0., 1.]])
 
         # img_orig, img_resized, img_smpl, render_smpl_rgba = dr_render(
         #     image[draw_i],
@@ -100,13 +99,14 @@ def vis_smpl_iuv(image, cam_pred, vert_pred, face, pred_uv, vert_errors_batch, i
             mesh_filename = None
 
         img_orig = np.moveaxis(image[draw_i], 0, -1)
-        img_smpl, img_resized = dr_render(vert_pred[draw_i],
-                        img=img_orig,
-                        cam=cam_pred[draw_i],
-                        iwp_mode=True,
-                        scale_ratio=4.,
-                        mesh_filename=mesh_filename,
-                    )
+        img_smpl, img_resized = dr_render(
+            vert_pred[draw_i],
+            img=img_orig,
+            cam=cam_pred[draw_i],
+            iwp_mode=True,
+            scale_ratio=4.,
+            mesh_filename=mesh_filename,
+        )
 
         ones_img = np.ones(img_smpl.shape[:2]) * 255
         ones_img = ones_img[:, :, None]

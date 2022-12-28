@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##############################################################################
-
 """Keypoint utilities (somewhat specific to COCO keypoints)."""
 
 from __future__ import absolute_import
@@ -35,22 +34,8 @@ def get_keypoints():
     # Keypoints are not available in the COCO json for the test split, so we
     # provide them here.
     keypoints = [
-        'nose',
-        'left_eye',
-        'right_eye',
-        'left_ear',
-        'right_ear',
-        'left_shoulder',
-        'right_shoulder',
-        'left_elbow',
-        'right_elbow',
-        'left_wrist',
-        'right_wrist',
-        'left_hip',
-        'right_hip',
-        'left_knee',
-        'right_knee',
-        'left_ankle',
+        'nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear', 'left_shoulder', 'right_shoulder', 'left_elbow',
+        'right_elbow', 'left_wrist', 'right_wrist', 'left_hip', 'right_hip', 'left_knee', 'right_knee', 'left_ankle',
         'right_ankle'
     ]
     keypoint_flip_map = {
@@ -126,8 +111,7 @@ def heatmaps_to_keypoints(maps, rois):
     # NCHW to NHWC for use with OpenCV
     maps = np.transpose(maps, [0, 2, 3, 1])
     min_size = cfg.KRCNN.INFERENCE_MIN_SIZE
-    xy_preds = np.zeros(
-        (len(rois), 4, cfg.KRCNN.NUM_KEYPOINTS), dtype=np.float32)
+    xy_preds = np.zeros((len(rois), 4, cfg.KRCNN.NUM_KEYPOINTS), dtype=np.float32)
     for i in range(len(rois)):
         if min_size > 0:
             roi_map_width = int(np.maximum(widths_ceil[i], min_size))
@@ -137,9 +121,7 @@ def heatmaps_to_keypoints(maps, rois):
             roi_map_height = heights_ceil[i]
         width_correction = widths[i] / roi_map_width
         height_correction = heights[i] / roi_map_height
-        roi_map = cv2.resize(
-            maps[i], (roi_map_width, roi_map_height),
-            interpolation=cv2.INTER_CUBIC)
+        roi_map = cv2.resize(maps[i], (roi_map_width, roi_map_height), interpolation=cv2.INTER_CUBIC)
         # Bring back to CHW
         roi_map = np.transpose(roi_map, [2, 0, 1])
         roi_map_probs = scores_to_probs(roi_map.copy())
@@ -148,8 +130,7 @@ def heatmaps_to_keypoints(maps, rois):
             pos = roi_map[k, :, :].argmax()
             x_int = pos % w
             y_int = (pos - x_int) // w
-            assert (roi_map_probs[k, y_int, x_int] ==
-                    roi_map_probs[k, :, :].max())
+            assert (roi_map_probs[k, y_int, x_int] == roi_map_probs[k, :, :].max())
             x = (x_int + 0.5) * width_correction
             y = (y_int + 0.5) * height_correction
             xy_preds[i, 0, k] = x + offset_x[i]
@@ -200,9 +181,8 @@ def keypoints_to_heatmap_labels(keypoints, rois):
             y[y_boundary_inds] = cfg.KRCNN.HEATMAP_SIZE - 1
 
         valid_loc = np.logical_and(
-            np.logical_and(x >= 0, y >= 0),
-            np.logical_and(
-                x < cfg.KRCNN.HEATMAP_SIZE, y < cfg.KRCNN.HEATMAP_SIZE))
+            np.logical_and(x >= 0, y >= 0), np.logical_and(x < cfg.KRCNN.HEATMAP_SIZE, y < cfg.KRCNN.HEATMAP_SIZE)
+        )
 
         valid = np.logical_and(valid_loc, vis)
         valid = valid.astype(np.int32)
@@ -234,9 +214,7 @@ def nms_oks(kp_predictions, rois, thresh):
     while order.size > 0:
         i = order[0]
         keep.append(i)
-        ovr = compute_oks(
-            kp_predictions[i], rois[i], kp_predictions[order[1:]],
-            rois[order[1:]])
+        ovr = compute_oks(kp_predictions[i], rois[i], kp_predictions[order[1:]], rois[order[1:]])
         inds = np.where(ovr <= thresh)[0]
         order = order[inds + 1]
 
@@ -251,9 +229,7 @@ def compute_oks(src_keypoints, src_roi, dst_keypoints, dst_roi):
     dst_roi: Nx4
     """
 
-    sigmas = np.array([
-        .26, .25, .25, .35, .35, .79, .79, .72, .72, .62, .62, 1.07, 1.07, .87,
-        .87, .89, .89]) / 10.0
+    sigmas = np.array([.26, .25, .25, .35, .35, .79, .79, .72, .72, .62, .62, 1.07, 1.07, .87, .87, .89, .89]) / 10.0
     vars = (sigmas * 2)**2
 
     # area
@@ -313,9 +289,15 @@ def generate_3d_integral_preds_tensor(heatmaps, num_joints, x_dim, y_dim, z_dim)
         accu_z = heatmaps.sum(dim=3)
         accu_z = accu_z.sum(dim=3)
 
-        accu_x = accu_x * torch.cuda.comm.broadcast(torch.arange(x_dim, dtype=torch.float32), devices=[accu_x.device.index])[0]
-        accu_y = accu_y * torch.cuda.comm.broadcast(torch.arange(y_dim, dtype=torch.float32), devices=[accu_y.device.index])[0]
-        accu_z = accu_z * torch.cuda.comm.broadcast(torch.arange(z_dim, dtype=torch.float32), devices=[accu_z.device.index])[0]
+        accu_x = accu_x * torch.cuda.comm.broadcast(
+            torch.arange(x_dim, dtype=torch.float32), devices=[accu_x.device.index]
+        )[0]
+        accu_y = accu_y * torch.cuda.comm.broadcast(
+            torch.arange(y_dim, dtype=torch.float32), devices=[accu_y.device.index]
+        )[0]
+        accu_z = accu_z * torch.cuda.comm.broadcast(
+            torch.arange(z_dim, dtype=torch.float32), devices=[accu_z.device.index]
+        )[0]
 
         accu_x = accu_x.sum(dim=2, keepdim=True)
         accu_y = accu_y.sum(dim=2, keepdim=True)
@@ -326,8 +308,12 @@ def generate_3d_integral_preds_tensor(heatmaps, num_joints, x_dim, y_dim, z_dim)
         accu_x = heatmaps.sum(dim=2)
         accu_y = heatmaps.sum(dim=3)
 
-        accu_x = accu_x * torch.cuda.comm.broadcast(torch.arange(x_dim, dtype=torch.float32), devices=[accu_x.device.index])[0]
-        accu_y = accu_y * torch.cuda.comm.broadcast(torch.arange(y_dim, dtype=torch.float32), devices=[accu_y.device.index])[0]
+        accu_x = accu_x * torch.cuda.comm.broadcast(
+            torch.arange(x_dim, dtype=torch.float32), devices=[accu_x.device.index]
+        )[0]
+        accu_y = accu_y * torch.cuda.comm.broadcast(
+            torch.arange(y_dim, dtype=torch.float32), devices=[accu_y.device.index]
+        )[0]
 
         accu_x = accu_x.sum(dim=2, keepdim=True)
         accu_y = accu_y.sum(dim=2, keepdim=True)

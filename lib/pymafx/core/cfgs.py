@@ -67,6 +67,7 @@ def get_cfg_defaults():
     # return cfg.clone()
     return cfg
 
+
 def update_cfg(cfg_file):
     # cfg = get_cfg_defaults()
     cfg.merge_from_file(cfg_file)
@@ -85,6 +86,7 @@ def parse_args(args):
         cfg.merge_from_list(args.misc)
 
     return cfg
+
 
 def parse_args_extend(args):
     if args.resume:

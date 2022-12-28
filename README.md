@@ -104,8 +104,8 @@ python -m apps.avatarizer -n {filename}
 ### Some adjustable parameters in _config/econ.yaml_
 
 - `use_ifnet: True`
-  - True: use IF-Nets+ for mesh completion ( $\text{ECON}_\text{IF}$ - Better quality)
-  - False: use SMPL-X for mesh completion ( $\text{ECON}_\text{EX}$ - Faster speed)
+  - True: use IF-Nets+ for mesh completion ( $\text{ECON}_\text{IF}$ - Better quality, **~3min / img**)
+  - False: use SMPL-X for mesh completion ( $\text{ECON}_\text{EX}$ - Faster speed, **~2min / img**)
 - `use_smpl: ["hand", "face"]`
   - [ ]: don't use either hands or face parts from SMPL-X
   - ["hand"]: only use the **visible** hands from SMPL-X

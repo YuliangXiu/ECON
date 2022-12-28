@@ -3,7 +3,7 @@ scikit-image
 trimesh
 rtree
 pytorch_lightning
-kornia
+kornia>0.4.0
 chumpy
 opencv-python
 opencv_contrib_python

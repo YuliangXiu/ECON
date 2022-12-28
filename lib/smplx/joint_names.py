@@ -129,8 +129,8 @@ JOINT_NAMES = [
     "left_mouth_3",
     "left_mouth_2",
     "left_mouth_1",
-    "left_mouth_5",  # 59 in OpenPose output
-    "left_mouth_4",  # 58 in OpenPose output
+    "left_mouth_5",    # 59 in OpenPose output
+    "left_mouth_4",    # 58 in OpenPose output
     "mouth_bottom",
     "right_mouth_4",
     "right_mouth_5",

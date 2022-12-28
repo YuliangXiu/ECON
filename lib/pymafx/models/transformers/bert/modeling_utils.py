@@ -15,8 +15,7 @@
 # limitations under the License.
 """PyTorch BERT model."""
 
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import copy
 import json
@@ -38,7 +37,6 @@ CONFIG_NAME = "config.json"
 WEIGHTS_NAME = "pytorch_model.bin"
 TF_WEIGHTS_NAME = 'model.ckpt'
 
-
 try:
     from torch.nn import Identity
 except ImportError:
@@ -54,16 +52,19 @@ except ImportError:
 
 
 if not six.PY2:
+
     def add_start_docstrings(*docstr):
         def docstring_decorator(fn):
             fn.__doc__ = ''.join(docstr) + fn.__doc__
             return fn
+
         return docstring_decorator
 else:
     # Not possible to update class docstrings on python2
     def add_start_docstrings(*docstr):
         def docstring_decorator(fn):
             return fn
+
         return docstring_decorator
 
 
@@ -84,7 +85,9 @@ class PretrainedConfig(object):
         """ Save a configuration object to a directory, so that it
             can be re-loaded using the `from_pretrained(save_directory)` class method.
         """
-        assert os.path.isdir(save_directory), "Saving path should be a directory where the model and configuration can be saved"
+        assert os.path.isdir(
+            save_directory
+        ), "Saving path should be a directory where the model and configuration can be saved"
 
         # If we save using the predefined names, we can load using `from_pretrained`
         output_config_file = os.path.join(save_directory, CONFIG_NAME)
@@ -145,23 +148,23 @@ class PretrainedConfig(object):
         except EnvironmentError:
             if pretrained_model_name_or_path in cls.pretrained_config_archive_map:
                 logger.error(
-                    "Couldn't reach server at '{}' to download pretrained model configuration file.".format(
-                        config_file))
+                    "Couldn't reach server at '{}' to download pretrained model configuration file.".
+                    format(config_file)
+                )
             else:
                 logger.error(
                     "Model name '{}' was not found in model name list ({}). "
                     "We assumed '{}' was a path or url but couldn't find any file "
                     "associated to this path or url.".format(
-                        pretrained_model_name_or_path,
-                        ', '.join(cls.pretrained_config_archive_map.keys()),
-                        config_file))
+                        pretrained_model_name_or_path, ', '.join(cls.pretrained_config_archive_map.keys()), config_file
+                    )
+                )
             return None
         if resolved_config_file == config_file:
             pass
             # logger.info("loading configuration file {}".format(config_file))
         else:
-            logger.info("loading configuration file {} from cache at {}".format(
-                config_file, resolved_config_file))
+            logger.info("loading configuration file {} from cache at {}".format(config_file, resolved_config_file))
 
         # Load config
         config = cls.from_json_file(resolved_config_file)
@@ -235,7 +238,8 @@ class PreTrainedModel(nn.Module):
                 "To create a model from a pretrained model use "
                 "`model = {}.from_pretrained(PRETRAINED_MODEL_NAME)`".format(
                     self.__class__.__name__, self.__class__.__name__
-                ))
+                )
+            )
         # Save config in model
         self.config = config
 
@@ -295,7 +299,7 @@ class PreTrainedModel(nn.Module):
         Return: ``torch.nn.Embeddings``
             Pointer to the input tokens Embedding Module of the model
         """
-        base_model = getattr(self, self.base_model_prefix, self)  # get the base model if needed
+        base_model = getattr(self, self.base_model_prefix, self)    # get the base model if needed
         model_embeds = base_model._resize_token_embeddings(new_num_tokens)
         if new_num_tokens is None:
             return model_embeds
@@ -315,14 +319,16 @@ class PreTrainedModel(nn.Module):
             Args:
                 heads_to_prune: dict of {layer_num (int): list of heads to prune in this layer (list of int)}
         """
-        base_model = getattr(self, self.base_model_prefix, self)  # get the base model if needed
+        base_model = getattr(self, self.base_model_prefix, self)    # get the base model if needed
         base_model._prune_heads(heads_to_prune)
 
     def save_pretrained(self, save_directory):
         """ Save a model with its configuration file to a directory, so that it
             can be re-loaded using the `from_pretrained(save_directory)` class method.
         """
-        assert os.path.isdir(save_directory), "Saving path should be a directory where the model and configuration can be saved"
+        assert os.path.isdir(
+            save_directory
+        ), "Saving path should be a directory where the model and configuration can be saved"
 
         # Only save the model it-self if we are using distributed training
         model_to_save = self.module if hasattr(self, 'module') else self
@@ -402,9 +408,7 @@ class PreTrainedModel(nn.Module):
         # Load config
         if config is None:
             config, model_kwargs = cls.config_class.from_pretrained(
-                pretrained_model_name_or_path, *model_args,
-                cache_dir=cache_dir, return_unused_kwargs=True,
-                **kwargs
+                pretrained_model_name_or_path, *model_args, cache_dir=cache_dir, return_unused_kwargs=True, **kwargs
             )
         else:
             model_kwargs = kwargs
@@ -429,23 +433,20 @@ class PreTrainedModel(nn.Module):
             resolved_archive_file = cached_path(archive_file, cache_dir=cache_dir)
         except EnvironmentError:
             if pretrained_model_name_or_path in cls.pretrained_model_archive_map:
-                logger.error(
-                    "Couldn't reach server at '{}' to download pretrained weights.".format(
-                        archive_file))
+                logger.error("Couldn't reach server at '{}' to download pretrained weights.".format(archive_file))
             else:
                 logger.error(
                     "Model name '{}' was not found in model name list ({}). "
                     "We assumed '{}' was a path or url but couldn't find any file "
                     "associated to this path or url.".format(
-                        pretrained_model_name_or_path,
-                        ', '.join(cls.pretrained_model_archive_map.keys()),
-                        archive_file))
+                        pretrained_model_name_or_path, ', '.join(cls.pretrained_model_archive_map.keys()), archive_file
+                    )
+                )
             return None
         if resolved_archive_file == archive_file:
             logger.info("loading weights file {}".format(archive_file))
         else:
-            logger.info("loading weights file {} from cache at {}".format(
-                archive_file, resolved_archive_file))
+            logger.info("loading weights file {} from cache at {}".format(archive_file, resolved_archive_file))
 
         # Instantiate model.
         model = cls(config, *model_args, **model_kwargs)
@@ -454,7 +455,7 @@ class PreTrainedModel(nn.Module):
             state_dict = torch.load(resolved_archive_file, map_location='cpu')
         if from_tf:
             # Directly load from a TensorFlow checkpoint
-            return cls.load_tf_weights(model, config, resolved_archive_file[:-6])  # Remove the '.index'
+            return cls.load_tf_weights(model, config, resolved_archive_file[:-6])    # Remove the '.index'
 
         # Convert old format to new format if needed from a PyTorch state_dict
         old_keys = []
@@ -484,7 +485,8 @@ class PreTrainedModel(nn.Module):
         def load(module, prefix=''):
             local_metadata = {} if metadata is None else metadata.get(prefix[:-1], {})
             module._load_from_state_dict(
-                state_dict, prefix, local_metadata, True, missing_keys, unexpected_keys, error_msgs)
+                state_dict, prefix, local_metadata, True, missing_keys, unexpected_keys, error_msgs
+            )
             for name, child in module._modules.items():
                 if child is not None:
                     load(child, prefix + name + '.')
@@ -492,24 +494,34 @@ class PreTrainedModel(nn.Module):
         # Make sure we are able to load base models as well as derived models (with heads)
         start_prefix = ''
         model_to_load = model
-        if not hasattr(model, cls.base_model_prefix) and any(s.startswith(cls.base_model_prefix) for s in state_dict.keys()):
+        if not hasattr(model, cls.base_model_prefix) and any(
+            s.startswith(cls.base_model_prefix) for s in state_dict.keys()
+        ):
             start_prefix = cls.base_model_prefix + '.'
-        if hasattr(model, cls.base_model_prefix) and not any(s.startswith(cls.base_model_prefix) for s in state_dict.keys()):
+        if hasattr(model,
+                   cls.base_model_prefix) and not any(s.startswith(cls.base_model_prefix) for s in state_dict.keys()):
             model_to_load = getattr(model, cls.base_model_prefix)
 
         load(model_to_load, prefix=start_prefix)
         if len(missing_keys) > 0:
-            logger.info("Weights of {} not initialized from pretrained model: {}".format(
-                model.__class__.__name__, missing_keys))
+            logger.info(
+                "Weights of {} not initialized from pretrained model: {}".format(
+                    model.__class__.__name__, missing_keys
+                )
+            )
         if len(unexpected_keys) > 0:
-            logger.info("Weights from pretrained model not used in {}: {}".format(
-                model.__class__.__name__, unexpected_keys))
+            logger.info(
+                "Weights from pretrained model not used in {}: {}".format(model.__class__.__name__, unexpected_keys)
+            )
         if len(error_msgs) > 0:
-            raise RuntimeError('Error(s) in loading state_dict for {}:\n\t{}'.format(
-                               model.__class__.__name__, "\n\t".join(error_msgs)))
+            raise RuntimeError(
+                'Error(s) in loading state_dict for {}:\n\t{}'.format(
+                    model.__class__.__name__, "\n\t".join(error_msgs)
+                )
+            )
 
         if hasattr(model, 'tie_weights'):
-            model.tie_weights()  # make sure word embedding weights are still tied
+            model.tie_weights()    # make sure word embedding weights are still tied
 
         # Set model in evaluation mode to desactivate DropOut modules by default
         model.eval()
@@ -534,7 +546,7 @@ class Conv1D(nn.Module):
         self.bias = nn.Parameter(torch.zeros(nf))
 
     def forward(self, x):
-        size_out = x.size()[:-1] + (self.nf,)
+        size_out = x.size()[:-1] + (self.nf, )
         x = torch.addmm(self.bias, x.view(-1, x.size(-1)), self.weight)
         x = x.view(*size_out)
         return x
@@ -586,9 +598,9 @@ class PoolerEndLogits(nn.Module):
         assert start_states is not None or start_positions is not None, "One of start_states, start_positions should be not None"
         if start_positions is not None:
             slen, hsz = hidden_states.shape[-2:]
-            start_positions = start_positions[:, None, None].expand(-1, -1, hsz) # shape (bsz, 1, hsz)
-            start_states = hidden_states.gather(-2, start_positions) # shape (bsz, 1, hsz)
-            start_states = start_states.expand(-1, slen, -1) # shape (bsz, slen, hsz)
+            start_positions = start_positions[:, None, None].expand(-1, -1, hsz)    # shape (bsz, 1, hsz)
+            start_states = hidden_states.gather(-2, start_positions)    # shape (bsz, 1, hsz)
+            start_states = start_states.expand(-1, slen, -1)    # shape (bsz, slen, hsz)
 
         x = self.dense_0(torch.cat([hidden_states, start_states], dim=-1))
         x = self.activation(x)
@@ -629,14 +641,14 @@ class PoolerAnswerClass(nn.Module):
         hsz = hidden_states.shape[-1]
         assert start_states is not None or start_positions is not None, "One of start_states, start_positions should be not None"
         if start_positions is not None:
-            start_positions = start_positions[:, None, None].expand(-1, -1, hsz) # shape (bsz, 1, hsz)
-            start_states = hidden_states.gather(-2, start_positions).squeeze(-2) # shape (bsz, hsz)
+            start_positions = start_positions[:, None, None].expand(-1, -1, hsz)    # shape (bsz, 1, hsz)
+            start_states = hidden_states.gather(-2, start_positions).squeeze(-2)    # shape (bsz, hsz)
 
         if cls_index is not None:
-            cls_index = cls_index[:, None, None].expand(-1, -1, hsz) # shape (bsz, 1, hsz)
-            cls_token_state = hidden_states.gather(-2, cls_index).squeeze(-2) # shape (bsz, hsz)
+            cls_index = cls_index[:, None, None].expand(-1, -1, hsz)    # shape (bsz, 1, hsz)
+            cls_token_state = hidden_states.gather(-2, cls_index).squeeze(-2)    # shape (bsz, hsz)
         else:
-            cls_token_state = hidden_states[:, -1, :] # shape (bsz, hsz)
+            cls_token_state = hidden_states[:, -1, :]    # shape (bsz, hsz)
 
         x = self.dense_0(torch.cat([start_states, cls_token_state], dim=-1))
         x = self.activation(x)
@@ -694,8 +706,9 @@ class SQuADHead(nn.Module):
         self.end_logits = PoolerEndLogits(config)
         self.answer_class = PoolerAnswerClass(config)
 
-    def forward(self, hidden_states, start_positions=None, end_positions=None,
-                cls_index=None, is_impossible=None, p_mask=None):
+    def forward(
+        self, hidden_states, start_positions=None, end_positions=None, cls_index=None, is_impossible=None, p_mask=None
+    ):
         outputs = ()
 
         start_logits = self.start_logits(hidden_states, p_mask=p_mask)
@@ -723,24 +736,30 @@ class SQuADHead(nn.Module):
                 # note(zhiliny): by default multiply the loss by 0.5 so that the scale is comparable to start_loss and end_loss
                 total_loss += cls_loss * 0.5
 
-            outputs = (total_loss,) + outputs
+            outputs = (total_loss, ) + outputs
 
         else:
             # during inference, compute the end logits based on beam search
             bsz, slen, hsz = hidden_states.size()
-            start_log_probs = F.softmax(start_logits, dim=-1) # shape (bsz, slen)
+            start_log_probs = F.softmax(start_logits, dim=-1)    # shape (bsz, slen)
 
-            start_top_log_probs, start_top_index = torch.topk(start_log_probs, self.start_n_top, dim=-1) # shape (bsz, start_n_top)
-            start_top_index_exp = start_top_index.unsqueeze(-1).expand(-1, -1, hsz) # shape (bsz, start_n_top, hsz)
-            start_states = torch.gather(hidden_states, -2, start_top_index_exp) # shape (bsz, start_n_top, hsz)
-            start_states = start_states.unsqueeze(1).expand(-1, slen, -1, -1) # shape (bsz, slen, start_n_top, hsz)
+            start_top_log_probs, start_top_index = torch.topk(
+                start_log_probs, self.start_n_top, dim=-1
+            )    # shape (bsz, start_n_top)
+            start_top_index_exp = start_top_index.unsqueeze(-1).expand(-1, -1, hsz)    # shape (bsz, start_n_top, hsz)
+            start_states = torch.gather(hidden_states, -2, start_top_index_exp)    # shape (bsz, start_n_top, hsz)
+            start_states = start_states.unsqueeze(1).expand(-1, slen, -1, -1)    # shape (bsz, slen, start_n_top, hsz)
 
-            hidden_states_expanded = hidden_states.unsqueeze(2).expand_as(start_states) # shape (bsz, slen, start_n_top, hsz)
+            hidden_states_expanded = hidden_states.unsqueeze(2).expand_as(
+                start_states
+            )    # shape (bsz, slen, start_n_top, hsz)
             p_mask = p_mask.unsqueeze(-1) if p_mask is not None else None
             end_logits = self.end_logits(hidden_states_expanded, start_states=start_states, p_mask=p_mask)
-            end_log_probs = F.softmax(end_logits, dim=1) # shape (bsz, slen, start_n_top)
+            end_log_probs = F.softmax(end_logits, dim=1)    # shape (bsz, slen, start_n_top)
 
-            end_top_log_probs, end_top_index = torch.topk(end_log_probs, self.end_n_top, dim=1) # shape (bsz, end_n_top, start_n_top)
+            end_top_log_probs, end_top_index = torch.topk(
+                end_log_probs, self.end_n_top, dim=1
+            )    # shape (bsz, end_n_top, start_n_top)
             end_top_log_probs = end_top_log_probs.view(-1, self.start_n_top * self.end_n_top)
             end_top_index = end_top_index.view(-1, self.start_n_top * self.end_n_top)
 
@@ -814,12 +833,12 @@ class SequenceSummary(nn.Module):
             output = hidden_states.mean(dim=1)
         elif self.summary_type == 'token_ids':
             if token_ids is None:
-                token_ids = torch.full_like(hidden_states[..., :1, :], hidden_states.shape[-2]-1, dtype=torch.long)
+                token_ids = torch.full_like(hidden_states[..., :1, :], hidden_states.shape[-2] - 1, dtype=torch.long)
             else:
                 token_ids = token_ids.unsqueeze(-1).unsqueeze(-1)
-                token_ids = token_ids.expand((-1,) * (token_ids.dim()-1) + (hidden_states.size(-1),))
+                token_ids = token_ids.expand((-1, ) * (token_ids.dim() - 1) + (hidden_states.size(-1), ))
             # shape of token_ids: (bsz, XX, 1, hidden_size) where XX are optional leading dim of hidden_states
-            output = hidden_states.gather(-2, token_ids).squeeze(-2) # shape (bsz, XX, hidden_size)
+            output = hidden_states.gather(-2, token_ids).squeeze(-2)    # shape (bsz, XX, hidden_size)
         elif self.summary_type == 'attn':
             raise NotImplementedError
 

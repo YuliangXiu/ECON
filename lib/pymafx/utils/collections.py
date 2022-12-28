@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##############################################################################
-
 """A simple attribute dictionary used for representing configuration options."""
 
 from __future__ import absolute_import
@@ -44,10 +43,7 @@ class AttrDict(dict):
             else:
                 self[name] = value
         else:
-            raise AttributeError(
-                'Attempted to set "{}" to "{}", but AttrDict is immutable'.
-                format(name, value)
-            )
+            raise AttributeError('Attempted to set "{}" to "{}", but AttrDict is immutable'.format(name, value))
 
     def immutable(self, is_immutable):
         """Set immutability to is_immutable and recursively apply the setting

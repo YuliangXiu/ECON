@@ -25,6 +25,7 @@ from lib.pixielib.utils.config import cfg as pixie_cfg
 from lib.pixielib.pixie import PIXIE
 from lib.pixielib.models.SMPLX import SMPLX as PIXIE_SMPLX
 from lib.common.imutils import process_image
+from lib.common.train_util import Format
 from lib.net.geometry import rotation_matrix_to_angle_axis, rot6d_to_rotmat
 
 from lib.pymafx.core import path_config
@@ -36,8 +37,9 @@ from lib.dataset.body_model import TetraSMPLModel
 from lib.dataset.mesh_util import get_visibility, SMPLX
 import torch.nn.functional as F
 from torchvision import transforms
+from torchvision.models import detection
+
 import os.path as osp
-import os
 import torch
 import glob
 import numpy as np
@@ -48,7 +50,6 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 class TestDataset:
-
     def __init__(self, cfg, device):
 
         self.image_dir = cfg["image_dir"]
@@ -80,7 +81,10 @@ class TestDataset:
 
         self.smpl_model = PIXIE_SMPLX(pixie_cfg.model).to(self.device)
 
-        print(colored(f"Use {self.hps_type.upper()} to estimate human pose and shape", "green"))
+        self.detector = detection.maskrcnn_resnet50_fpn(weights=detection.MaskRCNN_ResNet50_FPN_V2_Weights)
+        self.detector.eval()
+
+        print(colored(f"SMPL-X estimate with {Format.start} {self.hps_type.upper()} {Format.end}", "green"))
 
         self.render = Render(size=512, device=self.device)
 
@@ -121,7 +125,7 @@ class TestDataset:
             F.one_hot(index_z_floor[..., 1], self.vol_res) * (1.0 - index_z_frac[..., 1])
 
         voxels[index_mask] *= 0
-        voxels = torch.flip(voxels, [2]).permute(2, 0, 1).float()  #[x-2, y-0, z-1]
+        voxels = torch.flip(voxels, [2]).permute(2, 0, 1).float()    #[x-2, y-0, z-1]
 
         return {
             "depth_voxels": voxels.flip([
@@ -139,12 +143,15 @@ class TestDataset:
         smpl_model.set_params(rotation_matrix_to_angle_axis(rot6d_to_rotmat(pose)), beta=betas[0])
 
         verts = (
-            np.concatenate([smpl_model.verts, smpl_model.verts_added], axis=0) * scale.item() + trans.detach().cpu().numpy())
+            np.concatenate([smpl_model.verts, smpl_model.verts_added], axis=0) * scale.item() +
+            trans.detach().cpu().numpy()
+        )
         faces = (
             np.loadtxt(
                 osp.join(self.smpl_data.tedra_dir, "tetrahedrons_neutral_adult.txt"),
                 dtype=np.int32,
-            ) - 1)
+            ) - 1
+        )
 
         pad_v_num = int(8000 - verts.shape[0])
         pad_f_num = int(25100 - faces.shape[0])
@@ -168,7 +175,7 @@ class TestDataset:
         img_path = self.subject_list[index]
         img_name = img_path.split("/")[-1].rsplit(".", 1)[0]
 
-        arr_dict = process_image(img_path, self.hps_type, self.single, 512)
+        arr_dict = process_image(img_path, self.hps_type, self.single, 512, self.detector)
         arr_dict.update({"name": img_name})
 
         with torch.no_grad():
@@ -179,7 +186,8 @@ class TestDataset:
                 preds_dict, _ = self.hps.forward(batch)
 
         arr_dict["smpl_faces"] = (
-            torch.as_tensor(self.smpl_data.smplx_faces.astype(np.int64)).unsqueeze(0).long().to(self.device))
+            torch.as_tensor(self.smpl_data.smplx_faces.astype(np.int64)).unsqueeze(0).long().to(self.device)
+        )
         arr_dict["type"] = self.smpl_type
 
         if self.hps_type == "pymafx":
@@ -198,13 +206,15 @@ class TestDataset:
         elif self.hps_type == "pixie":
             arr_dict.update(preds_dict)
             arr_dict["global_orient"] = preds_dict["global_pose"]
-            arr_dict["betas"] = preds_dict["shape"]  #200
+            arr_dict["betas"] = preds_dict["shape"]    #200
             arr_dict["smpl_verts"] = preds_dict["vertices"]
             scale, tranX, tranY = preds_dict["cam"].split(1, dim=1)
             # 1.1435, 0.0128, 0.3520
 
         arr_dict["scale"] = scale.unsqueeze(1)
-        arr_dict["trans"] = (torch.cat([tranX, tranY, torch.zeros_like(tranX)], dim=1).unsqueeze(1).to(self.device).float())
+        arr_dict["trans"] = (
+            torch.cat([tranX, tranY, torch.zeros_like(tranX)], dim=1).unsqueeze(1).to(self.device).float()
+        )
 
         # data_dict info (key-shape):
         # scale, tranX, tranY - tensor.float

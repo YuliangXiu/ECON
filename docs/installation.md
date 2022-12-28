@@ -9,7 +9,7 @@ cd ECON
 
 ## Environment
 
-- Ubuntu 20 / 18
+- Ubuntu 20 / 18, (Windows as well, see [issue#7](https://github.com/YuliangXiu/ECON/issues/7))
 - GCC=7 (required by [pypoisson](https://github.com/mmolero/pypoisson/issues/13))
 - **CUDA=11.4, GPU Memory > 12GB**
 - Python = 3.8

@@ -25,9 +25,7 @@ from pytorch3d.renderer.mesh import rasterize_meshes
 Tensor = NewType("Tensor", torch.Tensor)
 
 
-def solid_angles(points: Tensor,
-                 triangles: Tensor,
-                 thresh: float = 1e-8) -> Tensor:
+def solid_angles(points: Tensor, triangles: Tensor, thresh: float = 1e-8) -> Tensor:
     """Compute solid angle between the input points and triangles
     Follows the method described in:
     The Solid Angle of a Plane Triangle
@@ -55,9 +53,7 @@ def solid_angles(points: Tensor,
     norms = torch.norm(centered_tris, dim=-1)
 
     # Should be BxQxFx3
-    cross_prod = torch.cross(centered_tris[:, :, :, 1],
-                             centered_tris[:, :, :, 2],
-                             dim=-1)
+    cross_prod = torch.cross(centered_tris[:, :, :, 1], centered_tris[:, :, :, 2], dim=-1)
     # Should be BxQxF
     numerator = (centered_tris[:, :, :, 0] * cross_prod).sum(dim=-1)
     del cross_prod
@@ -67,8 +63,9 @@ def solid_angles(points: Tensor,
     dot02 = (centered_tris[:, :, :, 0] * centered_tris[:, :, :, 2]).sum(dim=-1)
     del centered_tris
 
-    denominator = (norms.prod(dim=-1) + dot01 * norms[:, :, :, 2] +
-                   dot02 * norms[:, :, :, 1] + dot12 * norms[:, :, :, 0])
+    denominator = (
+        norms.prod(dim=-1) + dot01 * norms[:, :, :, 2] + dot02 * norms[:, :, :, 1] + dot12 * norms[:, :, :, 0]
+    )
     del dot01, dot12, dot02, norms
 
     # Should be BxQ
@@ -80,9 +77,7 @@ def solid_angles(points: Tensor,
     return 2 * solid_angle
 
 
-def winding_numbers(points: Tensor,
-                    triangles: Tensor,
-                    thresh: float = 1e-8) -> Tensor:
+def winding_numbers(points: Tensor, triangles: Tensor, thresh: float = 1e-8) -> Tensor:
     """Uses winding_numbers to compute inside/outside
     Robust inside-outside segmentation using generalized winding numbers
     Alec Jacobson,
@@ -109,8 +104,7 @@ def winding_numbers(points: Tensor,
     """
     # The generalized winding number is the sum of solid angles of the point
     # with respect to all triangles.
-    return (1 / (4 * math.pi) *
-            solid_angles(points, triangles, thresh=thresh).sum(dim=-1))
+    return (1 / (4 * math.pi) * solid_angles(points, triangles, thresh=thresh).sum(dim=-1))
 
 
 def batch_contains(verts, faces, points):
@@ -124,8 +118,7 @@ def batch_contains(verts, faces, points):
     contains = torch.zeros(B, N)
 
     for i in range(B):
-        contains[i] = torch.as_tensor(
-            trimesh.Trimesh(verts[i], faces[i]).contains(points[i]))
+        contains[i] = torch.as_tensor(trimesh.Trimesh(verts[i], faces[i]).contains(points[i]))
 
     return 2.0 * (contains - 0.5)
 
@@ -155,8 +148,7 @@ def face_vertices(vertices, faces):
     bs, nv = vertices.shape[:2]
     bs, nf = faces.shape[:2]
     device = vertices.device
-    faces = faces + (torch.arange(bs, dtype=torch.int32).to(device) *
-                     nv)[:, None, None]
+    faces = faces + (torch.arange(bs, dtype=torch.int32).to(device) * nv)[:, None, None]
     vertices = vertices.reshape((bs * nv, vertices.shape[-1]))
 
     return vertices[faces.long()]
@@ -168,7 +160,6 @@ class Pytorch3dRasterizer(nn.Module):
         x,y,z are in image space, normalized
         can only render squared image now
     """
-
     def __init__(self, image_size=224, blur_radius=0.0, faces_per_pixel=1):
         """
         use fixed raster_settings for rendering faces
@@ -189,8 +180,7 @@ class Pytorch3dRasterizer(nn.Module):
     def forward(self, vertices, faces, attributes=None):
         fixed_vertices = vertices.clone()
         fixed_vertices[..., :2] = -fixed_vertices[..., :2]
-        meshes_screen = Meshes(verts=fixed_vertices.float(),
-                               faces=faces.long())
+        meshes_screen = Meshes(verts=fixed_vertices.float(), faces=faces.long())
         raster_settings = self.raster_settings
         pix_to_face, zbuf, bary_coords, dists = rasterize_meshes(
             meshes_screen,
@@ -204,8 +194,7 @@ class Pytorch3dRasterizer(nn.Module):
         vismask = (pix_to_face > -1).float()
         D = attributes.shape[-1]
         attributes = attributes.clone()
-        attributes = attributes.view(attributes.shape[0] * attributes.shape[1],
-                                     3, attributes.shape[-1])
+        attributes = attributes.view(attributes.shape[0] * attributes.shape[1], 3, attributes.shape[-1])
         N, H, W, K, _ = bary_coords.shape
         mask = pix_to_face == -1
         pix_to_face = pix_to_face.clone()
@@ -213,8 +202,7 @@ class Pytorch3dRasterizer(nn.Module):
         idx = pix_to_face.view(N * H * W * K, 1, 1).expand(N * H * W * K, 3, D)
         pixel_face_vals = attributes.gather(0, idx).view(N, H, W, K, 3, D)
         pixel_vals = (bary_coords[..., None] * pixel_face_vals).sum(dim=-2)
-        pixel_vals[mask] = 0  # Replace masked values in output.
+        pixel_vals[mask] = 0    # Replace masked values in output.
         pixel_vals = pixel_vals[:, :, :, 0].permute(0, 3, 1, 2)
-        pixel_vals = torch.cat(
-            [pixel_vals, vismask[:, :, :, 0][:, None, :, :]], dim=1)
+        pixel_vals = torch.cat([pixel_vals, vismask[:, :, :, 0][:, None, :, :]], dim=1)
         return pixel_vals

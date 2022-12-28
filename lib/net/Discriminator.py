@@ -9,17 +9,15 @@ from lib.torch_utils.ops.native_ops import FusedLeakyReLU, fused_leaky_relu, upf
 
 
 class DiscriminatorHead(nn.Module):
-
     def __init__(self, in_channel, disc_stddev=False):
         super().__init__()
 
         self.disc_stddev = disc_stddev
         stddev_dim = 1 if disc_stddev else 0
 
-        self.conv_stddev = ConvLayer2d(in_channel=in_channel + stddev_dim,
-                                       out_channel=in_channel,
-                                       kernel_size=3,
-                                       activate=True)
+        self.conv_stddev = ConvLayer2d(
+            in_channel=in_channel + stddev_dim, out_channel=in_channel, kernel_size=3, activate=True
+        )
 
         self.final_linear = nn.Sequential(
             nn.Flatten(),
@@ -32,8 +30,7 @@ class DiscriminatorHead(nn.Module):
         inv_perm = torch.argsort(perm)
 
         batch, channel, height, width = x.shape
-        x = x[
-            perm]  # shuffle inputs so that all views in a single trajectory don't get put together
+        x = x[perm]    # shuffle inputs so that all views in a single trajectory don't get put together
 
         group = min(batch, stddev_group)
         stddev = x.view(group, -1, stddev_feat, channel // stddev_feat, height, width)
@@ -41,7 +38,7 @@ class DiscriminatorHead(nn.Module):
         stddev = stddev.mean([2, 3, 4], keepdims=True).squeeze(2)
         stddev = stddev.repeat(group, 1, height, width)
 
-        stddev = stddev[inv_perm]  # reorder inputs
+        stddev = stddev[inv_perm]    # reorder inputs
         x = x[inv_perm]
 
         out = torch.cat([x, stddev], 1)
@@ -56,7 +53,6 @@ class DiscriminatorHead(nn.Module):
 
 
 class ConvDecoder(nn.Module):
-
     def __init__(self, in_channel, out_channel, in_res, out_res):
         super().__init__()
 
@@ -68,20 +64,15 @@ class ConvDecoder(nn.Module):
         for i in range(log_size_in, log_size_out):
             out_ch = in_ch // 2
             self.layers.append(
-                ConvLayer2d(in_channel=in_ch,
-                            out_channel=out_ch,
-                            kernel_size=3,
-                            upsample=True,
-                            bias=True,
-                            activate=True))
+                ConvLayer2d(
+                    in_channel=in_ch, out_channel=out_ch, kernel_size=3, upsample=True, bias=True, activate=True
+                )
+            )
             in_ch = out_ch
 
         self.layers.append(
-            ConvLayer2d(in_channel=in_ch,
-                        out_channel=out_channel,
-                        kernel_size=3,
-                        bias=True,
-                        activate=False))
+            ConvLayer2d(in_channel=in_ch, out_channel=out_channel, kernel_size=3, bias=True, activate=False)
+        )
         self.layers = nn.Sequential(*self.layers)
 
     def forward(self, x):
@@ -89,7 +80,6 @@ class ConvDecoder(nn.Module):
 
 
 class StyleDiscriminator(nn.Module):
-
     def __init__(self, in_channel, in_res, ch_mul=64, ch_max=512, **kwargs):
         super().__init__()
 
@@ -103,8 +93,7 @@ class StyleDiscriminator(nn.Module):
         in_channels = ch_mul
         for i in range(log_size_in, log_size_out, -1):
             out_channels = int(min(in_channels * 2, ch_max))
-            self.layers.append(
-                ConvResBlock2d(in_channel=in_channels, out_channel=out_channels, downsample=True))
+            self.layers.append(ConvResBlock2d(in_channel=in_channels, out_channel=out_channels, downsample=True))
             in_channels = out_channels
         self.layers = nn.Sequential(*self.layers)
 
@@ -147,7 +136,6 @@ class Blur(nn.Module):
         Upsample factor.
 
     """
-
     def __init__(self, kernel, pad, upsample_factor=1):
         super().__init__()
 
@@ -177,7 +165,6 @@ class Upsample(nn.Module):
         Upsampling factor.
 
     """
-
     def __init__(self, kernel=[1, 3, 3, 1], factor=2):
         super().__init__()
 
@@ -208,7 +195,6 @@ class Downsample(nn.Module):
         Downsampling factor.
 
     """
-
     def __init__(self, kernel=[1, 3, 3, 1], factor=2):
         super().__init__()
 
@@ -250,7 +236,6 @@ class EqualLinear(nn.Module):
         Apply leakyReLU activation.
 
     """
-
     def __init__(self, in_channel, out_channel, bias=True, bias_init=0, lr_mul=1, activate=False):
         super().__init__()
 
@@ -300,7 +285,6 @@ class EqualConv2d(nn.Module):
         Use bias term.
 
     """
-
     def __init__(self, in_channel, out_channel, kernel_size, stride=1, padding=0, bias=True):
         super().__init__()
 
@@ -316,16 +300,14 @@ class EqualConv2d(nn.Module):
             self.bias = None
 
     def forward(self, input):
-        out = F.conv2d(input,
-                       self.weight * self.scale,
-                       bias=self.bias,
-                       stride=self.stride,
-                       padding=self.padding)
+        out = F.conv2d(input, self.weight * self.scale, bias=self.bias, stride=self.stride, padding=self.padding)
         return out
 
     def __repr__(self):
-        return (f"{self.__class__.__name__}({self.weight.shape[1]}, {self.weight.shape[0]},"
-                f" {self.weight.shape[2]}, stride={self.stride}, padding={self.padding})")
+        return (
+            f"{self.__class__.__name__}({self.weight.shape[1]}, {self.weight.shape[0]},"
+            f" {self.weight.shape[2]}, stride={self.stride}, padding={self.padding})"
+        )
 
 
 class EqualConvTranspose2d(nn.Module):
@@ -353,15 +335,7 @@ class EqualConvTranspose2d(nn.Module):
         Use bias term.
 
     """
-
-    def __init__(self,
-                 in_channel,
-                 out_channel,
-                 kernel_size,
-                 stride=1,
-                 padding=0,
-                 output_padding=0,
-                 bias=True):
+    def __init__(self, in_channel, out_channel, kernel_size, stride=1, padding=0, output_padding=0, bias=True):
         super().__init__()
 
         self.weight = nn.Parameter(torch.randn(in_channel, out_channel, kernel_size, kernel_size))
@@ -388,12 +362,13 @@ class EqualConvTranspose2d(nn.Module):
         return out
 
     def __repr__(self):
-        return (f'{self.__class__.__name__}({self.weight.shape[0]}, {self.weight.shape[1]},'
-                f' {self.weight.shape[2]}, stride={self.stride}, padding={self.padding})')
+        return (
+            f'{self.__class__.__name__}({self.weight.shape[0]}, {self.weight.shape[1]},'
+            f' {self.weight.shape[2]}, stride={self.stride}, padding={self.padding})'
+        )
 
 
 class ConvLayer2d(nn.Sequential):
-
     def __init__(
         self,
         in_channel,
@@ -415,12 +390,10 @@ class ConvLayer2d(nn.Sequential):
             pad1 = p // 2 + 1
 
             layers.append(
-                EqualConvTranspose2d(in_channel,
-                                     out_channel,
-                                     kernel_size,
-                                     padding=0,
-                                     stride=2,
-                                     bias=bias and not activate))
+                EqualConvTranspose2d(
+                    in_channel, out_channel, kernel_size, padding=0, stride=2, bias=bias and not activate
+                )
+            )
             layers.append(Blur(blur_kernel, pad=(pad0, pad1), upsample_factor=factor))
 
         if downsample:
@@ -431,23 +404,17 @@ class ConvLayer2d(nn.Sequential):
 
             layers.append(Blur(blur_kernel, pad=(pad0, pad1)))
             layers.append(
-                EqualConv2d(in_channel,
-                            out_channel,
-                            kernel_size,
-                            padding=0,
-                            stride=2,
-                            bias=bias and not activate))
+                EqualConv2d(in_channel, out_channel, kernel_size, padding=0, stride=2, bias=bias and not activate)
+            )
 
         if (not downsample) and (not upsample):
             padding = kernel_size // 2
 
             layers.append(
-                EqualConv2d(in_channel,
-                            out_channel,
-                            kernel_size,
-                            padding=padding,
-                            stride=1,
-                            bias=bias and not activate))
+                EqualConv2d(
+                    in_channel, out_channel, kernel_size, padding=padding, stride=1, bias=bias and not activate
+                )
+            )
 
         if activate:
             layers.append(FusedLeakyReLU(out_channel, bias=bias))
@@ -472,7 +439,6 @@ class ConvResBlock2d(nn.Module):
         Apply downsampling via strided convolution in the second conv.
 
     """
-
     def __init__(self, in_channel, out_channel, upsample=False, downsample=False):
         super().__init__()
 

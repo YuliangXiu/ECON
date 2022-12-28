@@ -16,6 +16,7 @@ from .modeling_bert import BertPreTrainedModel, BertEmbeddings, BertPooler, Bert
 # import src.modeling.data.config as cfg
 # from src.modeling._gcnn import GraphConvolution, GraphResBlock
 from .modeling_utils import prune_linear_layer
+
 LayerNormClass = torch.nn.LayerNorm
 BertLayerNorm = torch.nn.LayerNorm
 
@@ -26,7 +27,8 @@ class BertSelfAttention(nn.Module):
         if config.hidden_size % config.num_attention_heads != 0:
             raise ValueError(
                 "The hidden size (%d) is not a multiple of the number of attention "
-                "heads (%d)" % (config.hidden_size, config.num_attention_heads))
+                "heads (%d)" % (config.hidden_size, config.num_attention_heads)
+            )
         self.output_attentions = config.output_attentions
 
         self.num_attention_heads = config.num_attention_heads
@@ -44,8 +46,7 @@ class BertSelfAttention(nn.Module):
         x = x.view(*new_x_shape)
         return x.permute(0, 2, 1, 3)
 
-    def forward(self, hidden_states, attention_mask, head_mask=None,
-            history_state=None):
+    def forward(self, hidden_states, attention_mask, head_mask=None, history_state=None):
         if history_state is not None:
             raise
             x_states = torch.cat([history_state, hidden_states], dim=1)
@@ -84,11 +85,12 @@ class BertSelfAttention(nn.Module):
         context_layer = torch.matmul(attention_probs, value_layer)
 
         context_layer = context_layer.permute(0, 2, 1, 3).contiguous()
-        new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
+        new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size, )
         context_layer = context_layer.view(*new_context_layer_shape)
 
-        outputs = (context_layer, attention_probs) if self.output_attentions else (context_layer,)
+        outputs = (context_layer, attention_probs) if self.output_attentions else (context_layer, )
         return outputs
+
 
 class BertAttention(nn.Module):
     def __init__(self, config):
@@ -113,12 +115,10 @@ class BertAttention(nn.Module):
         self.self.num_attention_heads = self.self.num_attention_heads - len(heads)
         self.self.all_head_size = self.self.attention_head_size * self.self.num_attention_heads
 
-    def forward(self, input_tensor, attention_mask, head_mask=None,
-            history_state=None):
-        self_outputs = self.self(input_tensor, attention_mask, head_mask,
-                history_state)
+    def forward(self, input_tensor, attention_mask, head_mask=None, history_state=None):
+        self_outputs = self.self(input_tensor, attention_mask, head_mask, history_state)
         attention_output = self.output(self_outputs[0], input_tensor)
-        outputs = (attention_output,) + self_outputs[1:]  # add attentions if we output them
+        outputs = (attention_output, ) + self_outputs[1:]    # add attentions if we output them
         return outputs
 
 
@@ -130,45 +130,42 @@ class GraphormerLayer(nn.Module):
         self.mesh_type = config.mesh_type
 
         if self.has_graph_conv == True:
-            if self.mesh_type=='hand':
+            if self.mesh_type == 'hand':
                 self.graph_conv = GraphResBlock(config.hidden_size, config.hidden_size, mesh_type=self.mesh_type)
-            elif self.mesh_type=='body':
+            elif self.mesh_type == 'body':
                 self.graph_conv = GraphResBlock(config.hidden_size, config.hidden_size, mesh_type=self.mesh_type)
-        
+
         self.intermediate = BertIntermediate(config)
         self.output = BertOutput(config)
 
-    def MHA_GCN(self, hidden_states, attention_mask, head_mask=None,
-                history_state=None):
-        attention_outputs = self.attention(hidden_states, attention_mask,
-                head_mask, history_state)
+    def MHA_GCN(self, hidden_states, attention_mask, head_mask=None, history_state=None):
+        attention_outputs = self.attention(hidden_states, attention_mask, head_mask, history_state)
         attention_output = attention_outputs[0]
 
-        if self.has_graph_conv==True:
+        if self.has_graph_conv == True:
             if self.mesh_type == 'body':
-                joints = attention_output[:,0:14,:] 
-                vertices = attention_output[:,14:-49,:]
-                img_tokens = attention_output[:,-49:,:]
+                joints = attention_output[:, 0:14, :]
+                vertices = attention_output[:, 14:-49, :]
+                img_tokens = attention_output[:, -49:, :]
 
             elif self.mesh_type == 'hand':
-                joints = attention_output[:,0:21,:]
-                vertices = attention_output[:,21:-49,:]
-                img_tokens = attention_output[:,-49:,:]
+                joints = attention_output[:, 0:21, :]
+                vertices = attention_output[:, 21:-49, :]
+                img_tokens = attention_output[:, -49:, :]
 
             vertices = self.graph_conv(vertices)
-            joints_vertices = torch.cat([joints,vertices,img_tokens],dim=1)
+            joints_vertices = torch.cat([joints, vertices, img_tokens], dim=1)
         else:
             joints_vertices = attention_output
 
         intermediate_output = self.intermediate(joints_vertices)
         layer_output = self.output(intermediate_output, joints_vertices)
         print('layer_output', layer_output.shape)
-        outputs = (layer_output,) + attention_outputs[1:]  # add attentions if we output them
+        outputs = (layer_output, ) + attention_outputs[1:]    # add attentions if we output them
         return outputs
 
-    def forward(self, hidden_states, attention_mask, head_mask=None,
-                history_state=None):
-        return self.MHA_GCN(hidden_states, attention_mask, head_mask,history_state)
+    def forward(self, hidden_states, attention_mask, head_mask=None, history_state=None):
+        return self.MHA_GCN(hidden_states, attention_mask, head_mask, history_state)
 
 
 class GraphormerEncoder(nn.Module):
@@ -178,34 +175,32 @@ class GraphormerEncoder(nn.Module):
         self.output_hidden_states = config.output_hidden_states
         self.layer = nn.ModuleList([GraphormerLayer(config) for _ in range(config.num_hidden_layers)])
 
-    def forward(self, hidden_states, attention_mask, head_mask=None,
-                encoder_history_states=None):
+    def forward(self, hidden_states, attention_mask, head_mask=None, encoder_history_states=None):
         all_hidden_states = ()
         all_attentions = ()
         for i, layer_module in enumerate(self.layer):
             if self.output_hidden_states:
-                all_hidden_states = all_hidden_states + (hidden_states,)
+                all_hidden_states = all_hidden_states + (hidden_states, )
 
             history_state = None if encoder_history_states is None else encoder_history_states[i]
-            layer_outputs = layer_module(
-                    hidden_states, attention_mask, head_mask[i],
-                    history_state)
+            layer_outputs = layer_module(hidden_states, attention_mask, head_mask[i], history_state)
             hidden_states = layer_outputs[0]
 
             if self.output_attentions:
-                all_attentions = all_attentions + (layer_outputs[1],)
+                all_attentions = all_attentions + (layer_outputs[1], )
 
         # Add last layer
         if self.output_hidden_states:
-            all_hidden_states = all_hidden_states + (hidden_states,)
+            all_hidden_states = all_hidden_states + (hidden_states, )
 
-        outputs = (hidden_states,)
+        outputs = (hidden_states, )
         if self.output_hidden_states:
-            outputs = outputs + (all_hidden_states,)
+            outputs = outputs + (all_hidden_states, )
         if self.output_attentions:
-            outputs = outputs + (all_attentions,)
+            outputs = outputs + (all_attentions, )
 
-        return outputs  # outputs, (hidden states), (attentions)
+        return outputs    # outputs, (hidden states), (attentions)
+
 
 class EncoderBlock(BertPreTrainedModel):
     def __init__(self, config):
@@ -215,7 +210,7 @@ class EncoderBlock(BertPreTrainedModel):
         self.encoder = GraphormerEncoder(config)
         # self.pooler = BertPooler(config)
         self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size)
-        self.img_dim = config.img_feature_dim 
+        self.img_dim = config.img_feature_dim
 
         try:
             self.use_img_layernorm = config.use_img_layernorm
@@ -237,12 +232,13 @@ class EncoderBlock(BertPreTrainedModel):
         for layer, heads in heads_to_prune.items():
             self.encoder.layer[layer].attention.prune_heads(heads)
 
-    def forward(self, img_feats, input_ids=None, token_type_ids=None, attention_mask=None,
-            position_ids=None, head_mask=None):
+    def forward(
+        self, img_feats, input_ids=None, token_type_ids=None, attention_mask=None, position_ids=None, head_mask=None
+    ):
 
         batch_size = len(img_feats)
         seq_length = len(img_feats[0])
-        input_ids = torch.zeros([batch_size, seq_length],dtype=torch.long).cuda()
+        input_ids = torch.zeros([batch_size, seq_length], dtype=torch.long).cuda()
 
         if position_ids is None:
             position_ids = torch.arange(seq_length, dtype=torch.long, device=input_ids.device)
@@ -251,7 +247,10 @@ class EncoderBlock(BertPreTrainedModel):
             print('position_ids', seq_length, position_ids.shape)
 
         position_embeddings = self.position_embeddings(position_ids)
-        print('position_embeddings', position_embeddings.shape, self.config.max_position_embeddings, self.config.hidden_size)
+        print(
+            'position_embeddings', position_embeddings.shape, self.config.max_position_embeddings,
+            self.config.hidden_size
+        )
 
         if attention_mask is None:
             attention_mask = torch.ones_like(input_ids)
@@ -270,7 +269,9 @@ class EncoderBlock(BertPreTrainedModel):
         else:
             raise NotImplementedError
 
-        extended_attention_mask = extended_attention_mask.to(dtype=next(self.parameters()).dtype) # fp16 compatibility
+        extended_attention_mask = extended_attention_mask.to(
+            dtype=next(self.parameters()).dtype
+        )    # fp16 compatibility
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
 
         if head_mask is not None:
@@ -279,8 +280,12 @@ class EncoderBlock(BertPreTrainedModel):
                 head_mask = head_mask.unsqueeze(0).unsqueeze(0).unsqueeze(-1).unsqueeze(-1)
                 head_mask = head_mask.expand(self.config.num_hidden_layers, -1, -1, -1, -1)
             elif head_mask.dim() == 2:
-                head_mask = head_mask.unsqueeze(1).unsqueeze(-1).unsqueeze(-1)  # We can specify head_mask for each layer
-            head_mask = head_mask.to(dtype=next(self.parameters()).dtype) # switch to fload if need + fp16 compatibility
+                head_mask = head_mask.unsqueeze(1).unsqueeze(-1).unsqueeze(
+                    -1
+                )    # We can specify head_mask for each layer
+            head_mask = head_mask.to(
+                dtype=next(self.parameters()).dtype
+            )    # switch to fload if need + fp16 compatibility
         else:
             head_mask = [None] * self.config.num_hidden_layers
 
@@ -297,19 +302,19 @@ class EncoderBlock(BertPreTrainedModel):
         embeddings = self.dropout(embeddings)
 
         print('extended_attention_mask', extended_attention_mask.shape)
-        encoder_outputs = self.encoder(embeddings,
-                extended_attention_mask, head_mask=head_mask)
+        encoder_outputs = self.encoder(embeddings, extended_attention_mask, head_mask=head_mask)
         sequence_output = encoder_outputs[0]
 
-        outputs = (sequence_output,)
+        outputs = (sequence_output, )
         if self.config.output_hidden_states:
             all_hidden_states = encoder_outputs[1]
-            outputs = outputs + (all_hidden_states,)
+            outputs = outputs + (all_hidden_states, )
         if self.config.output_attentions:
             all_attentions = encoder_outputs[-1]
-            outputs = outputs + (all_attentions,)
+            outputs = outputs + (all_attentions, )
 
         return outputs
+
 
 class Graphormer(BertPreTrainedModel):
     '''
@@ -323,16 +328,31 @@ class Graphormer(BertPreTrainedModel):
         self.residual = nn.Linear(config.img_feature_dim, self.config.output_feature_dim)
         self.apply(self.init_weights)
 
-    def forward(self, img_feats, input_ids=None, token_type_ids=None, attention_mask=None, masked_lm_labels=None,
-            next_sentence_label=None, position_ids=None, head_mask=None):
+    def forward(
+        self,
+        img_feats,
+        input_ids=None,
+        token_type_ids=None,
+        attention_mask=None,
+        masked_lm_labels=None,
+        next_sentence_label=None,
+        position_ids=None,
+        head_mask=None
+    ):
         '''
         # self.bert has three outputs
         # predictions[0]: output tokens
         # predictions[1]: all_hidden_states, if enable "self.config.output_hidden_states"
         # predictions[2]: attentions, if enable "self.config.output_attentions"
         '''
-        predictions = self.bert(img_feats=img_feats, input_ids=input_ids, position_ids=position_ids, token_type_ids=token_type_ids,
-                            attention_mask=attention_mask, head_mask=head_mask)
+        predictions = self.bert(
+            img_feats=img_feats,
+            input_ids=input_ids,
+            position_ids=position_ids,
+            token_type_ids=token_type_ids,
+            attention_mask=attention_mask,
+            head_mask=head_mask
+        )
 
         # We use "self.cls_head" to perform dimensionality reduction. We don't use it for classification.
         pred_score = self.cls_head(predictions[0])
@@ -344,5 +364,3 @@ class Graphormer(BertPreTrainedModel):
             return pred_score, predictions[1], predictions[-1]
         else:
             return pred_score
-
- 

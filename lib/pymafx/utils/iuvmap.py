@@ -9,11 +9,13 @@ def iuvmap_clean(U_uv, V_uv, Index_UV, AnnIndex=None):
     recon_Index_UV = []
     for i in range(Index_UV.size(1)):
         if i == 0:
-            recon_Index_UV_i = torch.min(F.threshold(Index_UV_max + 1, 0.5, 0),
-                                         -F.threshold(-Index_UV_max - 1, -1.5, 0))
+            recon_Index_UV_i = torch.min(
+                F.threshold(Index_UV_max + 1, 0.5, 0), -F.threshold(-Index_UV_max - 1, -1.5, 0)
+            )
         else:
-            recon_Index_UV_i = torch.min(F.threshold(Index_UV_max, i - 0.5, 0),
-                                         -F.threshold(-Index_UV_max, -i - 0.5, 0)) / float(i)
+            recon_Index_UV_i = torch.min(
+                F.threshold(Index_UV_max, i - 0.5, 0), -F.threshold(-Index_UV_max, -i - 0.5, 0)
+            ) / float(i)
         recon_Index_UV.append(recon_Index_UV_i)
     recon_Index_UV = torch.stack(recon_Index_UV, dim=1)
 
@@ -24,11 +26,13 @@ def iuvmap_clean(U_uv, V_uv, Index_UV, AnnIndex=None):
         recon_Ann_Index = []
         for i in range(AnnIndex.size(1)):
             if i == 0:
-                recon_Ann_Index_i = torch.min(F.threshold(AnnIndex_max + 1, 0.5, 0),
-                                              -F.threshold(-AnnIndex_max - 1, -1.5, 0))
+                recon_Ann_Index_i = torch.min(
+                    F.threshold(AnnIndex_max + 1, 0.5, 0), -F.threshold(-AnnIndex_max - 1, -1.5, 0)
+                )
             else:
-                recon_Ann_Index_i = torch.min(F.threshold(AnnIndex_max, i - 0.5, 0),
-                                              -F.threshold(-AnnIndex_max, -i - 0.5, 0)) / float(i)
+                recon_Ann_Index_i = torch.min(
+                    F.threshold(AnnIndex_max, i - 0.5, 0), -F.threshold(-AnnIndex_max, -i - 0.5, 0)
+                ) / float(i)
             recon_Ann_Index.append(recon_Ann_Index_i)
         recon_Ann_Index = torch.stack(recon_Ann_Index, dim=1)
 
@@ -105,8 +109,10 @@ def iuv_img2map(uvimages, uv_rois=None, new_size=None, n_part=24):
     batch_size = uvimages.size(0)
     uvimg_size = uvimages.size(-1)
 
-    Index2mask = [[0], [1, 2], [3], [4], [5], [6], [7, 9], [8, 10], [11, 13], [12, 14], [15, 17], [16, 18], [19, 21],
-                  [20, 22], [23, 24]]
+    Index2mask = [
+        [0], [1, 2], [3], [4], [5], [6], [7, 9], [8, 10], [11, 13], [12, 14], [15, 17], [16, 18], [19, 21], [20, 22],
+        [23, 24]
+    ]
 
     part_ind = torch.round(uvimages[:, 0, :, :] * n_part)
     part_u = uvimages[:, 1, :, :]
@@ -117,7 +123,7 @@ def iuv_img2map(uvimages, uv_rois=None, new_size=None, n_part=24):
     recon_Index_UV = []
     recon_Ann_Index = []
 
-    for i in range(n_part+1):
+    for i in range(n_part + 1):
         if i == 0:
             recon_Index_UV_i = torch.min(F.threshold(part_ind + 1, 0.5, 0), -F.threshold(-part_ind - 1, -1.5, 0))
         else:
@@ -217,7 +223,7 @@ def seg_img2map(segimages, uv_rois=None, new_size=None, n_part=24):
 
     recon_Index_UV = []
 
-    for i in range(n_part+1):
+    for i in range(n_part + 1):
         if i == 0:
             recon_Index_UV_i = torch.min(F.threshold(part_ind + 1, 0.5, 0), -F.threshold(-part_ind - 1, -1.5, 0))
         else:

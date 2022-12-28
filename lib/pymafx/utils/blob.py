@@ -45,9 +45,7 @@ def get_image_blob(im, target_scale, target_max_size):
         im_scale (float): image scale (target size) / (original size)
         im_info (ndarray)
     """
-    processed_im, im_scale = prep_im_for_blob(
-        im, cfg.PIXEL_MEANS, [target_scale], target_max_size
-    )
+    processed_im, im_scale = prep_im_for_blob(im, cfg.PIXEL_MEANS, [target_scale], target_max_size)
     blob = im_list_to_blob(processed_im)
     # NOTE: this height and width may be larger than actual scaled input image
     # due to the FPN.COARSEST_STRIDE related padding in im_list_to_blob. We are
@@ -76,8 +74,7 @@ def im_list_to_blob(ims):
     max_shape = get_max_shape([im.shape[:2] for im in ims])
 
     num_images = len(ims)
-    blob = np.zeros(
-        (num_images, max_shape[0], max_shape[1], 3), dtype=np.float32)
+    blob = np.zeros((num_images, max_shape[0], max_shape[1], 3), dtype=np.float32)
     for i in range(num_images):
         im = ims[i]
         blob[i, 0:im.shape[0], 0:im.shape[1], :] = im
@@ -119,8 +116,7 @@ def prep_im_for_blob(im, pixel_means, target_sizes, max_size):
     im_scales = []
     for target_size in target_sizes:
         im_scale = get_target_scale(im_size_min, im_size_max, target_size, max_size)
-        im_resized = cv2.resize(im, None, None, fx=im_scale, fy=im_scale,
-                                interpolation=cv2.INTER_LINEAR)
+        im_resized = cv2.resize(im, None, None, fx=im_scale, fy=im_scale, interpolation=cv2.INTER_LINEAR)
         ims.append(im_resized)
         im_scales.append(im_scale)
     return ims, im_scales

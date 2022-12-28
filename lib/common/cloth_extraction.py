@@ -36,11 +36,13 @@ def load_segmentation(path, shape):
                 xy = np.vstack((x, y)).T
                 coordinates.append(xy)
 
-            segmentations.append({
-                "type": val["category_name"],
-                "type_id": val["category_id"],
-                "coordinates": coordinates,
-            })
+            segmentations.append(
+                {
+                    "type": val["category_name"],
+                    "type_id": val["category_id"],
+                    "coordinates": coordinates,
+                }
+            )
 
         return segmentations
 
@@ -55,10 +57,7 @@ def smpl_to_recon_labels(recon, smpl, k=1):
     Returns:
         Returns a dictionary containing the bodypart and the corresponding indices
     """
-    smpl_vert_segmentation = json.load(
-        open(
-            os.path.join(os.path.dirname(__file__),
-                         "smpl_vert_segmentation.json")))
+    smpl_vert_segmentation = json.load(open(os.path.join(os.path.dirname(__file__), "smpl_vert_segmentation.json")))
     n = smpl.vertices.shape[0]
     y = np.array([None] * n)
     for key, val in smpl_vert_segmentation.items():
@@ -71,8 +70,7 @@ def smpl_to_recon_labels(recon, smpl, k=1):
 
     recon_labels = {}
     for key in smpl_vert_segmentation.keys():
-        recon_labels[key] = list(
-            np.argwhere(y_pred == key).flatten().astype(int))
+        recon_labels[key] = list(np.argwhere(y_pred == key).flatten().astype(int))
 
     return recon_labels
 
@@ -139,8 +137,7 @@ def extract_cloth(recon, segmentation, K, R, t, smpl=None):
         if type == 1 or type == 3 or type == 10:
             body_parts_to_remove += ["leftForeArm", "rightForeArm"]
         # No sleeves at all or lower body clothes
-        elif (type == 5 or type == 6 or type == 12 or type == 13 or type == 8
-              or type == 9):
+        elif (type == 5 or type == 6 or type == 12 or type == 13 or type == 8 or type == 9):
             body_parts_to_remove += [
                 "leftForeArm",
                 "rightForeArm",
@@ -158,9 +155,7 @@ def extract_cloth(recon, segmentation, K, R, t, smpl=None):
                 "rightArm",
             ]
 
-        verts_to_remove = list(
-            itertools.chain.from_iterable(
-                [recon_labels[part] for part in body_parts_to_remove]))
+        verts_to_remove = list(itertools.chain.from_iterable([recon_labels[part] for part in body_parts_to_remove]))
 
         label_mask = np.zeros(num_verts, dtype=bool)
         label_mask[verts_to_remove] = True

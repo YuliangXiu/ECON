@@ -13,6 +13,7 @@ from lib.common.libmesh.inside_mesh import check_mesh_contains
 
 # From Occupancy Networks, Mescheder et. al. CVPR'19
 
+
 def make_3d_grid(bb_min, bb_max, shape):
     ''' Makes a 3D grid.
 
@@ -37,7 +38,7 @@ def make_3d_grid(bb_min, bb_max, shape):
 
 class VoxelGrid:
     def __init__(self, data, loc=(0., 0., 0.), scale=1):
-        assert(data.shape[0] == data.shape[1] == data.shape[2])
+        assert (data.shape[0] == data.shape[1] == data.shape[2])
         data = np.asarray(data, dtype=np.bool)
         loc = np.asarray(loc)
         self.data = data
@@ -53,7 +54,7 @@ class VoxelGrid:
 
         # Default scale, scales the mesh to [-0.45, 0.45]^3
         if scale is None:
-            scale = (bounds[1] - bounds[0]).max()/0.9
+            scale = (bounds[1] - bounds[0]).max() / 0.9
 
         loc = np.asarray(loc)
         scale = float(scale)
@@ -61,7 +62,7 @@ class VoxelGrid:
         # Transform mesh
         mesh = mesh.copy()
         mesh.apply_translation(-loc)
-        mesh.apply_scale(1/scale)
+        mesh.apply_scale(1 / scale)
 
         # Apply method
         if method == 'ray':
@@ -75,7 +76,7 @@ class VoxelGrid:
     def down_sample(self, factor=2):
         if not (self.resolution % factor) == 0:
             raise ValueError('Resolution must be divisible by factor.')
-        new_data = block_reduce(self.data, (factor,) * 3, np.max)
+        new_data = block_reduce(self.data, (factor, ) * 3, np.max)
         return VoxelGrid(new_data, self.loc, self.scale)
 
     def to_mesh(self):
@@ -103,9 +104,9 @@ class VoxelGrid:
         f2 = f2_r | f2_l
         f3 = f3_r | f3_l
 
-        assert(f1.shape == (nx + 1, ny, nz))
-        assert(f2.shape == (nx, ny + 1, nz))
-        assert(f3.shape == (nx, ny, nz + 1))
+        assert (f1.shape == (nx + 1, ny, nz))
+        assert (f2.shape == (nx, ny + 1, nz))
+        assert (f3.shape == (nx, ny, nz + 1))
 
         # Determine if vertex present
         v = np.full(grid_shape, False)
@@ -146,52 +147,73 @@ class VoxelGrid:
         f2_r_x, f2_r_y, f2_r_z = np.where(f2_r)
         f3_r_x, f3_r_y, f3_r_z = np.where(f3_r)
 
-        faces_1_l = np.stack([
-            v_idx[f1_l_x, f1_l_y, f1_l_z],
-            v_idx[f1_l_x, f1_l_y, f1_l_z + 1],
-            v_idx[f1_l_x, f1_l_y + 1, f1_l_z + 1],
-            v_idx[f1_l_x, f1_l_y + 1, f1_l_z],
-        ], axis=1)
+        faces_1_l = np.stack(
+            [
+                v_idx[f1_l_x, f1_l_y, f1_l_z],
+                v_idx[f1_l_x, f1_l_y, f1_l_z + 1],
+                v_idx[f1_l_x, f1_l_y + 1, f1_l_z + 1],
+                v_idx[f1_l_x, f1_l_y + 1, f1_l_z],
+            ],
+            axis=1
+        )
 
-        faces_1_r = np.stack([
-            v_idx[f1_r_x, f1_r_y, f1_r_z],
-            v_idx[f1_r_x, f1_r_y + 1, f1_r_z],
-            v_idx[f1_r_x, f1_r_y + 1, f1_r_z + 1],
-            v_idx[f1_r_x, f1_r_y, f1_r_z + 1],
-        ], axis=1)
+        faces_1_r = np.stack(
+            [
+                v_idx[f1_r_x, f1_r_y, f1_r_z],
+                v_idx[f1_r_x, f1_r_y + 1, f1_r_z],
+                v_idx[f1_r_x, f1_r_y + 1, f1_r_z + 1],
+                v_idx[f1_r_x, f1_r_y, f1_r_z + 1],
+            ],
+            axis=1
+        )
 
-        faces_2_l = np.stack([
-            v_idx[f2_l_x, f2_l_y, f2_l_z],
-            v_idx[f2_l_x + 1, f2_l_y, f2_l_z],
-            v_idx[f2_l_x + 1, f2_l_y, f2_l_z + 1],
-            v_idx[f2_l_x, f2_l_y, f2_l_z + 1],
-        ], axis=1)
+        faces_2_l = np.stack(
+            [
+                v_idx[f2_l_x, f2_l_y, f2_l_z],
+                v_idx[f2_l_x + 1, f2_l_y, f2_l_z],
+                v_idx[f2_l_x + 1, f2_l_y, f2_l_z + 1],
+                v_idx[f2_l_x, f2_l_y, f2_l_z + 1],
+            ],
+            axis=1
+        )
 
-        faces_2_r = np.stack([
-            v_idx[f2_r_x, f2_r_y, f2_r_z],
-            v_idx[f2_r_x, f2_r_y, f2_r_z + 1],
-            v_idx[f2_r_x + 1, f2_r_y, f2_r_z + 1],
-            v_idx[f2_r_x + 1, f2_r_y, f2_r_z],
-        ], axis=1)
+        faces_2_r = np.stack(
+            [
+                v_idx[f2_r_x, f2_r_y, f2_r_z],
+                v_idx[f2_r_x, f2_r_y, f2_r_z + 1],
+                v_idx[f2_r_x + 1, f2_r_y, f2_r_z + 1],
+                v_idx[f2_r_x + 1, f2_r_y, f2_r_z],
+            ],
+            axis=1
+        )
 
-        faces_3_l = np.stack([
-            v_idx[f3_l_x, f3_l_y, f3_l_z],
-            v_idx[f3_l_x, f3_l_y + 1, f3_l_z],
-            v_idx[f3_l_x + 1, f3_l_y + 1, f3_l_z],
-            v_idx[f3_l_x + 1, f3_l_y, f3_l_z],
-        ], axis=1)
+        faces_3_l = np.stack(
+            [
+                v_idx[f3_l_x, f3_l_y, f3_l_z],
+                v_idx[f3_l_x, f3_l_y + 1, f3_l_z],
+                v_idx[f3_l_x + 1, f3_l_y + 1, f3_l_z],
+                v_idx[f3_l_x + 1, f3_l_y, f3_l_z],
+            ],
+            axis=1
+        )
 
-        faces_3_r = np.stack([
-            v_idx[f3_r_x, f3_r_y, f3_r_z],
-            v_idx[f3_r_x + 1, f3_r_y, f3_r_z],
-            v_idx[f3_r_x + 1, f3_r_y + 1, f3_r_z],
-            v_idx[f3_r_x, f3_r_y + 1, f3_r_z],
-        ], axis=1)
+        faces_3_r = np.stack(
+            [
+                v_idx[f3_r_x, f3_r_y, f3_r_z],
+                v_idx[f3_r_x + 1, f3_r_y, f3_r_z],
+                v_idx[f3_r_x + 1, f3_r_y + 1, f3_r_z],
+                v_idx[f3_r_x, f3_r_y + 1, f3_r_z],
+            ],
+            axis=1
+        )
 
         faces = np.concatenate([
-            faces_1_l, faces_1_r,
-            faces_2_l, faces_2_r,
-            faces_3_l, faces_3_r,
+            faces_1_l,
+            faces_1_r,
+            faces_2_l,
+            faces_2_r,
+            faces_3_l,
+            faces_3_r,
         ], axis=0)
 
         vertices = self.loc + self.scale * vertices
@@ -200,7 +222,7 @@ class VoxelGrid:
 
     @property
     def resolution(self):
-        assert(self.data.shape[0] == self.data.shape[1] == self.data.shape[2])
+        assert (self.data.shape[0] == self.data.shape[1] == self.data.shape[2])
         return self.data.shape[0]
 
     def contains(self, points):
@@ -211,12 +233,9 @@ class VoxelGrid:
         # Discretize points to [0, nx-1]^3
         points_i = ((points + 0.5) * nx).astype(np.int32)
         # i1, i2, i3 have sizes (batch_size, T)
-        i1, i2, i3 = points_i[..., 0],  points_i[..., 1],  points_i[..., 2]
+        i1, i2, i3 = points_i[..., 0], points_i[..., 1], points_i[..., 2]
         # Only use indices inside bounding box
-        mask = (
-            (i1 >= 0) & (i2 >= 0) & (i3 >= 0)
-            & (nx > i1) & (nx > i2) & (nx > i3)
-        )
+        mask = ((i1 >= 0) & (i2 >= 0) & (i3 >= 0) & (nx > i1) & (nx > i2) & (nx > i3))
         # Prevent out of bounds error
         i1 = i1[mask]
         i2 = i2[mask]
@@ -254,7 +273,7 @@ def voxelize_surface(mesh, resolution):
     vertices = (vertices + 0.5) * resolution
 
     face_loc = vertices[faces]
-    occ = np.full((resolution,) * 3, 0, dtype=np.int32)
+    occ = np.full((resolution, ) * 3, 0, dtype=np.int32)
     face_loc = face_loc.astype(np.float32)
 
     voxelize_mesh_(occ, face_loc)
@@ -264,9 +283,9 @@ def voxelize_surface(mesh, resolution):
 
 
 def voxelize_interior(mesh, resolution):
-    shape = (resolution,) * 3
-    bb_min = (0.5,) * 3
-    bb_max = (resolution - 0.5,) * 3
+    shape = (resolution, ) * 3
+    bb_min = (0.5, ) * 3
+    bb_max = (resolution - 0.5, ) * 3
     # Create points. Add noise to break symmetry
     points = make_3d_grid(bb_min, bb_max, shape=shape).numpy()
     points = points + 0.1 * (np.random.rand(*points.shape) - 0.5)
@@ -280,14 +299,8 @@ def check_voxel_occupied(occupancy_grid):
     occ = occupancy_grid
 
     occupied = (
-        occ[..., :-1, :-1, :-1]
-        & occ[..., :-1, :-1, 1:]
-        & occ[..., :-1, 1:, :-1]
-        & occ[..., :-1, 1:, 1:]
-        & occ[..., 1:, :-1, :-1]
-        & occ[..., 1:, :-1, 1:]
-        & occ[..., 1:, 1:, :-1]
-        & occ[..., 1:, 1:, 1:]
+        occ[..., :-1, :-1, :-1] & occ[..., :-1, :-1, 1:] & occ[..., :-1, 1:, :-1] & occ[..., :-1, 1:, 1:] &
+        occ[..., 1:, :-1, :-1] & occ[..., 1:, :-1, 1:] & occ[..., 1:, 1:, :-1] & occ[..., 1:, 1:, 1:]
     )
     return occupied
 
@@ -296,14 +309,8 @@ def check_voxel_unoccupied(occupancy_grid):
     occ = occupancy_grid
 
     unoccupied = ~(
-        occ[..., :-1, :-1, :-1]
-        | occ[..., :-1, :-1, 1:]
-        | occ[..., :-1, 1:, :-1]
-        | occ[..., :-1, 1:, 1:]
-        | occ[..., 1:, :-1, :-1]
-        | occ[..., 1:, :-1, 1:]
-        | occ[..., 1:, 1:, :-1]
-        | occ[..., 1:, 1:, 1:]
+        occ[..., :-1, :-1, :-1] | occ[..., :-1, :-1, 1:] | occ[..., :-1, 1:, :-1] | occ[..., :-1, 1:, 1:] |
+        occ[..., 1:, :-1, :-1] | occ[..., 1:, :-1, 1:] | occ[..., 1:, 1:, :-1] | occ[..., 1:, 1:, 1:]
     )
     return unoccupied
 

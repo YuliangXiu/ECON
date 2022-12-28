@@ -31,7 +31,6 @@ logging.getLogger("lightning").setLevel(logging.ERROR)
 
 
 class Seg3dLossless(nn.Module):
-
     def __init__(
         self,
         query_func,
@@ -53,19 +52,14 @@ class Seg3dLossless(nn.Module):
         """
         super().__init__()
         self.query_func = query_func
-        self.register_buffer(
-            "b_min",
-            torch.tensor(b_min).float().unsqueeze(1))  # [bz, 1, 3]
-        self.register_buffer(
-            "b_max",
-            torch.tensor(b_max).float().unsqueeze(1))  # [bz, 1, 3]
+        self.register_buffer("b_min", torch.tensor(b_min).float().unsqueeze(1))    # [bz, 1, 3]
+        self.register_buffer("b_max", torch.tensor(b_max).float().unsqueeze(1))    # [bz, 1, 3]
 
         # ti.init(arch=ti.cuda)
         # self.mciso_taichi = MCISO(dim=3, N=resolutions[-1]-1)
 
         if type(resolutions[0]) is int:
-            resolutions = torch.tensor([(res, res, res)
-                                        for res in resolutions])
+            resolutions = torch.tensor([(res, res, res) for res in resolutions])
         else:
             resolutions = torch.tensor(resolutions)
         self.register_buffer("resolutions", resolutions)
@@ -87,45 +81,36 @@ class Seg3dLossless(nn.Module):
             ), f"resolution {resolution} need to be odd becuase of align_corner."
 
         # init first resolution
-        init_coords = create_grid3D(0,
-                                    resolutions[-1] - 1,
-                                    steps=resolutions[0])  # [N, 3]
-        init_coords = init_coords.unsqueeze(0).repeat(self.batchsize, 1,
-                                                      1)  # [bz, N, 3]
+        init_coords = create_grid3D(0, resolutions[-1] - 1, steps=resolutions[0])    # [N, 3]
+        init_coords = init_coords.unsqueeze(0).repeat(self.batchsize, 1, 1)    # [bz, N, 3]
         self.register_buffer("init_coords", init_coords)
 
         # some useful tensors
         calculated = torch.zeros(
-            (self.resolutions[-1][2], self.resolutions[-1][1],
-             self.resolutions[-1][0]),
+            (self.resolutions[-1][2], self.resolutions[-1][1], self.resolutions[-1][0]),
             dtype=torch.bool,
         )
         self.register_buffer("calculated", calculated)
 
-        gird8_offsets = (torch.stack(
-            torch.meshgrid(
-                [
-                    torch.tensor([-1, 0, 1]),
-                    torch.tensor([-1, 0, 1]),
-                    torch.tensor([-1, 0, 1]),
-                ],
-                indexing="ij",
-            )).int().view(3, -1).t())  # [27, 3]
+        gird8_offsets = (
+            torch.stack(
+                torch.meshgrid(
+                    [
+                        torch.tensor([-1, 0, 1]),
+                        torch.tensor([-1, 0, 1]),
+                        torch.tensor([-1, 0, 1]),
+                    ],
+                    indexing="ij",
+                )
+            ).int().view(3, -1).t()
+        )    # [27, 3]
         self.register_buffer("gird8_offsets", gird8_offsets)
 
         # smooth convs
-        self.smooth_conv3x3 = SmoothConv3D(in_channels=1,
-                                           out_channels=1,
-                                           kernel_size=3)
-        self.smooth_conv5x5 = SmoothConv3D(in_channels=1,
-                                           out_channels=1,
-                                           kernel_size=5)
-        self.smooth_conv7x7 = SmoothConv3D(in_channels=1,
-                                           out_channels=1,
-                                           kernel_size=7)
-        self.smooth_conv9x9 = SmoothConv3D(in_channels=1,
-                                           out_channels=1,
-                                           kernel_size=9)
+        self.smooth_conv3x3 = SmoothConv3D(in_channels=1, out_channels=1, kernel_size=3)
+        self.smooth_conv5x5 = SmoothConv3D(in_channels=1, out_channels=1, kernel_size=5)
+        self.smooth_conv7x7 = SmoothConv3D(in_channels=1, out_channels=1, kernel_size=7)
+        self.smooth_conv9x9 = SmoothConv3D(in_channels=1, out_channels=1, kernel_size=9)
 
     @torch.no_grad()
     def batch_eval(self, coords, **kwargs):
@@ -144,10 +129,8 @@ class Seg3dLossless(nn.Module):
         # query function
         occupancys = self.query_func(**kwargs, points=coords2D)
         if type(occupancys) is list:
-            occupancys = torch.stack(occupancys)  # [bz, C, N]
-        assert (
-            len(occupancys.size()) == 3
-        ), "query_func should return a occupancy with shape of [bz, C, N]"
+            occupancys = torch.stack(occupancys)    # [bz, C, N]
+        assert (len(occupancys.size()) == 3), "query_func should return a occupancy with shape of [bz, C, N]"
         return occupancys
 
     @torch.no_grad()
@@ -175,10 +158,9 @@ class Seg3dLossless(nn.Module):
 
             # first step
             if torch.equal(resolution, self.resolutions[0]):
-                coords = self.init_coords.clone()  # torch.long
+                coords = self.init_coords.clone()    # torch.long
                 occupancys = self.batch_eval(coords, **kwargs)
-                occupancys = occupancys.view(self.batchsize, self.channels, D,
-                                             H, W)
+                occupancys = occupancys.view(self.batchsize, self.channels, D, H, W)
                 if (occupancys > 0.5).sum() == 0:
                     # return F.interpolate(
                     #     occupancys, size=(final_D, final_H, final_W),
@@ -239,23 +221,16 @@ class Seg3dLossless(nn.Module):
 
                 with torch.no_grad():
                     if torch.equal(resolution, self.resolutions[1]):
-                        is_boundary = (self.smooth_conv9x9(is_boundary.float())
-                                       > 0)[0, 0]
+                        is_boundary = (self.smooth_conv9x9(is_boundary.float()) > 0)[0, 0]
                     elif torch.equal(resolution, self.resolutions[2]):
-                        is_boundary = (self.smooth_conv7x7(is_boundary.float())
-                                       > 0)[0, 0]
+                        is_boundary = (self.smooth_conv7x7(is_boundary.float()) > 0)[0, 0]
                     else:
-                        is_boundary = (self.smooth_conv3x3(is_boundary.float())
-                                       > 0)[0, 0]
+                        is_boundary = (self.smooth_conv3x3(is_boundary.float()) > 0)[0, 0]
 
                     coords_accum = coords_accum.long()
-                    is_boundary[coords_accum[0, :, 2], coords_accum[0, :, 1],
-                                coords_accum[0, :, 0], ] = False
-                    point_coords = (is_boundary.permute(
-                        2, 1, 0).nonzero(as_tuple=False).unsqueeze(0))
-                    point_indices = (point_coords[:, :, 2] * H * W +
-                                     point_coords[:, :, 1] * W +
-                                     point_coords[:, :, 0])
+                    is_boundary[coords_accum[0, :, 2], coords_accum[0, :, 1], coords_accum[0, :, 0], ] = False
+                    point_coords = (is_boundary.permute(2, 1, 0).nonzero(as_tuple=False).unsqueeze(0))
+                    point_indices = (point_coords[:, :, 2] * H * W + point_coords[:, :, 1] * W + point_coords[:, :, 0])
 
                     R, C, D, H, W = occupancys.shape
 
@@ -269,13 +244,13 @@ class Seg3dLossless(nn.Module):
                 # put mask point predictions to the right places on the upsampled grid.
                 R, C, D, H, W = occupancys.shape
                 point_indices = point_indices.unsqueeze(1).expand(-1, C, -1)
-                occupancys = (occupancys.reshape(R, C, D * H * W).scatter_(
-                    2, point_indices, occupancys_topk).view(R, C, D, H, W))
+                occupancys = (
+                    occupancys.reshape(R, C, D * H * W).scatter_(2, point_indices, occupancys_topk).view(R, C, D, H, W)
+                )
 
                 with torch.no_grad():
                     voxels = coords / stride
-                    coords_accum = torch.cat([voxels, coords_accum],
-                                             dim=1).unique(dim=1)
+                    coords_accum = torch.cat([voxels, coords_accum], dim=1).unique(dim=1)
 
         return occupancys[0, 0]
 
@@ -300,18 +275,16 @@ class Seg3dLossless(nn.Module):
 
             # first step
             if torch.equal(resolution, self.resolutions[0]):
-                coords = self.init_coords.clone()  # torch.long
+                coords = self.init_coords.clone()    # torch.long
                 occupancys = self.batch_eval(coords, **kwargs)
-                occupancys = occupancys.view(self.batchsize, self.channels, D,
-                                             H, W)
+                occupancys = occupancys.view(self.batchsize, self.channels, D, H, W)
 
                 if self.visualize:
                     self.plot(occupancys, coords, final_D, final_H, final_W)
 
                 with torch.no_grad():
                     coords_accum = coords / stride
-                    calculated[coords[0, :, 2], coords[0, :, 1],
-                               coords[0, :, 0]] = True
+                    calculated[coords[0, :, 2], coords[0, :, 1], coords[0, :, 0]] = True
 
             # next steps
             else:
@@ -338,35 +311,27 @@ class Seg3dLossless(nn.Module):
 
                 with torch.no_grad():
                     # TODO
-                    if self.use_shadow and torch.equal(resolution,
-                                                       self.resolutions[-1]):
+                    if self.use_shadow and torch.equal(resolution, self.resolutions[-1]):
                         # larger z means smaller depth here
                         depth_res = resolution[2].item()
-                        depth_index = torch.linspace(0,
-                                                     depth_res - 1,
-                                                     steps=depth_res).type_as(
-                                                         occupancys.device)
-                        depth_index_max = (torch.max(
-                            (occupancys > self.balance_value) *
-                            (depth_index + 1),
-                            dim=-1,
-                            keepdim=True,
-                        )[0] - 1)
+                        depth_index = torch.linspace(0, depth_res - 1, steps=depth_res).type_as(occupancys.device)
+                        depth_index_max = (
+                            torch.max(
+                                (occupancys > self.balance_value) * (depth_index + 1),
+                                dim=-1,
+                                keepdim=True,
+                            )[0] - 1
+                        )
                         shadow = depth_index < depth_index_max
                         is_boundary[shadow] = False
                         is_boundary = is_boundary[0, 0]
                     else:
-                        is_boundary = (self.smooth_conv3x3(is_boundary.float())
-                                       > 0)[0, 0]
+                        is_boundary = (self.smooth_conv3x3(is_boundary.float()) > 0)[0, 0]
                         # is_boundary = is_boundary[0, 0]
 
-                    is_boundary[coords_accum[0, :, 2], coords_accum[0, :, 1],
-                                coords_accum[0, :, 0], ] = False
-                    point_coords = (is_boundary.permute(
-                        2, 1, 0).nonzero(as_tuple=False).unsqueeze(0))
-                    point_indices = (point_coords[:, :, 2] * H * W +
-                                     point_coords[:, :, 1] * W +
-                                     point_coords[:, :, 0])
+                    is_boundary[coords_accum[0, :, 2], coords_accum[0, :, 1], coords_accum[0, :, 0], ] = False
+                    point_coords = (is_boundary.permute(2, 1, 0).nonzero(as_tuple=False).unsqueeze(0))
+                    point_indices = (point_coords[:, :, 2] * H * W + point_coords[:, :, 1] * W + point_coords[:, :, 0])
 
                     R, C, D, H, W = occupancys.shape
                     # interpolated value
@@ -388,28 +353,24 @@ class Seg3dLossless(nn.Module):
                 # put mask point predictions to the right places on the upsampled grid.
                 R, C, D, H, W = occupancys.shape
                 point_indices = point_indices.unsqueeze(1).expand(-1, C, -1)
-                occupancys = (occupancys.reshape(R, C, D * H * W).scatter_(
-                    2, point_indices, occupancys_topk).view(R, C, D, H, W))
+                occupancys = (
+                    occupancys.reshape(R, C, D * H * W).scatter_(2, point_indices, occupancys_topk).view(R, C, D, H, W)
+                )
 
                 with torch.no_grad():
                     # conflicts
                     conflicts = ((occupancys_interp - self.balance_value) *
-                                 (occupancys_topk - self.balance_value) < 0)[0,
-                                                                             0]
+                                 (occupancys_topk - self.balance_value) < 0)[0, 0]
 
                     if self.visualize:
-                        self.plot(occupancys, coords, final_D, final_H,
-                                  final_W)
+                        self.plot(occupancys, coords, final_D, final_H, final_W)
 
                     voxels = coords / stride
-                    coords_accum = torch.cat([voxels, coords_accum],
-                                             dim=1).unique(dim=1)
-                    calculated[coords[0, :, 2], coords[0, :, 1],
-                               coords[0, :, 0]] = True
+                    coords_accum = torch.cat([voxels, coords_accum], dim=1).unique(dim=1)
+                    calculated[coords[0, :, 2], coords[0, :, 1], coords[0, :, 0]] = True
 
                 while conflicts.sum() > 0:
-                    if self.use_shadow and torch.equal(resolution,
-                                                       self.resolutions[-1]):
+                    if self.use_shadow and torch.equal(resolution, self.resolutions[-1]):
                         break
 
                     with torch.no_grad():
@@ -427,24 +388,14 @@ class Seg3dLossless(nn.Module):
 
                         conflicts_boundary = (
                             (conflicts_coords.int() +
-                             self.gird8_offsets.unsqueeze(1) *
-                             stride.int()).reshape(-1, 3).long().unique(dim=0))
-                        conflicts_boundary[:,
-                                           0] = conflicts_boundary[:, 0].clamp(
-                                               0,
-                                               calculated.size(2) - 1)
-                        conflicts_boundary[:,
-                                           1] = conflicts_boundary[:, 1].clamp(
-                                               0,
-                                               calculated.size(1) - 1)
-                        conflicts_boundary[:,
-                                           2] = conflicts_boundary[:, 2].clamp(
-                                               0,
-                                               calculated.size(0) - 1)
+                             self.gird8_offsets.unsqueeze(1) * stride.int()).reshape(-1, 3).long().unique(dim=0)
+                        )
+                        conflicts_boundary[:, 0] = conflicts_boundary[:, 0].clamp(0, calculated.size(2) - 1)
+                        conflicts_boundary[:, 1] = conflicts_boundary[:, 1].clamp(0, calculated.size(1) - 1)
+                        conflicts_boundary[:, 2] = conflicts_boundary[:, 2].clamp(0, calculated.size(0) - 1)
 
-                        coords = conflicts_boundary[calculated[
-                            conflicts_boundary[:, 2], conflicts_boundary[:, 1],
-                            conflicts_boundary[:, 0], ] == False]
+                        coords = conflicts_boundary[calculated[conflicts_boundary[:, 2], conflicts_boundary[:, 1],
+                                                               conflicts_boundary[:, 0], ] == False]
 
                         if self.debug:
                             self.plot(
@@ -458,9 +409,9 @@ class Seg3dLossless(nn.Module):
 
                         coords = coords.unsqueeze(0)
                         point_coords = coords / stride
-                        point_indices = (point_coords[:, :, 2] * H * W +
-                                         point_coords[:, :, 1] * W +
-                                         point_coords[:, :, 0])
+                        point_indices = (
+                            point_coords[:, :, 2] * H * W + point_coords[:, :, 1] * W + point_coords[:, :, 0]
+                        )
 
                         R, C, D, H, W = occupancys.shape
                         # interpolated value
@@ -481,44 +432,35 @@ class Seg3dLossless(nn.Module):
 
                     with torch.no_grad():
                         # conflicts
-                        conflicts = ((occupancys_interp - self.balance_value) *
-                                     (occupancys_topk - self.balance_value) <
-                                     0)[0, 0]
+                        conflicts = (
+                            (occupancys_interp - self.balance_value) * (occupancys_topk - self.balance_value) < 0
+                        )[0, 0]
 
                     # put mask point predictions to the right places on the upsampled grid.
-                    point_indices = point_indices.unsqueeze(1).expand(
-                        -1, C, -1)
-                    occupancys = (occupancys.reshape(R, C, D * H * W).scatter_(
-                        2, point_indices, occupancys_topk).view(R, C, D, H, W))
+                    point_indices = point_indices.unsqueeze(1).expand(-1, C, -1)
+                    occupancys = (
+                        occupancys.reshape(R, C, D * H * W).scatter_(2, point_indices,
+                                                                     occupancys_topk).view(R, C, D, H, W)
+                    )
 
                     with torch.no_grad():
                         voxels = coords / stride
-                        coords_accum = torch.cat([voxels, coords_accum],
-                                                 dim=1).unique(dim=1)
-                        calculated[coords[0, :, 2], coords[0, :, 1],
-                                   coords[0, :, 0]] = True
+                        coords_accum = torch.cat([voxels, coords_accum], dim=1).unique(dim=1)
+                        calculated[coords[0, :, 2], coords[0, :, 1], coords[0, :, 0]] = True
 
                 if self.visualize:
                     this_stage_coords = torch.cat(this_stage_coords, dim=1)
-                    self.plot(occupancys, this_stage_coords, final_D, final_H,
-                              final_W)
+                    self.plot(occupancys, this_stage_coords, final_D, final_H, final_W)
 
         return occupancys[0, 0]
 
-    def plot(self,
-             occupancys,
-             coords,
-             final_D,
-             final_H,
-             final_W,
-             title="",
-             **kwargs):
+    def plot(self, occupancys, coords, final_D, final_H, final_W, title="", **kwargs):
         final = F.interpolate(
             occupancys.float(),
             size=(final_D, final_H, final_W),
             mode="trilinear",
             align_corners=True,
-        )  # here true is correct!
+        )    # here true is correct!
         x = coords[0, :, 0].to("cpu")
         y = coords[0, :, 1].to("cpu")
         z = coords[0, :, 2].to("cpu")
@@ -548,20 +490,18 @@ class Seg3dLossless(nn.Module):
         sdf_all = sdf.permute(2, 1, 0)
 
         # shadow
-        grad_v = (sdf_all > 0.5) * torch.linspace(
-            resolution, 1, steps=resolution).to(sdf.device)
-        grad_c = torch.ones_like(sdf_all) * torch.linspace(
-            0, resolution - 1, steps=resolution).to(sdf.device)
+        grad_v = (sdf_all > 0.5) * torch.linspace(resolution, 1, steps=resolution).to(sdf.device)
+        grad_c = torch.ones_like(sdf_all) * torch.linspace(0, resolution - 1, steps=resolution).to(sdf.device)
         max_v, max_c = grad_v.max(dim=2)
         shadow = grad_c > max_c.view(resolution, resolution, 1)
         keep = (sdf_all > 0.5) & (~shadow)
 
-        p1 = keep.nonzero(as_tuple=False).t()  # [3, N]
-        p2 = p1.clone()  # z
+        p1 = keep.nonzero(as_tuple=False).t()    # [3, N]
+        p2 = p1.clone()    # z
         p2[2, :] = (p2[2, :] - 2).clamp(0, resolution)
-        p3 = p1.clone()  # y
+        p3 = p1.clone()    # y
         p3[1, :] = (p3[1, :] - 2).clamp(0, resolution)
-        p4 = p1.clone()  # x
+        p4 = p1.clone()    # x
         p4[0, :] = (p4[0, :] - 2).clamp(0, resolution)
 
         v1 = sdf_all[p1[0, :], p1[1, :], p1[2, :]]
@@ -569,10 +509,9 @@ class Seg3dLossless(nn.Module):
         v3 = sdf_all[p3[0, :], p3[1, :], p3[2, :]]
         v4 = sdf_all[p4[0, :], p4[1, :], p4[2, :]]
 
-        X = p1[0, :].long()  # [N,]
-        Y = p1[1, :].long()  # [N,]
-        Z = p2[2, :].float() * (0.5 - v1) / (v2 - v1) + p1[2, :].float() * (
-            v2 - 0.5) / (v2 - v1)  # [N,]
+        X = p1[0, :].long()    # [N,]
+        Y = p1[1, :].long()    # [N,]
+        Z = p2[2, :].float() * (0.5 - v1) / (v2 - v1) + p1[2, :].float() * (v2 - 0.5) / (v2 - v1)    # [N,]
         Z = Z.clamp(0, resolution)
 
         # normal
@@ -588,8 +527,7 @@ class Seg3dLossless(nn.Module):
 
     @torch.no_grad()
     def render_normal(self, resolution, X, Y, Z, norm):
-        image = torch.ones((1, 3, resolution, resolution),
-                           dtype=torch.float32).to(norm.device)
+        image = torch.ones((1, 3, resolution, resolution), dtype=torch.float32).to(norm.device)
         color = (norm + 1) / 2.0
         color = color.clamp(0, 1)
         image[0, :, Y, X] = color.t()
@@ -617,9 +555,9 @@ class Seg3dLossless(nn.Module):
     def export_mesh(self, occupancys):
 
         final = occupancys[1:, 1:, 1:].contiguous()
-        
+
         verts, faces = marching_cubes(final.unsqueeze(0), isolevel=0.5)
         verts = verts[0].cpu().float()
-        faces = faces[0].cpu().long()[:,[0,2,1]]
-        
+        faces = faces[0].cpu().long()[:, [0, 2, 1]]
+
         return verts, faces

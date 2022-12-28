@@ -51,17 +51,17 @@ def get_norm_layer(norm_type="instance"):
 
 
 def define_G(
-        input_nc,
-        output_nc,
-        ngf,
-        netG,
-        n_downsample_global=3,
-        n_blocks_global=9,
-        n_local_enhancers=1,
-        n_blocks_local=3,
-        norm="instance",
-        gpu_ids=[],
-        last_op=nn.Tanh(),
+    input_nc,
+    output_nc,
+    ngf,
+    netG,
+    n_downsample_global=3,
+    n_blocks_global=9,
+    n_local_enhancers=1,
+    n_blocks_local=3,
+    norm="instance",
+    gpu_ids=[],
+    last_op=nn.Tanh(),
 ):
     norm_layer = get_norm_layer(norm_type=norm)
     if netG == "global":
@@ -97,17 +97,9 @@ def define_G(
     return netG
 
 
-def define_D(input_nc,
-             ndf,
-             n_layers_D,
-             norm='instance',
-             use_sigmoid=False,
-             num_D=1,
-             getIntermFeat=False,
-             gpu_ids=[]):
+def define_D(input_nc, ndf, n_layers_D, norm='instance', use_sigmoid=False, num_D=1, getIntermFeat=False, gpu_ids=[]):
     norm_layer = get_norm_layer(norm_type=norm)
-    netD = MultiscaleDiscriminator(input_nc, ndf, n_layers_D, norm_layer, use_sigmoid, num_D,
-                                   getIntermFeat)
+    netD = MultiscaleDiscriminator(input_nc, ndf, n_layers_D, norm_layer, use_sigmoid, num_D, getIntermFeat)
     if len(gpu_ids) > 0:
         assert (torch.cuda.is_available())
         netD.cuda(gpu_ids[0])
@@ -129,7 +121,6 @@ def print_network(net):
 # Generator
 ##############################################################################
 class LocalEnhancer(pl.LightningModule):
-
     def __init__(
         self,
         input_nc,
@@ -155,8 +146,7 @@ class LocalEnhancer(pl.LightningModule):
             n_blocks_global,
             norm_layer,
         ).model
-        model_global = [model_global[i] for i in range(len(model_global) - 3)
-                       ]  # get rid of final convolution layers
+        model_global = [model_global[i] for i in range(len(model_global) - 3)]    # get rid of final convolution layers
         self.model = nn.Sequential(*model_global)
 
         ###### local enhancer layers #####
@@ -175,9 +165,7 @@ class LocalEnhancer(pl.LightningModule):
             # residual blocks
             model_upsample = []
             for i in range(n_blocks_local):
-                model_upsample += [
-                    ResnetBlock(ngf_global * 2, padding_type=padding_type, norm_layer=norm_layer)
-                ]
+                model_upsample += [ResnetBlock(ngf_global * 2, padding_type=padding_type, norm_layer=norm_layer)]
 
             # upsample
             model_upsample += [
@@ -224,17 +212,16 @@ class LocalEnhancer(pl.LightningModule):
 
 
 class GlobalGenerator(pl.LightningModule):
-
     def __init__(
-            self,
-            input_nc,
-            output_nc,
-            ngf=64,
-            n_downsampling=3,
-            n_blocks=9,
-            norm_layer=nn.BatchNorm2d,
-            padding_type="reflect",
-            last_op=nn.Tanh(),
+        self,
+        input_nc,
+        output_nc,
+        ngf=64,
+        n_downsampling=3,
+        n_blocks=9,
+        norm_layer=nn.BatchNorm2d,
+        padding_type="reflect",
+        last_op=nn.Tanh(),
     ):
         assert n_blocks >= 0
         super(GlobalGenerator, self).__init__()
@@ -296,42 +283,34 @@ class GlobalGenerator(pl.LightningModule):
 
 # Defines the PatchGAN discriminator with the specified arguments.
 class NLayerDiscriminator(nn.Module):
-
-    def __init__(self,
-                 input_nc,
-                 ndf=64,
-                 n_layers=3,
-                 norm_layer=nn.BatchNorm2d,
-                 use_sigmoid=False,
-                 getIntermFeat=False):
+    def __init__(self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d, use_sigmoid=False, getIntermFeat=False):
         super(NLayerDiscriminator, self).__init__()
         self.getIntermFeat = getIntermFeat
         self.n_layers = n_layers
 
         kw = 4
         padw = int(np.ceil((kw - 1.0) / 2))
-        sequence = [[
-            nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw),
-            nn.LeakyReLU(0.2, True)
-        ]]
+        sequence = [[nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw), nn.LeakyReLU(0.2, True)]]
 
         nf = ndf
         for n in range(1, n_layers):
             nf_prev = nf
             nf = min(nf * 2, 512)
-            sequence += [[
-                nn.Conv2d(nf_prev, nf, kernel_size=kw, stride=2, padding=padw),
-                norm_layer(nf),
-                nn.LeakyReLU(0.2, True)
-            ]]
+            sequence += [
+                [
+                    nn.Conv2d(nf_prev, nf, kernel_size=kw, stride=2, padding=padw),
+                    norm_layer(nf),
+                    nn.LeakyReLU(0.2, True)
+                ]
+            ]
 
         nf_prev = nf
         nf = min(nf * 2, 512)
-        sequence += [[
-            nn.Conv2d(nf_prev, nf, kernel_size=kw, stride=1, padding=padw),
-            norm_layer(nf),
-            nn.LeakyReLU(0.2, True)
-        ]]
+        sequence += [
+            [nn.Conv2d(nf_prev, nf, kernel_size=kw, stride=1, padding=padw),
+             norm_layer(nf),
+             nn.LeakyReLU(0.2, True)]
+        ]
 
         sequence += [[nn.Conv2d(nf, 1, kernel_size=kw, stride=1, padding=padw)]]
 
@@ -359,27 +338,19 @@ class NLayerDiscriminator(nn.Module):
 
 
 class MultiscaleDiscriminator(pl.LightningModule):
-
-    def __init__(self,
-                 input_nc,
-                 ndf=64,
-                 n_layers=3,
-                 norm_layer=nn.BatchNorm2d,
-                 use_sigmoid=False,
-                 num_D=3,
-                 getIntermFeat=False):
+    def __init__(
+        self, input_nc, ndf=64, n_layers=3, norm_layer=nn.BatchNorm2d, use_sigmoid=False, num_D=3, getIntermFeat=False
+    ):
         super(MultiscaleDiscriminator, self).__init__()
         self.num_D = num_D
         self.n_layers = n_layers
         self.getIntermFeat = getIntermFeat
 
         for i in range(num_D):
-            netD = NLayerDiscriminator(input_nc, ndf, n_layers, norm_layer, use_sigmoid,
-                                       getIntermFeat)
+            netD = NLayerDiscriminator(input_nc, ndf, n_layers, norm_layer, use_sigmoid, getIntermFeat)
             if getIntermFeat:
                 for j in range(n_layers + 2):
-                    setattr(self, 'scale' + str(i) + '_layer' + str(j),
-                            getattr(netD, 'model' + str(j)))
+                    setattr(self, 'scale' + str(i) + '_layer' + str(j), getattr(netD, 'model' + str(j)))
             else:
                 setattr(self, 'layer' + str(i), netD.model)
 
@@ -401,8 +372,7 @@ class MultiscaleDiscriminator(pl.LightningModule):
         for i in range(num_D):
             if self.getIntermFeat:
                 model = [
-                    getattr(self, 'scale' + str(num_D - 1 - i) + '_layer' + str(j))
-                    for j in range(self.n_layers + 2)
+                    getattr(self, 'scale' + str(num_D - 1 - i) + '_layer' + str(j)) for j in range(self.n_layers + 2)
                 ]
             else:
                 model = getattr(self, 'layer' + str(num_D - 1 - i))
@@ -414,11 +384,9 @@ class MultiscaleDiscriminator(pl.LightningModule):
 
 # Define a resnet block
 class ResnetBlock(pl.LightningModule):
-
     def __init__(self, dim, padding_type, norm_layer, activation=nn.ReLU(True), use_dropout=False):
         super(ResnetBlock, self).__init__()
-        self.conv_block = self.build_conv_block(dim, padding_type, norm_layer, activation,
-                                                use_dropout)
+        self.conv_block = self.build_conv_block(dim, padding_type, norm_layer, activation, use_dropout)
 
     def build_conv_block(self, dim, padding_type, norm_layer, activation, use_dropout):
         conv_block = []
@@ -459,7 +427,6 @@ class ResnetBlock(pl.LightningModule):
 
 
 class Encoder(pl.LightningModule):
-
     def __init__(self, input_nc, output_nc, ngf=32, n_downsampling=4, norm_layer=nn.BatchNorm2d):
         super(Encoder, self).__init__()
         self.output_nc = output_nc
@@ -510,18 +477,15 @@ class Encoder(pl.LightningModule):
         inst_list = np.unique(inst.cpu().numpy().astype(int))
         for i in inst_list:
             for b in range(input.size()[0]):
-                indices = (inst[b:b + 1] == int(i)).nonzero()  # n x 4
+                indices = (inst[b:b + 1] == int(i)).nonzero()    # n x 4
                 for j in range(self.output_nc):
-                    output_ins = outputs[indices[:, 0] + b, indices[:, 1] + j, indices[:, 2],
-                                         indices[:, 3],]
+                    output_ins = outputs[indices[:, 0] + b, indices[:, 1] + j, indices[:, 2], indices[:, 3], ]
                     mean_feat = torch.mean(output_ins).expand_as(output_ins)
-                    outputs_mean[indices[:, 0] + b, indices[:, 1] + j, indices[:, 2],
-                                 indices[:, 3],] = mean_feat
+                    outputs_mean[indices[:, 0] + b, indices[:, 1] + j, indices[:, 2], indices[:, 3], ] = mean_feat
         return outputs_mean
 
 
 class Vgg19(nn.Module):
-
     def __init__(self, requires_grad=False):
         super(Vgg19, self).__init__()
         vgg_pretrained_features = models.vgg19(weights=models.VGG19_Weights.DEFAULT).features
@@ -555,7 +519,6 @@ class Vgg19(nn.Module):
 
 
 class VGG19FeatLayer(nn.Module):
-
     def __init__(self):
         super(VGG19FeatLayer, self).__init__()
         self.vgg19 = models.vgg19(weights=models.VGG19_Weights.DEFAULT).features.eval()
@@ -593,7 +556,6 @@ class VGG19FeatLayer(nn.Module):
 
 
 class VGGLoss(pl.LightningModule):
-
     def __init__(self):
         super(VGGLoss, self).__init__()
         self.vgg = Vgg19().eval()
@@ -609,11 +571,7 @@ class VGGLoss(pl.LightningModule):
 
 
 class GANLoss(pl.LightningModule):
-
-    def __init__(self,
-                 use_lsgan=True,
-                 target_real_label=1.0,
-                 target_fake_label=0.0):
+    def __init__(self, use_lsgan=True, target_real_label=1.0, target_fake_label=0.0):
         super(GANLoss, self).__init__()
         self.real_label = target_real_label
         self.fake_label = target_fake_label
@@ -628,16 +586,14 @@ class GANLoss(pl.LightningModule):
     def get_target_tensor(self, input, target_is_real):
         target_tensor = None
         if target_is_real:
-            create_label = ((self.real_label_var is None) or
-                            (self.real_label_var.numel() != input.numel()))
+            create_label = ((self.real_label_var is None) or (self.real_label_var.numel() != input.numel()))
             if create_label:
                 real_tensor = self.tensor(input.size()).fill_(self.real_label)
                 self.real_label_var = real_tensor
                 self.real_label_var.requires_grad = False
             target_tensor = self.real_label_var
         else:
-            create_label = ((self.fake_label_var is None) or
-                            (self.fake_label_var.numel() != input.numel()))
+            create_label = ((self.fake_label_var is None) or (self.fake_label_var.numel() != input.numel()))
             if create_label:
                 fake_tensor = self.tensor(input.size()).fill_(self.fake_label)
                 self.fake_label_var = fake_tensor
@@ -659,7 +615,6 @@ class GANLoss(pl.LightningModule):
 
 
 class IDMRFLoss(pl.LightningModule):
-
     def __init__(self, featlayer=VGG19FeatLayer):
         super(IDMRFLoss, self).__init__()
         self.featlayer = featlayer()
@@ -677,8 +632,7 @@ class IDMRFLoss(pl.LightningModule):
     def patch_extraction(self, featmaps):
         patch_size = 1
         patch_stride = 1
-        patches_as_depth_vectors = featmaps.unfold(2, patch_size, patch_stride).unfold(
-            3, patch_size, patch_stride)
+        patches_as_depth_vectors = featmaps.unfold(2, patch_size, patch_stride).unfold(3, patch_size, patch_stride)
         self.patches_OIHW = patches_as_depth_vectors.permute(0, 2, 3, 1, 4, 5)
         dims = self.patches_OIHW.size()
         self.patches_OIHW = self.patches_OIHW.view(-1, dims[3], dims[4], dims[5])
@@ -732,18 +686,15 @@ class IDMRFLoss(pl.LightningModule):
         gen_vgg_feats = self.featlayer(gen)
         tar_vgg_feats = self.featlayer(tar)
         style_loss_list = [
-            self.feat_style_layers[layer] *
-            self.mrf_loss(gen_vgg_feats[layer], tar_vgg_feats[layer])
+            self.feat_style_layers[layer] * self.mrf_loss(gen_vgg_feats[layer], tar_vgg_feats[layer])
             for layer in self.feat_style_layers
         ]
         self.style_loss = functools.reduce(lambda x, y: x + y, style_loss_list) * self.lambda_style
 
         content_loss_list = [
-            self.feat_content_layers[layer] *
-            self.mrf_loss(gen_vgg_feats[layer], tar_vgg_feats[layer])
+            self.feat_content_layers[layer] * self.mrf_loss(gen_vgg_feats[layer], tar_vgg_feats[layer])
             for layer in self.feat_content_layers
         ]
-        self.content_loss = functools.reduce(lambda x, y: x + y,
-                                             content_loss_list) * self.lambda_content
+        self.content_loss = functools.reduce(lambda x, y: x + y, content_loss_list) * self.lambda_content
 
         return self.style_loss + self.content_loss

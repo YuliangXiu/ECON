@@ -23,8 +23,9 @@ class DensePoseMethods:
         self.All_vertices = ALP_UV['All_vertices'][0]
         ## Info to compute symmetries.
         self.SemanticMaskSymmetries = [0, 1, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 14]
-        self.Index_Symmetry_List = [1, 2, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 18, 17, 20, 19, 22, 21, 24,
-                                    23];
+        self.Index_Symmetry_List = [
+            1, 2, 4, 3, 6, 5, 8, 7, 10, 9, 12, 11, 14, 13, 16, 15, 18, 17, 20, 19, 22, 21, 24, 23
+        ]
         UV_symmetry_filename = os.path.join('./data/UV_data', 'UV_symmetry_transforms.mat')
         self.UV_symmetry_transformations = loadmat(UV_symmetry_filename)
 
@@ -65,17 +66,17 @@ class DensePoseMethods:
         vCrossW = np.cross(v, w)
         vCrossU = np.cross(v, u)
         if (np.dot(vCrossW, vCrossU) < 0):
-            return False;
+            return False
         #
         uCrossW = np.cross(u, w)
         uCrossV = np.cross(u, v)
         #
         if (np.dot(uCrossW, uCrossV) < 0):
-            return False;
+            return False
         #
-        denom = np.sqrt((uCrossV ** 2).sum())
-        r = np.sqrt((vCrossW ** 2).sum()) / denom
-        t = np.sqrt((uCrossW ** 2).sum()) / denom
+        denom = np.sqrt((uCrossV**2).sum())
+        r = np.sqrt((vCrossW**2).sum()) / denom
+        t = np.sqrt((uCrossW**2).sum()) / denom
         #
         return ((r <= 1) & (t <= 1) & (r + t <= 1))
 
@@ -90,9 +91,9 @@ class DensePoseMethods:
         uCrossW = np.cross(u, w)
         uCrossV = np.cross(u, v)
         #
-        denom = np.sqrt((uCrossV ** 2).sum())
-        r = np.sqrt((vCrossW ** 2).sum()) / denom
-        t = np.sqrt((uCrossW ** 2).sum()) / denom
+        denom = np.sqrt((uCrossV**2).sum())
+        r = np.sqrt((vCrossW**2).sum()) / denom
+        t = np.sqrt((uCrossW**2).sum()) / denom
         #
         return (1 - (r + t), r, t)
 
@@ -101,12 +102,15 @@ class DensePoseMethods:
         FaceIndicesNow = np.where(self.FaceIndices == I_point)
         FacesNow = self.FacesDensePose[FaceIndicesNow]
         #
-        P_0 = np.vstack((self.U_norm[FacesNow][:, 0], self.V_norm[FacesNow][:, 0],
-                         np.zeros(self.U_norm[FacesNow][:, 0].shape))).transpose()
-        P_1 = np.vstack((self.U_norm[FacesNow][:, 1], self.V_norm[FacesNow][:, 1],
-                         np.zeros(self.U_norm[FacesNow][:, 1].shape))).transpose()
-        P_2 = np.vstack((self.U_norm[FacesNow][:, 2], self.V_norm[FacesNow][:, 2],
-                         np.zeros(self.U_norm[FacesNow][:, 2].shape))).transpose()
+        P_0 = np.vstack(
+            (self.U_norm[FacesNow][:, 0], self.V_norm[FacesNow][:, 0], np.zeros(self.U_norm[FacesNow][:, 0].shape))
+        ).transpose()
+        P_1 = np.vstack(
+            (self.U_norm[FacesNow][:, 1], self.V_norm[FacesNow][:, 1], np.zeros(self.U_norm[FacesNow][:, 1].shape))
+        ).transpose()
+        P_2 = np.vstack(
+            (self.U_norm[FacesNow][:, 2], self.V_norm[FacesNow][:, 2], np.zeros(self.U_norm[FacesNow][:, 2].shape))
+        ).transpose()
         #
 
         for i, [P0, P1, P2] in enumerate(zip(P_0, P_1, P_2)):

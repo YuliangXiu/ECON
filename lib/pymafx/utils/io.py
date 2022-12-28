@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ##############################################################################
-
 """IO utilities."""
 
 from __future__ import absolute_import
@@ -28,7 +27,7 @@ import re
 import sys
 try:
     from urllib.request import urlopen
-except ImportError:  #python2
+except ImportError:    #python2
     from urllib2 import urlopen
 
 logger = logging.getLogger(__name__)
@@ -59,8 +58,8 @@ def cache_url(url_or_file, cache_dir):
     #      'bucket: {}').format(_DETECTRON_S3_BASE_URL)
     #
     # cache_file_path = url.replace(_DETECTRON_S3_BASE_URL, cache_dir)
-    Len_filename  = len(url.split('/')[-1])
-    BASE_URL  =  url[0:-Len_filename-1]
+    Len_filename = len(url.split('/')[-1])
+    BASE_URL = url[0:-Len_filename - 1]
     #
     cache_file_path = url.replace(BASE_URL, cache_dir)
     if os.path.exists(cache_file_path):
@@ -102,18 +101,13 @@ def _progress_bar(count, total):
     percents = round(100.0 * count / float(total), 1)
     bar = '=' * filled_len + '-' * (bar_len - filled_len)
 
-    sys.stdout.write(
-        '  [{}] {}% of {:.1f}MB file  \r'.
-        format(bar, percents, total / 1024 / 1024)
-    )
+    sys.stdout.write('  [{}] {}% of {:.1f}MB file  \r'.format(bar, percents, total / 1024 / 1024))
     sys.stdout.flush()
     if count >= total:
         sys.stdout.write('\n')
 
 
-def download_url(
-    url, dst_file_path, chunk_size=8192, progress_hook=_progress_bar
-):
+def download_url(url, dst_file_path, chunk_size=8192, progress_hook=_progress_bar):
     """Download url and write it to dst_file_path.
     Credit:
     https://stackoverflow.com/questions/2028517/python-urllib2-progress-hook

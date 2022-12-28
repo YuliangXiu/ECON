@@ -43,23 +43,23 @@ SPIN_JOINT_NAMES = [
     # 24 Ground Truth joints (superset of joints from different datasets)
     'Right Ankle',
     'Right Knee',
-    'Right Hip',  # 2
+    'Right Hip',    # 2
     'Left Hip',
-    'Left Knee',  # 4
+    'Left Knee',    # 4
     'Left Ankle',
-    'Right Wrist',  # 6
+    'Right Wrist',    # 6
     'Right Elbow',
-    'Right Shoulder',  # 8
+    'Right Shoulder',    # 8
     'Left Shoulder',
-    'Left Elbow',  # 10
+    'Left Elbow',    # 10
     'Left Wrist',
-    'Neck (LSP)',  # 12
+    'Neck (LSP)',    # 12
     'Top of Head (LSP)',
-    'Pelvis (MPII)',  # 14
+    'Pelvis (MPII)',    # 14
     'Thorax (MPII)',
-    'Spine (H36M)',  # 16
+    'Spine (H36M)',    # 16
     'Jaw (H36M)',
-    'Head (H36M)',  # 18
+    'Head (H36M)',    # 18
     'Nose',
     'Left Eye',
     'Right Eye',
@@ -69,9 +69,9 @@ SPIN_JOINT_NAMES = [
 JOINT_NAMES = OP_JOINT_NAMES + SPIN_JOINT_NAMES
 
 COCO_KEYPOINTS = [
-    'nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear', 'left_shoulder', 'right_shoulder',
-    'left_elbow', 'right_elbow', 'left_wrist', 'right_wrist', 'left_hip', 'right_hip', 'left_knee',
-    'right_knee', 'left_ankle', 'right_ankle'
+    'nose', 'left_eye', 'right_eye', 'left_ear', 'right_ear', 'left_shoulder', 'right_shoulder', 'left_elbow',
+    'right_elbow', 'left_wrist', 'right_wrist', 'left_hip', 'right_hip', 'left_knee', 'right_knee', 'left_ankle',
+    'right_ankle'
 ]
 
 # Dict containing the joints in numerical order
@@ -142,18 +142,14 @@ J24_TO_J19 = J24_TO_J17[:14] + [19, 20, 21, 22, 23]
 J24_TO_JCOCO = [19, 20, 21, 22, 23, 9, 8, 10, 7, 11, 6, 3, 2, 4, 1, 5, 0]
 
 # Permutation of SMPL pose parameters when flipping the shape
-SMPL_JOINTS_FLIP_PERM = [
-    0, 2, 1, 3, 5, 4, 6, 8, 7, 9, 11, 10, 12, 14, 13, 15, 17, 16, 19, 18, 21, 20, 23, 22
-]
+SMPL_JOINTS_FLIP_PERM = [0, 2, 1, 3, 5, 4, 6, 8, 7, 9, 11, 10, 12, 14, 13, 15, 17, 16, 19, 18, 21, 20, 23, 22]
 SMPL_POSE_FLIP_PERM = []
 for i in SMPL_JOINTS_FLIP_PERM:
     SMPL_POSE_FLIP_PERM.append(3 * i)
     SMPL_POSE_FLIP_PERM.append(3 * i + 1)
     SMPL_POSE_FLIP_PERM.append(3 * i + 2)
 # Permutation indices for the 24 ground truth joints
-J24_FLIP_PERM = [
-    5, 4, 3, 2, 1, 0, 11, 10, 9, 8, 7, 6, 12, 13, 14, 15, 16, 17, 18, 19, 21, 20, 23, 22
-]
+J24_FLIP_PERM = [5, 4, 3, 2, 1, 0, 11, 10, 9, 8, 7, 6, 12, 13, 14, 15, 16, 17, 18, 19, 21, 20, 23, 22]
 # Permutation indices for the full set of 49 joints
 J49_FLIP_PERM = [0, 1, 5, 6, 7, 2, 3, 4, 8, 12, 13, 14, 9, 10, 11, 16, 15, 18, 17, 22, 23, 24, 19, 20, 21]\
               + [25+i for i in J24_FLIP_PERM]
@@ -278,8 +274,8 @@ FACIAL_LANDMARKS = [
     'left_mouth_3',
     'left_mouth_2',
     'left_mouth_1',
-    'left_mouth_5',  # 59 in OpenPose output
-    'left_mouth_4',  # 58 in OpenPose output
+    'left_mouth_5',    # 59 in OpenPose output
+    'left_mouth_4',    # 58 in OpenPose output
     'mouth_bottom',
     'right_mouth_4',
     'right_mouth_5',
@@ -311,13 +307,11 @@ FACIAL_LANDMARKS = [
 ]
 
 # LRHAND_FLIP_PERM = [i for i in range(16, 32)] + [i for i in range(16)]
-LRHAND_FLIP_PERM = [i for i in range(len(HAND_NAMES),
-                                     len(HAND_NAMES) * 2)] + [i for i in range(len(HAND_NAMES))]
+LRHAND_FLIP_PERM = [i for i in range(len(HAND_NAMES), len(HAND_NAMES) * 2)] + [i for i in range(len(HAND_NAMES))]
 
 SINGLE_HAND_FLIP_PERM = [i for i in range(len(HAND_NAMES))]
 
-FEEF_FLIP_PERM = [i for i in range(len(FOOT_NAMES),
-                                   len(FOOT_NAMES) * 2)] + [i for i in range(len(FOOT_NAMES))]
+FEEF_FLIP_PERM = [i for i in range(len(FOOT_NAMES), len(FOOT_NAMES) * 2)] + [i for i in range(len(FOOT_NAMES))]
 
 # matchedParts = (
 #     [17, 26], [18, 25], [19, 24], [20, 23], [21, 22],
@@ -342,10 +336,7 @@ FEEF_FLIP_PERM = [i for i in range(len(FOOT_NAMES),
 # )
 
 FACE_FLIP_PERM = [
-    9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 10, 11, 12, 13, 18, 17, 16, 15, 14, 28, 27, 26, 25, 30, 29, 22,
-    21, 20, 19, 24, 23, 37, 36, 35, 34, 33, 32, 31, 42, 41, 40, 39, 38, 47, 46, 45, 44, 43, 50, 49,
-    48
+    9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 10, 11, 12, 13, 18, 17, 16, 15, 14, 28, 27, 26, 25, 30, 29, 22, 21, 20, 19, 24, 23,
+    37, 36, 35, 34, 33, 32, 31, 42, 41, 40, 39, 38, 47, 46, 45, 44, 43, 50, 49, 48
 ]
-FACE_FLIP_PERM = FACE_FLIP_PERM + [
-    67, 66, 65, 64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51
-]
+FACE_FLIP_PERM = FACE_FLIP_PERM + [67, 66, 65, 64, 63, 62, 61, 60, 59, 58, 57, 56, 55, 54, 53, 52, 51]

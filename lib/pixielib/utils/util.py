@@ -46,8 +46,7 @@ def face_vertices(vertices, faces):
     bs, nv = vertices.shape[:2]
     bs, nf = faces.shape[:2]
     device = vertices.device
-    faces = faces + (torch.arange(bs, dtype=torch.int32).to(device) *
-                     nv)[:, None, None]
+    faces = faces + (torch.arange(bs, dtype=torch.int32).to(device) * nv)[:, None, None]
     vertices = vertices.reshape((bs * nv, 3))
     # pytorch only supports long and byte tensors for indexing
     return vertices[faces.long()]
@@ -70,10 +69,7 @@ def vertex_normals(vertices, faces):
     device = vertices.device
     normals = torch.zeros(bs * nv, 3).to(device)
 
-    faces = (
-        faces +
-        (torch.arange(bs, dtype=torch.int32).to(device) * nv)[:, None, None]
-    )  # expanded faces
+    faces = (faces + (torch.arange(bs, dtype=torch.int32).to(device) * nv)[:, None, None])    # expanded faces
     vertices_faces = vertices.reshape((bs * nv, 3))[faces.long()]
 
     faces = faces.reshape(-1, 3)
@@ -145,12 +141,10 @@ def flip_pose(pose_vector, pose_format="rot-mat"):
 # -------------------------------------- image processing
 # ref: https://torchgeometry.readthedocs.io/en/latest/_modules/kornia/filters
 def gaussian(window_size, sigma):
-
     def gauss_fcn(x):
         return -((x - window_size // 2)**2) / float(2 * sigma**2)
 
-    gauss = torch.stack(
-        [torch.exp(torch.tensor(gauss_fcn(x))) for x in range(window_size)])
+    gauss = torch.stack([torch.exp(torch.tensor(gauss_fcn(x))) for x in range(window_size)])
     return gauss / gauss.sum()
 
 
@@ -175,8 +169,7 @@ def get_gaussian_kernel(kernel_size: int, sigma: float):
         >>> kornia.image.get_gaussian_kernel(5, 1.5)
         tensor([0.1201, 0.2339, 0.2921, 0.2339, 0.1201])
     """
-    if not isinstance(kernel_size,
-                      int) or kernel_size % 2 == 0 or kernel_size <= 0:
+    if not isinstance(kernel_size, int) or kernel_size % 2 == 0 or kernel_size <= 0:
         raise TypeError("kernel_size must be an odd positive integer. "
                         "Got {}".format(kernel_size))
     window_1d = gaussian(kernel_size, sigma)
@@ -211,18 +204,14 @@ def get_gaussian_kernel2d(kernel_size, sigma):
                 [0.0370, 0.0720, 0.0899, 0.0720, 0.0370]])
     """
     if not isinstance(kernel_size, tuple) or len(kernel_size) != 2:
-        raise TypeError(
-            "kernel_size must be a tuple of length two. Got {}".format(
-                kernel_size))
+        raise TypeError("kernel_size must be a tuple of length two. Got {}".format(kernel_size))
     if not isinstance(sigma, tuple) or len(sigma) != 2:
-        raise TypeError(
-            "sigma must be a tuple of length two. Got {}".format(sigma))
+        raise TypeError("sigma must be a tuple of length two. Got {}".format(sigma))
     ksize_x, ksize_y = kernel_size
     sigma_x, sigma_y = sigma
     kernel_x = get_gaussian_kernel(ksize_x, sigma_x)
     kernel_y = get_gaussian_kernel(ksize_y, sigma_y)
-    kernel_2d = torch.matmul(kernel_x.unsqueeze(-1),
-                             kernel_y.unsqueeze(-1).t())
+    kernel_2d = torch.matmul(kernel_x.unsqueeze(-1), kernel_y.unsqueeze(-1).t())
     return kernel_2d
 
 
@@ -283,10 +272,8 @@ def get_laplacian_kernel2d(kernel_size: int):
                 [  1.,   1.,   1.,   1.,   1.]])
 
     """
-    if not isinstance(kernel_size,
-                      int) or kernel_size % 2 == 0 or kernel_size <= 0:
-        raise TypeError("ksize must be an odd positive integer. Got {}".format(
-            kernel_size))
+    if not isinstance(kernel_size, int) or kernel_size % 2 == 0 or kernel_size <= 0:
+        raise TypeError("ksize must be an odd positive integer. Got {}".format(kernel_size))
 
     kernel = torch.ones((kernel_size, kernel_size))
     mid = kernel_size // 2
@@ -309,7 +296,6 @@ def laplacian(x):
 
 
 def copy_state_dict(cur_state_dict, pre_state_dict, prefix="", load_name=None):
-
     def _get_params(key):
         key = prefix + key
         if key in pre_state_dict:
@@ -353,7 +339,7 @@ def remove_module(state_dict):
     # create new OrderedDict that does not contain `module.`
     new_state_dict = OrderedDict()
     for k, v in state_dict.items():
-        name = k[7:]  # remove `module.`
+        name = k[7:]    # remove `module.`
         new_state_dict[name] = v
     return new_state_dict
 
@@ -433,24 +419,24 @@ def write_obj(
         # write vertices
         if colors is None:
             for i in range(vertices.shape[0]):
-                f.write("v {} {} {}\n".format(vertices[i, 0], vertices[i, 1],
-                                              vertices[i, 2]))
+                f.write("v {} {} {}\n".format(vertices[i, 0], vertices[i, 1], vertices[i, 2]))
         else:
             for i in range(vertices.shape[0]):
-                f.write("v {} {} {} {} {} {}\n".format(
-                    vertices[i, 0],
-                    vertices[i, 1],
-                    vertices[i, 2],
-                    colors[i, 0],
-                    colors[i, 1],
-                    colors[i, 2],
-                ))
+                f.write(
+                    "v {} {} {} {} {} {}\n".format(
+                        vertices[i, 0],
+                        vertices[i, 1],
+                        vertices[i, 2],
+                        colors[i, 0],
+                        colors[i, 1],
+                        colors[i, 2],
+                    )
+                )
 
         # write uv coords
         if texture is None:
             for i in range(faces.shape[0]):
-                f.write("f {} {} {}\n".format(faces[i, 0], faces[i, 1],
-                                              faces[i, 2]))
+                f.write("f {} {} {}\n".format(faces[i, 0], faces[i, 1], faces[i, 2]))
         else:
             for i in range(uvcoords.shape[0]):
                 f.write("vt {} {}\n".format(uvcoords[i, 0], uvcoords[i, 1]))
@@ -458,37 +444,35 @@ def write_obj(
             # write f: ver ind/ uv ind
             uvfaces = uvfaces + 1
             for i in range(faces.shape[0]):
-                f.write("f {}/{} {}/{} {}/{}\n".format(
-                    faces[i, 0],
-                    uvfaces[i, 0],
-                    faces[i, 1],
-                    uvfaces[i, 1],
-                    faces[i, 2],
-                    uvfaces[i, 2],
-                ))
+                f.write(
+                    "f {}/{} {}/{} {}/{}\n".format(
+                        faces[i, 0],
+                        uvfaces[i, 0],
+                        faces[i, 1],
+                        uvfaces[i, 1],
+                        faces[i, 2],
+                        uvfaces[i, 2],
+                    )
+                )
             # write mtl
             with open(mtl_name, "w") as f:
                 f.write("newmtl %s\n" % material_name)
-                s = "map_Kd {}\n".format(
-                    os.path.basename(texture_name))  # map to image
+                s = "map_Kd {}\n".format(os.path.basename(texture_name))    # map to image
                 f.write(s)
 
                 if normal_map is not None:
                     if torch.is_tensor(normal_map):
-                        normal_map = normal_map.detach().cpu().numpy().squeeze(
-                        )
+                        normal_map = normal_map.detach().cpu().numpy().squeeze()
 
                     normal_map = np.transpose(normal_map, (1, 2, 0))
                     name, _ = os.path.splitext(obj_name)
                     normal_name = f"{name}_normals.png"
                     f.write(f"disp {normal_name}")
 
-                    out_normal_map = normal_map / (np.linalg.norm(
-                        normal_map, axis=-1, keepdims=True) + 1e-9)
+                    out_normal_map = normal_map / (np.linalg.norm(normal_map, axis=-1, keepdims=True) + 1e-9)
                     out_normal_map = (out_normal_map + 1) * 0.5
 
-                    cv2.imwrite(normal_name, (out_normal_map * 255).astype(
-                        np.uint8)[:, :, ::-1])
+                    cv2.imwrite(normal_name, (out_normal_map * 255).astype(np.uint8)[:, :, ::-1])
 
             cv2.imwrite(texture_name, texture)
 
@@ -523,20 +507,18 @@ def load_obj(obj_filename):
 
     for line in lines:
         tokens = line.strip().split()
-        if line.startswith("v "):  # Line is a vertex.
+        if line.startswith("v "):    # Line is a vertex.
             vert = [float(x) for x in tokens[1:4]]
             if len(vert) != 3:
                 msg = "Vertex %s does not have 3 values. Line: %s"
                 raise ValueError(msg % (str(vert), str(line)))
             verts.append(vert)
-        elif line.startswith("vt "):  # Line is a texture.
+        elif line.startswith("vt "):    # Line is a texture.
             tx = [float(x) for x in tokens[1:3]]
             if len(tx) != 2:
-                raise ValueError(
-                    "Texture %s does not have 2 values. Line: %s" %
-                    (str(tx), str(line)))
+                raise ValueError("Texture %s does not have 2 values. Line: %s" % (str(tx), str(line)))
             uvcoords.append(tx)
-        elif line.startswith("f "):  # Line is a face.
+        elif line.startswith("f "):    # Line is a face.
             # Update face properties info.
             face = tokens[1:]
             face_list = [f.split("/") for f in face]
@@ -558,12 +540,7 @@ def load_obj(obj_filename):
 
 
 # ---------------------------------- visualization
-def draw_rectangle(img,
-                   bbox,
-                   bbox_color=(255, 255, 255),
-                   thickness=3,
-                   is_opaque=False,
-                   alpha=0.5):
+def draw_rectangle(img, bbox, bbox_color=(255, 255, 255), thickness=3, is_opaque=False, alpha=0.5):
     """Draws the rectangle around the object
     borrowed from: https://bbox-visualizer.readthedocs.io/en/latest/_modules/bbox_visualizer/bbox_visualizer.html
     Parameters
@@ -589,13 +566,11 @@ def draw_rectangle(img,
 
     output = img.copy()
     if not is_opaque:
-        cv2.rectangle(output, (bbox[0], bbox[1]), (bbox[2], bbox[3]),
-                      bbox_color, thickness)
+        cv2.rectangle(output, (bbox[0], bbox[1]), (bbox[2], bbox[3]), bbox_color, thickness)
     else:
         overlay = img.copy()
 
-        cv2.rectangle(overlay, (bbox[0], bbox[1]), (bbox[2], bbox[3]),
-                      bbox_color, -1)
+        cv2.rectangle(overlay, (bbox[0], bbox[1]), (bbox[2], bbox[3]), bbox_color, -1)
         # cv2.addWeighted(overlay, alpha, output, 1 - alpha, 0, output)
 
     return output
@@ -607,9 +582,7 @@ def plot_bbox(image, bbox):
         image: the input image
         bbox: [left, top, right, bottom]
     """
-    image = cv2.rectangle(image.copy(), (bbox[1], bbox[0]), (bbox[3], bbox[2]),
-                          [0, 255, 0],
-                          thickness=3)
+    image = cv2.rectangle(image.copy(), (bbox[1], bbox[0]), (bbox[3], bbox[2]), [0, 255, 0], thickness=3)
     # image = draw_rectangle(image, bbox, bbox_color=[0,255,0])
     return image
 
@@ -644,8 +617,7 @@ def plot_kpts(image, kpts, color="r"):
         if i in end_list:
             continue
         ed = kpts[i + 1, :2]
-        image = cv2.line(image, (st[0], st[1]), (ed[0], ed[1]),
-                         (255, 255, 255), 1)
+        image = cv2.line(image, (st[0], st[1]), (ed[0], ed[1]), (255, 255, 255), 1)
 
     return image
 
@@ -674,11 +646,7 @@ def plot_verts(image, kpts, color="r"):
     return image
 
 
-def tensor_vis_landmarks(images,
-                         landmarks,
-                         gt_landmarks=None,
-                         color="g",
-                         isScale=True):
+def tensor_vis_landmarks(images, landmarks, gt_landmarks=None, color="g", isScale=True):
     # visualize landmarks
     vis_landmarks = []
     images = images.cpu().numpy()
@@ -690,8 +658,7 @@ def tensor_vis_landmarks(images,
         image = image.transpose(1, 2, 0)[:, :, [2, 1, 0]].copy()
         image = image * 255
         if isScale:
-            predicted_landmark = (predicted_landmarks[i] * image.shape[0] / 2 +
-                                  image.shape[0] / 2)
+            predicted_landmark = (predicted_landmarks[i] * image.shape[0] / 2 + image.shape[0] / 2)
         else:
             predicted_landmark = predicted_landmarks[i]
         if predicted_landmark.shape[0] == 68:
@@ -699,8 +666,7 @@ def tensor_vis_landmarks(images,
             if gt_landmarks is not None:
                 image_landmarks = plot_verts(
                     image_landmarks,
-                    gt_landmarks_np[i] * image.shape[0] / 2 +
-                    image.shape[0] / 2,
+                    gt_landmarks_np[i] * image.shape[0] / 2 + image.shape[0] / 2,
                     "r",
                 )
         else:
@@ -708,14 +674,13 @@ def tensor_vis_landmarks(images,
             if gt_landmarks is not None:
                 image_landmarks = plot_verts(
                     image_landmarks,
-                    gt_landmarks_np[i] * image.shape[0] / 2 +
-                    image.shape[0] / 2,
+                    gt_landmarks_np[i] * image.shape[0] / 2 + image.shape[0] / 2,
                     "r",
                 )
         vis_landmarks.append(image_landmarks)
 
     vis_landmarks = np.stack(vis_landmarks)
-    vis_landmarks = (torch.from_numpy(
-        vis_landmarks[:, :, :, [2, 1, 0]].transpose(0, 3, 1, 2)) / 255.0
-                     )  # , dtype=torch.float32)
+    vis_landmarks = (
+        torch.from_numpy(vis_landmarks[:, :, :, [2, 1, 0]].transpose(0, 3, 1, 2)) / 255.0
+    )    # , dtype=torch.float32)
     return vis_landmarks

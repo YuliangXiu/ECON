@@ -23,15 +23,16 @@ BN_MOMENTUM = 0.1
 
 
 class Regressor(nn.Module):
-
-    def __init__(self,
-                 feat_dim,
-                 smpl_mean_params,
-                 use_cam_feats=False,
-                 feat_dim_hand=0,
-                 feat_dim_face=0,
-                 bhf_names=['body'],
-                 smpl_models={}):
+    def __init__(
+        self,
+        feat_dim,
+        smpl_mean_params,
+        use_cam_feats=False,
+        feat_dim_hand=0,
+        feat_dim_face=0,
+        bhf_names=['body'],
+        smpl_models={}
+    ):
         super().__init__()
 
         npose = 24 * 6
@@ -96,8 +97,7 @@ class Regressor(nn.Module):
                     rh_cam_dim = 3
                     rh_orient_dim = 6
                     rh_shape_dim = 10
-                    self.fc3_hand = nn.Linear(1024 + rh_orient_dim + rh_shape_dim + rh_cam_dim,
-                                              1024)
+                    self.fc3_hand = nn.Linear(1024 + rh_orient_dim + rh_shape_dim + rh_cam_dim, 1024)
                     self.drop3_hand = nn.Dropout()
 
                     self.decshape_rhand = nn.Linear(1024, 10)
@@ -122,8 +122,7 @@ class Regressor(nn.Module):
                     rh_cam_dim = 3
                     rh_orient_dim = 6
                     rh_shape_dim = 10
-                    self.fc3_face = nn.Linear(1024 + rh_orient_dim + rh_shape_dim + rh_cam_dim,
-                                              1024)
+                    self.fc3_face = nn.Linear(1024 + rh_orient_dim + rh_shape_dim + rh_cam_dim, 1024)
                     self.drop3_face = nn.Dropout()
 
                     self.decshape_face = nn.Linear(1024, 10)
@@ -166,11 +165,11 @@ class Regressor(nn.Module):
 
         if not self.smpl_mode:
             lhand_mean_rot6d = rotmat_to_rot6d(
-                batch_rodrigues(self.smpl.model.model_neutral.left_hand_mean.view(-1, 3)).view(
-                    [-1, 3, 3]))
+                batch_rodrigues(self.smpl.model.model_neutral.left_hand_mean.view(-1, 3)).view([-1, 3, 3])
+            )
             rhand_mean_rot6d = rotmat_to_rot6d(
-                batch_rodrigues(self.smpl.model.model_neutral.right_hand_mean.view(-1, 3)).view(
-                    [-1, 3, 3]))
+                batch_rodrigues(self.smpl.model.model_neutral.right_hand_mean.view(-1, 3)).view([-1, 3, 3])
+            )
             init_lhand = lhand_mean_rot6d.reshape(-1).unsqueeze(0)
             init_rhand = rhand_mean_rot6d.reshape(-1).unsqueeze(0)
             # init_hand = torch.cat([init_lhand, init_rhand]).unsqueeze(0)
@@ -185,14 +184,7 @@ class Regressor(nn.Module):
             self.register_buffer('init_face', init_face)
             self.register_buffer('init_exp', init_exp)
 
-    def forward(self,
-                x=None,
-                n_iter=1,
-                J_regressor=None,
-                rw_cam={},
-                init_mode=False,
-                global_iter=-1,
-                **kwargs):
+    def forward(self, x=None, n_iter=1, J_regressor=None, rw_cam={}, init_mode=False, global_iter=-1, **kwargs):
         if x is not None:
             batch_size = x.shape[0]
         else:
@@ -215,8 +207,9 @@ class Regressor(nn.Module):
 
         if self.full_body_mode or self.body_hand_mode:
             if cfg.MODEL.PyMAF.OPT_WRIST:
-                pred_rotmat_body = rot6d_to_rotmat(pred_pose.reshape(
-                    batch_size, -1, 6))  # .view(batch_size, 24, 3, 3)
+                pred_rotmat_body = rot6d_to_rotmat(
+                    pred_pose.reshape(batch_size, -1, 6)
+                )    # .view(batch_size, 24, 3, 3)
             if cfg.MODEL.PyMAF.PRED_VIS_H:
                 pred_vis_hands = None
 
@@ -291,7 +284,8 @@ class Regressor(nn.Module):
                             vfov = rw_cam['vfov'][:, None]
                             crop_ratio = rw_cam['crop_ratio'][:, None]
                             crop_center = rw_cam['bbox_center'] / torch.cat(
-                                [rw_cam['img_w'][:, None], rw_cam['img_h'][:, None]], 1)
+                                [rw_cam['img_w'][:, None], rw_cam['img_h'][:, None]], 1
+                            )
                         xc = torch.cat([xc, vfov, crop_ratio, crop_center], 1)
 
                     xc = self.fc1(xc)
@@ -315,8 +309,7 @@ class Regressor(nn.Module):
                         xc_lhand = torch.cat([xc_lhand, pred_lhand], 1)
                         xc_rhand = torch.cat([xc_rhand, pred_rhand], 1)
                     elif self.full_body_mode:
-                        xc_lhand, xc_rhand, xc_face = kwargs['xc_lhand'], kwargs[
-                            'xc_rhand'], kwargs['xc_face']
+                        xc_lhand, xc_rhand, xc_face = kwargs['xc_lhand'], kwargs['xc_rhand'], kwargs['xc_face']
                         xc_lhand = torch.cat([xc_lhand, pred_lhand], 1)
                         xc_rhand = torch.cat([xc_rhand, pred_rhand], 1)
                         xc_face = torch.cat([xc_face, pred_face, pred_exp], 1)
@@ -327,8 +320,7 @@ class Regressor(nn.Module):
                         pred_lhand = self.decrhand(xc_lhand) + pred_lhand
 
                         if cfg.MODEL.PyMAF.OPT_WRIST:
-                            xc_lhand = torch.cat(
-                                [xc_lhand, pred_shape_lh, pred_orient_lh, pred_cam_lh], 1)
+                            xc_lhand = torch.cat([xc_lhand, pred_shape_lh, pred_orient_lh, pred_cam_lh], 1)
                             xc_lhand = self.drop3_hand(self.fc3_hand(xc_lhand))
 
                             pred_shape_lh = self.decshape_rhand(xc_lhand) + pred_shape_lh
@@ -341,8 +333,7 @@ class Regressor(nn.Module):
                         pred_rhand = self.decrhand(xc_rhand) + pred_rhand
 
                         if cfg.MODEL.MESH_MODEL == 'mano' or cfg.MODEL.PyMAF.OPT_WRIST:
-                            xc_rhand = torch.cat(
-                                [xc_rhand, pred_shape_rh, pred_orient_rh, pred_cam_rh], 1)
+                            xc_rhand = torch.cat([xc_rhand, pred_shape_rh, pred_orient_rh, pred_cam_rh], 1)
                             xc_rhand = self.drop3_hand(self.fc3_hand(xc_rhand))
 
                             pred_shape_rh = self.decshape_rhand(xc_rhand) + pred_shape_rh
@@ -350,8 +341,7 @@ class Regressor(nn.Module):
                             pred_cam_rh = self.deccam_rhand(xc_rhand) + pred_cam_rh
 
                             if cfg.MODEL.MESH_MODEL == 'mano':
-                                pred_cam = torch.cat(
-                                    [pred_cam_rh[:, 0:1] * 10., pred_cam_rh[:, 1:] / 10.], dim=1)
+                                pred_cam = torch.cat([pred_cam_rh[:, 0:1] * 10., pred_cam_rh[:, 1:] / 10.], dim=1)
 
                     if 'face' in self.part_names:
                         xc_face = self.drop1_face(self.fc1_face(xc_face))
@@ -360,8 +350,7 @@ class Regressor(nn.Module):
                         pred_exp = self.decexp(xc_face) + pred_exp
 
                         if cfg.MODEL.MESH_MODEL == 'flame':
-                            xc_face = torch.cat(
-                                [xc_face, pred_shape_fa, pred_orient_fa, pred_cam_fa], 1)
+                            xc_face = torch.cat([xc_face, pred_shape_fa, pred_orient_fa, pred_cam_fa], 1)
                             xc_face = self.drop3_face(self.fc3_face(xc_face))
 
                             pred_shape_fa = self.decshape_face(xc_face) + pred_shape_fa
@@ -369,8 +358,7 @@ class Regressor(nn.Module):
                             pred_cam_fa = self.deccam_face(xc_face) + pred_cam_fa
 
                             if cfg.MODEL.MESH_MODEL == 'flame':
-                                pred_cam = torch.cat(
-                                    [pred_cam_fa[:, 0:1] * 10., pred_cam_fa[:, 1:] / 10.], dim=1)
+                                pred_cam = torch.cat([pred_cam_fa[:, 0:1] * 10., pred_cam_fa[:, 1:] / 10.], dim=1)
 
                     if self.full_body_mode or self.body_hand_mode:
                         if cfg.MODEL.PyMAF.PRED_VIS_H:
@@ -385,22 +373,21 @@ class Regressor(nn.Module):
 
                         if cfg.MODEL.PyMAF.OPT_WRIST:
 
-                            pred_rotmat_body = rot6d_to_rotmat(pred_pose.reshape(
-                                batch_size, -1, 6))  # .view(batch_size, 24, 3, 3)
+                            pred_rotmat_body = rot6d_to_rotmat(
+                                pred_pose.reshape(batch_size, -1, 6)
+                            )    # .view(batch_size, 24, 3, 3)
                             pred_lwrist = pred_rotmat_body[:, 20]
                             pred_rwrist = pred_rotmat_body[:, 21]
 
                             pred_gl_body, body_joints = self.body_model.get_global_rotation(
-                                global_orient=pred_rotmat_body[:, 0:1],
-                                body_pose=pred_rotmat_body[:, 1:])
+                                global_orient=pred_rotmat_body[:, 0:1], body_pose=pred_rotmat_body[:, 1:]
+                            )
                             pred_gl_lelbow = pred_gl_body[:, 18]
                             pred_gl_relbow = pred_gl_body[:, 19]
 
-                            target_gl_lwrist = rot6d_to_rotmat(
-                                pred_orient_lh.reshape(batch_size, -1, 6))
+                            target_gl_lwrist = rot6d_to_rotmat(pred_orient_lh.reshape(batch_size, -1, 6))
                             target_gl_lwrist *= self.flip_vector.to(target_gl_lwrist.device)
-                            target_gl_rwrist = rot6d_to_rotmat(
-                                pred_orient_rh.reshape(batch_size, -1, 6))
+                            target_gl_rwrist = rot6d_to_rotmat(pred_orient_rh.reshape(batch_size, -1, 6))
 
                             opt_lwrist = torch.bmm(pred_gl_lelbow.transpose(1, 2), target_gl_lwrist)
                             opt_rwrist = torch.bmm(pred_gl_relbow.transpose(1, 2), target_gl_rwrist)
@@ -408,34 +395,30 @@ class Regressor(nn.Module):
                             if cfg.MODEL.PyMAF.ADAPT_INTEGR:
                                 # if cfg.MODEL.PyMAF.ADAPT_INTEGR and global_iter == (cfg.MODEL.PyMAF.N_ITER - 1):
                                 tpose_joints = self.smpl.get_tpose(betas=pred_shape)
-                                lelbow_twist_axis = nn.functional.normalize(tpose_joints[:, 20] -
-                                                                            tpose_joints[:, 18],
-                                                                            dim=1)
-                                relbow_twist_axis = nn.functional.normalize(tpose_joints[:, 21] -
-                                                                            tpose_joints[:, 19],
-                                                                            dim=1)
+                                lelbow_twist_axis = nn.functional.normalize(
+                                    tpose_joints[:, 20] - tpose_joints[:, 18], dim=1
+                                )
+                                relbow_twist_axis = nn.functional.normalize(
+                                    tpose_joints[:, 21] - tpose_joints[:, 19], dim=1
+                                )
 
-                                lelbow_twist, lelbow_twist_angle = compute_twist_rotation(
-                                    opt_lwrist, lelbow_twist_axis)
-                                relbow_twist, relbow_twist_angle = compute_twist_rotation(
-                                    opt_rwrist, relbow_twist_axis)
+                                lelbow_twist, lelbow_twist_angle = compute_twist_rotation(opt_lwrist, lelbow_twist_axis)
+                                relbow_twist, relbow_twist_angle = compute_twist_rotation(opt_rwrist, relbow_twist_axis)
 
                                 min_angle = -0.4 * float(np.pi)
                                 max_angle = 0.4 * float(np.pi)
 
-                                lelbow_twist_angle[lelbow_twist_angle == torch.clamp(
-                                    lelbow_twist_angle, min_angle, max_angle)] = 0
-                                relbow_twist_angle[relbow_twist_angle == torch.clamp(
-                                    relbow_twist_angle, min_angle, max_angle)] = 0
+                                lelbow_twist_angle[lelbow_twist_angle ==
+                                                   torch.clamp(lelbow_twist_angle, min_angle, max_angle)] = 0
+                                relbow_twist_angle[relbow_twist_angle ==
+                                                   torch.clamp(relbow_twist_angle, min_angle, max_angle)] = 0
                                 lelbow_twist_angle[lelbow_twist_angle > max_angle] -= max_angle
                                 lelbow_twist_angle[lelbow_twist_angle < min_angle] -= min_angle
                                 relbow_twist_angle[relbow_twist_angle > max_angle] -= max_angle
                                 relbow_twist_angle[relbow_twist_angle < min_angle] -= min_angle
 
-                                lelbow_twist = batch_rodrigues(lelbow_twist_axis *
-                                                               lelbow_twist_angle)
-                                relbow_twist = batch_rodrigues(relbow_twist_axis *
-                                                               relbow_twist_angle)
+                                lelbow_twist = batch_rodrigues(lelbow_twist_axis * lelbow_twist_angle)
+                                relbow_twist = batch_rodrigues(relbow_twist_axis * relbow_twist_angle)
 
                                 opt_lwrist = torch.bmm(lelbow_twist.transpose(1, 2), opt_lwrist)
                                 opt_rwrist = torch.bmm(relbow_twist.transpose(1, 2), opt_rwrist)
@@ -445,26 +428,21 @@ class Regressor(nn.Module):
                                 # right elbow: 19
                                 opt_relbow = torch.bmm(pred_rotmat_body[:, 19], relbow_twist)
 
-                                if cfg.MODEL.PyMAF.PRED_VIS_H and global_iter == (
-                                        cfg.MODEL.PyMAF.N_ITER - 1):
+                                if cfg.MODEL.PyMAF.PRED_VIS_H and global_iter == (cfg.MODEL.PyMAF.N_ITER - 1):
                                     opt_lwrist_filtered = [
-                                        opt_lwrist[_i]
-                                        if pred_vis_lhand[_i] else pred_rotmat_body[_i, 20]
+                                        opt_lwrist[_i] if pred_vis_lhand[_i] else pred_rotmat_body[_i, 20]
                                         for _i in range(batch_size)
                                     ]
                                     opt_rwrist_filtered = [
-                                        opt_rwrist[_i]
-                                        if pred_vis_rhand[_i] else pred_rotmat_body[_i, 21]
+                                        opt_rwrist[_i] if pred_vis_rhand[_i] else pred_rotmat_body[_i, 21]
                                         for _i in range(batch_size)
                                     ]
                                     opt_lelbow_filtered = [
-                                        opt_lelbow[_i]
-                                        if pred_vis_lhand[_i] else pred_rotmat_body[_i, 18]
+                                        opt_lelbow[_i] if pred_vis_lhand[_i] else pred_rotmat_body[_i, 18]
                                         for _i in range(batch_size)
                                     ]
                                     opt_relbow_filtered = [
-                                        opt_relbow[_i]
-                                        if pred_vis_rhand[_i] else pred_rotmat_body[_i, 19]
+                                        opt_relbow[_i] if pred_vis_rhand[_i] else pred_rotmat_body[_i, 19]
                                         for _i in range(batch_size)
                                     ]
 
@@ -473,82 +451,77 @@ class Regressor(nn.Module):
                                     opt_lelbow = torch.stack(opt_lelbow_filtered)
                                     opt_relbow = torch.stack(opt_relbow_filtered)
 
-                                pred_rotmat_body = torch.cat([
-                                    pred_rotmat_body[:, :18],
-                                    opt_lelbow.unsqueeze(1),
-                                    opt_relbow.unsqueeze(1),
-                                    opt_lwrist.unsqueeze(1),
-                                    opt_rwrist.unsqueeze(1), pred_rotmat_body[:, 22:]
-                                ], 1)
+                                pred_rotmat_body = torch.cat(
+                                    [
+                                        pred_rotmat_body[:, :18],
+                                        opt_lelbow.unsqueeze(1),
+                                        opt_relbow.unsqueeze(1),
+                                        opt_lwrist.unsqueeze(1),
+                                        opt_rwrist.unsqueeze(1), pred_rotmat_body[:, 22:]
+                                    ], 1
+                                )
                             else:
-                                if cfg.MODEL.PyMAF.PRED_VIS_H and global_iter == (
-                                        cfg.MODEL.PyMAF.N_ITER - 1):
+                                if cfg.MODEL.PyMAF.PRED_VIS_H and global_iter == (cfg.MODEL.PyMAF.N_ITER - 1):
                                     opt_lwrist_filtered = [
-                                        opt_lwrist[_i]
-                                        if pred_vis_lhand[_i] else pred_rotmat_body[_i, 20]
+                                        opt_lwrist[_i] if pred_vis_lhand[_i] else pred_rotmat_body[_i, 20]
                                         for _i in range(batch_size)
                                     ]
                                     opt_rwrist_filtered = [
-                                        opt_rwrist[_i]
-                                        if pred_vis_rhand[_i] else pred_rotmat_body[_i, 21]
+                                        opt_rwrist[_i] if pred_vis_rhand[_i] else pred_rotmat_body[_i, 21]
                                         for _i in range(batch_size)
                                     ]
 
                                     opt_lwrist = torch.stack(opt_lwrist_filtered)
                                     opt_rwrist = torch.stack(opt_rwrist_filtered)
 
-                                pred_rotmat_body = torch.cat([
-                                    pred_rotmat_body[:, :20],
-                                    opt_lwrist.unsqueeze(1),
-                                    opt_rwrist.unsqueeze(1), pred_rotmat_body[:, 22:]
-                                ], 1)
+                                pred_rotmat_body = torch.cat(
+                                    [
+                                        pred_rotmat_body[:, :20],
+                                        opt_lwrist.unsqueeze(1),
+                                        opt_rwrist.unsqueeze(1), pred_rotmat_body[:, 22:]
+                                    ], 1
+                                )
 
         if self.hand_only_mode:
             pred_rotmat_rh = rot6d_to_rotmat(
-                torch.cat([pred_orient_rh, pred_rhand],
-                          dim=1).reshape(batch_size, -1, 6))  # .view(batch_size, 16, 3, 3)
+                torch.cat([pred_orient_rh, pred_rhand], dim=1).reshape(batch_size, -1, 6)
+            )    # .view(batch_size, 16, 3, 3)
             assert pred_rotmat_rh.shape[1] == 1 + 15
         elif self.face_only_mode:
             pred_rotmat_fa = rot6d_to_rotmat(
-                torch.cat([pred_orient_fa, pred_face],
-                          dim=1).reshape(batch_size, -1, 6))  # .view(batch_size, 16, 3, 3)
+                torch.cat([pred_orient_fa, pred_face], dim=1).reshape(batch_size, -1, 6)
+            )    # .view(batch_size, 16, 3, 3)
             assert pred_rotmat_fa.shape[1] == 1 + 3
         elif self.full_body_mode or self.body_hand_mode:
             if cfg.MODEL.PyMAF.OPT_WRIST:
                 pred_rotmat = pred_rotmat_body
             else:
-                pred_rotmat = rot6d_to_rotmat(pred_pose.reshape(batch_size, -1,
-                                                                6))  # .view(batch_size, 24, 3, 3)
+                pred_rotmat = rot6d_to_rotmat(pred_pose.reshape(batch_size, -1, 6))    # .view(batch_size, 24, 3, 3)
             assert pred_rotmat.shape[1] == 24
         else:
-            pred_rotmat = rot6d_to_rotmat(pred_pose.reshape(batch_size, -1,
-                                                            6))  # .view(batch_size, 24, 3, 3)
+            pred_rotmat = rot6d_to_rotmat(pred_pose.reshape(batch_size, -1, 6))    # .view(batch_size, 24, 3, 3)
             assert pred_rotmat.shape[1] == 24
 
         # if self.full_body_mode:
         if self.smplx_mode:
             if cfg.MODEL.PyMAF.PRED_VIS_H and global_iter == (cfg.MODEL.PyMAF.N_ITER - 1):
                 pred_lhand_filtered = [
-                    pred_lhand[_i] if pred_vis_lhand[_i] else self.init_rhand[0]
-                    for _i in range(batch_size)
+                    pred_lhand[_i] if pred_vis_lhand[_i] else self.init_rhand[0] for _i in range(batch_size)
                 ]
                 pred_rhand_filtered = [
-                    pred_rhand[_i] if pred_vis_rhand[_i] else self.init_rhand[0]
-                    for _i in range(batch_size)
+                    pred_rhand[_i] if pred_vis_rhand[_i] else self.init_rhand[0] for _i in range(batch_size)
                 ]
                 pred_lhand_filtered = torch.stack(pred_lhand_filtered)
                 pred_rhand_filtered = torch.stack(pred_rhand_filtered)
                 pred_hf6d = torch.cat([pred_lhand_filtered, pred_rhand_filtered, pred_face],
                                       dim=1).reshape(batch_size, -1, 6)
             else:
-                pred_hf6d = torch.cat([pred_lhand, pred_rhand, pred_face],
-                                      dim=1).reshape(batch_size, -1, 6)
+                pred_hf6d = torch.cat([pred_lhand, pred_rhand, pred_face], dim=1).reshape(batch_size, -1, 6)
             pred_hfrotmat = rot6d_to_rotmat(pred_hf6d)
             assert pred_hfrotmat.shape[1] == (15 * 2 + 3)
 
             # flip left hand pose
-            pred_lhand_rotmat = pred_hfrotmat[:, :15] * self.flip_vector.to(
-                pred_hfrotmat.device).unsqueeze(0)
+            pred_lhand_rotmat = pred_hfrotmat[:, :15] * self.flip_vector.to(pred_hfrotmat.device).unsqueeze(0)
             pred_rhand_rotmat = pred_hfrotmat[:, 15:30]
             pred_face_rotmat = pred_hfrotmat[:, 30:]
 
@@ -596,17 +569,20 @@ class Regressor(nn.Module):
         elif self.face_only_mode:
             pred_joints_full = pred_output.face_joints
         elif self.smplx_mode:
-            pred_joints_full = torch.cat([
-                pred_joints, pred_output.lhand_joints, pred_output.rhand_joints,
-                pred_output.face_joints, pred_output.lfoot_joints, pred_output.rfoot_joints
-            ],
-                                         dim=1)
+            pred_joints_full = torch.cat(
+                [
+                    pred_joints, pred_output.lhand_joints, pred_output.rhand_joints, pred_output.face_joints,
+                    pred_output.lfoot_joints, pred_output.rfoot_joints
+                ],
+                dim=1
+            )
         else:
             pred_joints_full = pred_joints
-        pred_keypoints_2d = projection(pred_joints_full, {
-            **rw_cam, 'cam_sxy': pred_cam
-        },
-                                       iwp_mode=cfg.MODEL.USE_IWP_CAM)
+        pred_keypoints_2d = projection(
+            pred_joints_full, {
+                **rw_cam, 'cam_sxy': pred_cam
+            }, iwp_mode=cfg.MODEL.USE_IWP_CAM
+        )
         if cfg.MODEL.USE_IWP_CAM:
             # Normalize keypoints to [-1,1]
             pred_keypoints_2d = pred_keypoints_2d / (224. / 2.)
@@ -624,126 +600,134 @@ class Regressor(nn.Module):
             else:
                 kp_3d = pred_joints
             pose = rotation_matrix_to_angle_axis(pred_rotmat.reshape(-1, 3, 3)).reshape(-1, 72)
-            output.update({
-                'theta': torch.cat([pred_cam, pred_shape, pose], dim=1),
-                'verts': pred_vertices,
-                'kp_2d': pred_keypoints_2d[:, :len_b_kp],
-                'kp_3d': kp_3d,
-                'pred_joints': pred_joints,
-                'smpl_kp_3d': pred_output.smpl_joints,
-                'rotmat': pred_rotmat,
-                'pred_cam': pred_cam,
-                'pred_shape': pred_shape,
-                'pred_pose': pred_pose,
-            })
+            output.update(
+                {
+                    'theta': torch.cat([pred_cam, pred_shape, pose], dim=1),
+                    'verts': pred_vertices,
+                    'kp_2d': pred_keypoints_2d[:, :len_b_kp],
+                    'kp_3d': kp_3d,
+                    'pred_joints': pred_joints,
+                    'smpl_kp_3d': pred_output.smpl_joints,
+                    'rotmat': pred_rotmat,
+                    'pred_cam': pred_cam,
+                    'pred_shape': pred_shape,
+                    'pred_pose': pred_pose,
+                }
+            )
             # if self.full_body_mode:
             if self.smplx_mode:
                 # assert pred_keypoints_2d.shape[1] == 144
                 len_h_kp = len(constants.HAND_NAMES)
                 len_f_kp = len(constants.FACIAL_LANDMARKS)
                 len_feet_kp = 2 * len(constants.FOOT_NAMES)
-                output.update({
-                    'smplx_verts':
-                        pred_output.smplx_vertices if cfg.MODEL.EVAL_MODE else None,
-                    'pred_lhand':
-                        pred_lhand,
-                    'pred_rhand':
-                        pred_rhand,
-                    'pred_face':
-                        pred_face,
-                    'pred_exp':
-                        pred_exp,
-                    'verts_lh':
-                        pred_output.lhand_vertices,
-                    'verts_rh':
-                        pred_output.rhand_vertices,
-                    # 'pred_arm_rotmat': pred_arm_rotmat,
-                    # 'pred_hfrotmat': pred_hfrotmat,
-                    'pred_lhand_rotmat':
-                        pred_lhand_rotmat,
-                    'pred_rhand_rotmat':
-                        pred_rhand_rotmat,
-                    'pred_face_rotmat':
-                        pred_face_rotmat,
-                    'pred_lhand_kp3d':
-                        pred_output.lhand_joints,
-                    'pred_rhand_kp3d':
-                        pred_output.rhand_joints,
-                    'pred_face_kp3d':
-                        pred_output.face_joints,
-                    'pred_lhand_kp2d':
-                        pred_keypoints_2d[:, len_b_kp:len_b_kp + len_h_kp],
-                    'pred_rhand_kp2d':
-                        pred_keypoints_2d[:, len_b_kp + len_h_kp:len_b_kp + len_h_kp * 2],
-                    'pred_face_kp2d':
-                        pred_keypoints_2d[:, len_b_kp + len_h_kp * 2:len_b_kp + len_h_kp * 2 +
-                                          len_f_kp],
-                    'pred_feet_kp2d':
-                        pred_keypoints_2d[:, len_b_kp + len_h_kp * 2 + len_f_kp:len_b_kp +
-                                          len_h_kp * 2 + len_f_kp + len_feet_kp],
-                })
+                output.update(
+                    {
+                        'smplx_verts':
+                            pred_output.smplx_vertices if cfg.MODEL.EVAL_MODE else None,
+                        'pred_lhand':
+                            pred_lhand,
+                        'pred_rhand':
+                            pred_rhand,
+                        'pred_face':
+                            pred_face,
+                        'pred_exp':
+                            pred_exp,
+                        'verts_lh':
+                            pred_output.lhand_vertices,
+                        'verts_rh':
+                            pred_output.rhand_vertices,
+                # 'pred_arm_rotmat': pred_arm_rotmat,
+                # 'pred_hfrotmat': pred_hfrotmat,
+                        'pred_lhand_rotmat':
+                            pred_lhand_rotmat,
+                        'pred_rhand_rotmat':
+                            pred_rhand_rotmat,
+                        'pred_face_rotmat':
+                            pred_face_rotmat,
+                        'pred_lhand_kp3d':
+                            pred_output.lhand_joints,
+                        'pred_rhand_kp3d':
+                            pred_output.rhand_joints,
+                        'pred_face_kp3d':
+                            pred_output.face_joints,
+                        'pred_lhand_kp2d':
+                            pred_keypoints_2d[:, len_b_kp:len_b_kp + len_h_kp],
+                        'pred_rhand_kp2d':
+                            pred_keypoints_2d[:, len_b_kp + len_h_kp:len_b_kp + len_h_kp * 2],
+                        'pred_face_kp2d':
+                            pred_keypoints_2d[:, len_b_kp + len_h_kp * 2:len_b_kp + len_h_kp * 2 + len_f_kp],
+                        'pred_feet_kp2d':
+                            pred_keypoints_2d[:, len_b_kp + len_h_kp * 2 + len_f_kp:len_b_kp + len_h_kp * 2 + len_f_kp +
+                                              len_feet_kp],
+                    }
+                )
                 if cfg.MODEL.PyMAF.OPT_WRIST:
-                    output.update({
-                        'pred_orient_lh': pred_orient_lh,
-                        'pred_shape_lh': pred_shape_lh,
-                        'pred_orient_rh': pred_orient_rh,
-                        'pred_shape_rh': pred_shape_rh,
-                        'pred_cam_fa': pred_cam_fa,
-                        'pred_cam_lh': pred_cam_lh,
-                        'pred_cam_rh': pred_cam_rh,
-                    })
+                    output.update(
+                        {
+                            'pred_orient_lh': pred_orient_lh,
+                            'pred_shape_lh': pred_shape_lh,
+                            'pred_orient_rh': pred_orient_rh,
+                            'pred_shape_rh': pred_shape_rh,
+                            'pred_cam_fa': pred_cam_fa,
+                            'pred_cam_lh': pred_cam_lh,
+                            'pred_cam_rh': pred_cam_rh,
+                        }
+                    )
                 if cfg.MODEL.PyMAF.PRED_VIS_H:
                     output.update({'pred_vis_hands': pred_vis_hands})
         elif self.hand_only_mode:
             # hand mesh out
             assert pred_keypoints_2d.shape[1] == 21
-            output.update({
-                'theta': pred_cam,
-                'pred_cam': pred_cam,
-                'pred_rhand': pred_rhand,
-                'pred_rhand_rotmat': pred_rotmat_rh[:, 1:],
-                'pred_orient_rh': pred_orient_rh,
-                'pred_orient_rh_rotmat': pred_rotmat_rh[:, 0],
-                'verts_rh': pred_output.rhand_vertices,
-                'pred_cam_rh': pred_cam_rh,
-                'pred_shape_rh': pred_shape_rh,
-                'pred_rhand_kp3d': pred_output.rhand_joints,
-                'pred_rhand_kp2d': pred_keypoints_2d,
-            })
+            output.update(
+                {
+                    'theta': pred_cam,
+                    'pred_cam': pred_cam,
+                    'pred_rhand': pred_rhand,
+                    'pred_rhand_rotmat': pred_rotmat_rh[:, 1:],
+                    'pred_orient_rh': pred_orient_rh,
+                    'pred_orient_rh_rotmat': pred_rotmat_rh[:, 0],
+                    'verts_rh': pred_output.rhand_vertices,
+                    'pred_cam_rh': pred_cam_rh,
+                    'pred_shape_rh': pred_shape_rh,
+                    'pred_rhand_kp3d': pred_output.rhand_joints,
+                    'pred_rhand_kp2d': pred_keypoints_2d,
+                }
+            )
         elif self.face_only_mode:
             # face mesh out
             assert pred_keypoints_2d.shape[1] == 68
-            output.update({
-                'theta': pred_cam,
-                'pred_cam': pred_cam,
-                'pred_face': pred_face,
-                'pred_exp': pred_exp,
-                'pred_face_rotmat': pred_rotmat_fa[:, 1:],
-                'pred_orient_fa': pred_orient_fa,
-                'pred_orient_fa_rotmat': pred_rotmat_fa[:, 0],
-                'verts_fa': pred_output.flame_vertices,
-                'pred_cam_fa': pred_cam_fa,
-                'pred_shape_fa': pred_shape_fa,
-                'pred_face_kp3d': pred_output.face_joints,
-                'pred_face_kp2d': pred_keypoints_2d,
-            })
+            output.update(
+                {
+                    'theta': pred_cam,
+                    'pred_cam': pred_cam,
+                    'pred_face': pred_face,
+                    'pred_exp': pred_exp,
+                    'pred_face_rotmat': pred_rotmat_fa[:, 1:],
+                    'pred_orient_fa': pred_orient_fa,
+                    'pred_orient_fa_rotmat': pred_rotmat_fa[:, 0],
+                    'verts_fa': pred_output.flame_vertices,
+                    'pred_cam_fa': pred_cam_fa,
+                    'pred_shape_fa': pred_shape_fa,
+                    'pred_face_kp3d': pred_output.face_joints,
+                    'pred_face_kp2d': pred_keypoints_2d,
+                }
+            )
         return output
 
 
-def get_attention_modules(module_keys,
-                          img_feature_dim_list,
-                          hidden_feat_dim,
-                          n_iter,
-                          num_attention_heads=1):
+def get_attention_modules(module_keys, img_feature_dim_list, hidden_feat_dim, n_iter, num_attention_heads=1):
 
     align_attention = nn.ModuleDict()
     for k in module_keys:
         align_attention[k] = nn.ModuleList()
         for i in range(n_iter):
             align_attention[k].append(
-                get_att_block(img_feature_dim=img_feature_dim_list[k][i],
-                              hidden_feat_dim=hidden_feat_dim,
-                              num_attention_heads=num_attention_heads))
+                get_att_block(
+                    img_feature_dim=img_feature_dim_list[k][i],
+                    hidden_feat_dim=hidden_feat_dim,
+                    num_attention_heads=num_attention_heads
+                )
+            )
 
     return align_attention
 
@@ -764,11 +748,7 @@ class PyMAF(nn.Module):
     PyMAF: 3D Human Pose and Shape Regression with Pyramidal Mesh Alignment Feedback Loop, in ICCV, 2021
     PyMAF-X: Towards Well-aligned Full-body Model Regression from Monocular Images, arXiv:2207.06400, 2022
     """
-
-    def __init__(self,
-                 smpl_mean_params=SMPL_MEAN_PARAMS,
-                 pretrained=True,
-                 device=torch.device('cuda')):
+    def __init__(self, smpl_mean_params=SMPL_MEAN_PARAMS, pretrained=True, device=torch.device('cuda')):
         super().__init__()
 
         self.device = device
@@ -776,9 +756,7 @@ class PyMAF(nn.Module):
         self.smpl_mode = (cfg.MODEL.MESH_MODEL == 'smpl')
         self.smplx_mode = (cfg.MODEL.MESH_MODEL == 'smplx')
 
-        assert cfg.TRAIN.BHF_MODE in [
-            'body_only', 'hand_only', 'face_only', 'body_hand', 'full_body'
-        ]
+        assert cfg.TRAIN.BHF_MODE in ['body_only', 'hand_only', 'face_only', 'body_hand', 'full_body']
         self.hand_only_mode = (cfg.TRAIN.BHF_MODE == 'hand_only')
         self.face_only_mode = (cfg.TRAIN.BHF_MODE == 'face_only')
         self.body_hand_mode = (cfg.TRAIN.BHF_MODE == 'body_hand')
@@ -829,8 +807,7 @@ class PyMAF(nn.Module):
             self.smpl_family['face'] = SMPL_Family(model_type='flame')
             self.smpl_family['body'] = SMPL_Family(model_type='smplx')
         else:
-            self.smpl_family['body'] = SMPL_Family(model_type=cfg.MODEL.MESH_MODEL,
-                                                   all_gender=cfg.MODEL.ALL_GENDER)
+            self.smpl_family['body'] = SMPL_Family(model_type=cfg.MODEL.MESH_MODEL, all_gender=cfg.MODEL.ALL_GENDER)
 
         self.init_mesh_output = None
         self.batch_size = 1
@@ -845,14 +822,14 @@ class PyMAF(nn.Module):
         if 'body' in bhf_names:
             # if self.smplx_mode or 'hr' in cfg.MODEL.PyMAF.BACKBONE:
             if cfg.MODEL.PyMAF.BACKBONE == 'res50':
-                body_encoder = get_resnet_encoder(cfg,
-                                                  init_weight=(not cfg.MODEL.EVAL_MODE),
-                                                  global_mode=self.global_mode)
+                body_encoder = get_resnet_encoder(
+                    cfg, init_weight=(not cfg.MODEL.EVAL_MODE), global_mode=self.global_mode
+                )
                 body_sfeat_dim = list(cfg.POSE_RES_MODEL.EXTRA.NUM_DECONV_FILTERS)
             elif cfg.MODEL.PyMAF.BACKBONE == 'hr48':
-                body_encoder = get_hrnet_encoder(cfg,
-                                                 init_weight=(not cfg.MODEL.EVAL_MODE),
-                                                 global_mode=self.global_mode)
+                body_encoder = get_hrnet_encoder(
+                    cfg, init_weight=(not cfg.MODEL.EVAL_MODE), global_mode=self.global_mode
+                )
                 body_sfeat_dim = list(cfg.HR_MODEL.EXTRA.STAGE4.NUM_CHANNELS)
                 body_sfeat_dim.reverse()
                 body_sfeat_dim = body_sfeat_dim[1:]
@@ -883,9 +860,8 @@ class PyMAF(nn.Module):
                 if hf in bhf_names:
                     if cfg.MODEL.PyMAF.HF_BACKBONE == 'res50':
                         self.encoders[hf] = get_resnet_encoder(
-                            cfg,
-                            init_weight=(not cfg.MODEL.EVAL_MODE),
-                            global_mode=self.global_mode)
+                            cfg, init_weight=(not cfg.MODEL.EVAL_MODE), global_mode=self.global_mode
+                        )
                         self.part_module_names[hf].update({f'encoders.{hf}': self.encoders[hf]})
                         hf_sfeat_dim = list(cfg.POSE_RES_MODEL.EXTRA.NUM_DECONV_FILTERS)
                     else:
@@ -895,15 +871,11 @@ class PyMAF(nn.Module):
                 assert cfg.MODEL.PyMAF.MAF_ON
                 self.dp_head_hf = nn.ModuleDict()
                 if 'hand' in bhf_names:
-                    self.dp_head_hf['hand'] = IUV_predict_layer(feat_dim=hf_sfeat_dim[-1],
-                                                                mode='pncc')
-                    self.part_module_names['hand'].update(
-                        {'dp_head_hf.hand': self.dp_head_hf['hand']})
+                    self.dp_head_hf['hand'] = IUV_predict_layer(feat_dim=hf_sfeat_dim[-1], mode='pncc')
+                    self.part_module_names['hand'].update({'dp_head_hf.hand': self.dp_head_hf['hand']})
                 if 'face' in bhf_names:
-                    self.dp_head_hf['face'] = IUV_predict_layer(feat_dim=hf_sfeat_dim[-1],
-                                                                mode='pncc')
-                    self.part_module_names['face'].update(
-                        {'dp_head_hf.face': self.dp_head_hf['face']})
+                    self.dp_head_hf['face'] = IUV_predict_layer(feat_dim=hf_sfeat_dim[-1], mode='pncc')
+                    self.part_module_names['face'].update({'dp_head_hf.face': self.dp_head_hf['face']})
 
             smpl2limb_vert_faces = get_partial_smpl()
 
@@ -912,9 +884,7 @@ class PyMAF(nn.Module):
 
         # grid points for grid feature extraction
         grid_size = 21
-        xv, yv = torch.meshgrid(
-            [torch.linspace(-1, 1, grid_size),
-             torch.linspace(-1, 1, grid_size)])
+        xv, yv = torch.meshgrid([torch.linspace(-1, 1, grid_size), torch.linspace(-1, 1, grid_size)])
         grid_points = torch.stack([xv.reshape(-1), yv.reshape(-1)]).unsqueeze(0)
         self.register_buffer('grid_points', grid_points)
         grid_feat_dim = grid_size * grid_size * cfg.MODEL.PyMAF.MLP_DIM[-1]
@@ -942,8 +912,7 @@ class PyMAF(nn.Module):
                 bhf_att_feat_dim.update({'hand': 1024})
 
         if 'face' in self.bhf_names:
-            bhf_ma_feat_dim.update(
-                {'face': len(constants.FACIAL_LANDMARKS) * cfg.MODEL.PyMAF.HF_MLP_DIM[-1]})
+            bhf_ma_feat_dim.update({'face': len(constants.FACIAL_LANDMARKS) * cfg.MODEL.PyMAF.HF_MLP_DIM[-1]})
             if self.fuse_grid_align:
                 bhf_att_feat_dim.update({'face': 1024})
 
@@ -959,25 +928,19 @@ class PyMAF(nn.Module):
                 if 'face' in bhf_names:
                     hfimg_feat_dim_list['face'] = hf_sfeat_dim[-n_iter_att:]
 
-            self.align_attention = get_attention_modules(bhf_names,
-                                                         hfimg_feat_dim_list,
-                                                         hidden_feat_dim,
-                                                         n_iter=n_iter_att,
-                                                         num_attention_heads=num_att_heads)
+            self.align_attention = get_attention_modules(
+                bhf_names, hfimg_feat_dim_list, hidden_feat_dim, n_iter=n_iter_att, num_attention_heads=num_att_heads
+            )
 
             for part in bhf_names:
-                self.part_module_names[part].update(
-                    {f'align_attention.{part}': self.align_attention[part]})
+                self.part_module_names[part].update({f'align_attention.{part}': self.align_attention[part]})
 
         if self.fuse_grid_align:
-            self.att_feat_reduce = get_fusion_modules(bhf_names,
-                                                      bhf_ma_feat_dim,
-                                                      grid_feat_dim,
-                                                      n_iter=n_iter_att,
-                                                      out_feat_len=bhf_att_feat_dim)
+            self.att_feat_reduce = get_fusion_modules(
+                bhf_names, bhf_ma_feat_dim, grid_feat_dim, n_iter=n_iter_att, out_feat_len=bhf_att_feat_dim
+            )
             for part in bhf_names:
-                self.part_module_names[part].update(
-                    {f'att_feat_reduce.{part}': self.att_feat_reduce[part]})
+                self.part_module_names[part].update({f'att_feat_reduce.{part}': self.att_feat_reduce[part]})
 
         # build regressor for parameter prediction
         self.regressor = nn.ModuleList()
@@ -1002,10 +965,13 @@ class PyMAF(nn.Module):
 
             if self.smpl_mode:
                 self.regressor.append(
-                    Regressor(feat_dim=ref_infeat_dim,
-                              smpl_mean_params=smpl_mean_params,
-                              use_cam_feats=cfg.MODEL.PyMAF.USE_CAM_FEAT,
-                              smpl_models=self.smpl_family))
+                    Regressor(
+                        feat_dim=ref_infeat_dim,
+                        smpl_mean_params=smpl_mean_params,
+                        use_cam_feats=cfg.MODEL.PyMAF.USE_CAM_FEAT,
+                        smpl_models=self.smpl_family
+                    )
+                )
             else:
                 if cfg.MODEL.PyMAF.MAF_ON:
                     if 'hand' in self.bhf_names or 'face' in self.bhf_names:
@@ -1014,15 +980,11 @@ class PyMAF(nn.Module):
                             feat_dim_face = grid_feat_dim if 'face' in self.bhf_names else None
                         else:
                             if self.fuse_grid_align:
-                                feat_dim_hand = bhf_att_feat_dim[
-                                    'hand'] if 'hand' in self.bhf_names else None
-                                feat_dim_face = bhf_att_feat_dim[
-                                    'face'] if 'face' in self.bhf_names else None
+                                feat_dim_hand = bhf_att_feat_dim['hand'] if 'hand' in self.bhf_names else None
+                                feat_dim_face = bhf_att_feat_dim['face'] if 'face' in self.bhf_names else None
                             else:
-                                feat_dim_hand = bhf_ma_feat_dim[
-                                    'hand'] if 'hand' in self.bhf_names else None
-                                feat_dim_face = bhf_ma_feat_dim[
-                                    'face'] if 'face' in self.bhf_names else None
+                                feat_dim_hand = bhf_ma_feat_dim['hand'] if 'hand' in self.bhf_names else None
+                                feat_dim_face = bhf_ma_feat_dim['face'] if 'face' in self.bhf_names else None
                     else:
                         feat_dim_hand = ref_infeat_dim
                         feat_dim_face = ref_infeat_dim
@@ -1032,28 +994,35 @@ class PyMAF(nn.Module):
                     feat_dim_face = global_feat_dim
 
                 self.regressor.append(
-                    Regressor(feat_dim=ref_infeat_dim,
-                              smpl_mean_params=smpl_mean_params,
-                              use_cam_feats=cfg.MODEL.PyMAF.USE_CAM_FEAT,
-                              feat_dim_hand=feat_dim_hand,
-                              feat_dim_face=feat_dim_face,
-                              bhf_names=bhf_names,
-                              smpl_models=self.smpl_family))
+                    Regressor(
+                        feat_dim=ref_infeat_dim,
+                        smpl_mean_params=smpl_mean_params,
+                        use_cam_feats=cfg.MODEL.PyMAF.USE_CAM_FEAT,
+                        feat_dim_hand=feat_dim_hand,
+                        feat_dim_face=feat_dim_face,
+                        bhf_names=bhf_names,
+                        smpl_models=self.smpl_family
+                    )
+                )
 
             # assign sub-regressor to each part
             for dec_name, dec_module in self.regressor[-1].named_children():
                 if 'hand' in dec_name:
                     self.part_module_names['hand'].update(
-                        {'regressor.{}.{}.'.format(len(self.regressor) - 1, dec_name): dec_module})
+                        {'regressor.{}.{}.'.format(len(self.regressor) - 1, dec_name): dec_module}
+                    )
                 elif 'face' in dec_name or 'head' in dec_name or 'exp' in dec_name:
                     self.part_module_names['face'].update(
-                        {'regressor.{}.{}.'.format(len(self.regressor) - 1, dec_name): dec_module})
+                        {'regressor.{}.{}.'.format(len(self.regressor) - 1, dec_name): dec_module}
+                    )
                 elif 'res' in dec_name or 'vis' in dec_name:
                     self.part_module_names['link'].update(
-                        {'regressor.{}.{}.'.format(len(self.regressor) - 1, dec_name): dec_module})
+                        {'regressor.{}.{}.'.format(len(self.regressor) - 1, dec_name): dec_module}
+                    )
                 elif 'body' in self.part_module_names:
                     self.part_module_names['body'].update(
-                        {'regressor.{}.{}.'.format(len(self.regressor) - 1, dec_name): dec_module})
+                        {'regressor.{}.{}.'.format(len(self.regressor) - 1, dec_name): dec_module}
+                    )
 
         # mesh-aligned feature extractor
         self.maf_extractor = nn.ModuleDict()
@@ -1070,12 +1039,15 @@ class PyMAF(nn.Module):
 
                 if cfg.MODEL.PyMAF.GRID_ALIGN.USE_ATT and i >= self.att_starts:
                     self.maf_extractor[part].append(
-                        MAF_Extractor(filter_channels=filter_channels_default[att_feat_dim_idx:],
-                                      iwp_cam_mode=cfg.MODEL.USE_IWP_CAM))
+                        MAF_Extractor(
+                            filter_channels=filter_channels_default[att_feat_dim_idx:],
+                            iwp_cam_mode=cfg.MODEL.USE_IWP_CAM
+                        )
+                    )
                 else:
                     self.maf_extractor[part].append(
-                        MAF_Extractor(filter_channels=filter_channels,
-                                      iwp_cam_mode=cfg.MODEL.USE_IWP_CAM))
+                        MAF_Extractor(filter_channels=filter_channels, iwp_cam_mode=cfg.MODEL.USE_IWP_CAM)
+                    )
             self.part_module_names[part].update({f'maf_extractor.{part}': self.maf_extractor[part]})
 
         # check all modules have been added to part_module_names
@@ -1099,10 +1071,9 @@ class PyMAF(nn.Module):
         """ initialize the mesh model with default poses and shapes
         """
         if self.init_mesh_output is None or self.batch_size != batch_size:
-            self.init_mesh_output = self.regressor[0](torch.zeros(batch_size),
-                                                      J_regressor=J_regressor,
-                                                      rw_cam=rw_cam,
-                                                      init_mode=True)
+            self.init_mesh_output = self.regressor[0](
+                torch.zeros(batch_size), J_regressor=J_regressor, rw_cam=rw_cam, init_mode=True
+            )
             self.batch_size = batch_size
         return self.init_mesh_output
 
@@ -1110,11 +1081,7 @@ class PyMAF(nn.Module):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes,
-                          planes * block.expansion,
-                          kernel_size=1,
-                          stride=stride,
-                          bias=False),
+                nn.Conv2d(self.inplanes, planes * block.expansion, kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(planes * block.expansion),
             )
 
@@ -1156,13 +1123,16 @@ class PyMAF(nn.Module):
 
             planes = num_filters[i]
             layers.append(
-                nn.ConvTranspose2d(in_channels=self.inplanes,
-                                   out_channels=planes,
-                                   kernel_size=kernel,
-                                   stride=2,
-                                   padding=padding,
-                                   output_padding=output_padding,
-                                   bias=self.deconv_with_bias))
+                nn.ConvTranspose2d(
+                    in_channels=self.inplanes,
+                    out_channels=planes,
+                    kernel_size=kernel,
+                    stride=2,
+                    padding=padding,
+                    output_padding=output_padding,
+                    bias=self.deconv_with_bias
+                )
+            )
             layers.append(nn.BatchNorm2d(planes, momentum=BN_MOMENTUM))
             layers.append(nn.ReLU(inplace=True))
             self.inplanes = planes
@@ -1196,7 +1166,7 @@ class PyMAF(nn.Module):
             vis_feat_list: the list containing features for visualization
         '''
 
-        # batch keys: ['img_body', 'orig_height', 'orig_width', 'person_id', 'img_lhand', 
+        # batch keys: ['img_body', 'orig_height', 'orig_width', 'person_id', 'img_lhand',
         # 'lhand_theta_inv', 'img_rhand', 'rhand_theta_inv', 'img_face', 'face_theta_inv']
 
         # extract spatial features or global features
@@ -1233,8 +1203,7 @@ class PyMAF(nn.Module):
                 else:
                     img_rhand = batch['img_rhand']
                     batch_size = img_rhand.shape[0]
-                    limb_feat_dict['rhand'], limb_gfeat_dict['rhand'] = self.encoders['hand'](
-                        img_rhand)
+                    limb_feat_dict['rhand'], limb_gfeat_dict['rhand'] = self.encoders['hand'](img_rhand)
 
             if cfg.MODEL.PyMAF.MAF_ON:
                 for k in limb_feat_dict.keys():
@@ -1292,93 +1261,76 @@ class PyMAF(nn.Module):
             if self.hand_only_mode:
                 pred_cam = mesh_output['pred_cam'].detach()
                 pred_rhand_v = self.mano_sampler(mesh_output['verts_rh'])
-                pred_rhand_proj = projection(pred_rhand_v, {
-                    **rw_cam, 'cam_sxy': pred_cam
-                },
-                                             iwp_mode=cfg.MODEL.USE_IWP_CAM)
+                pred_rhand_proj = projection(
+                    pred_rhand_v, {
+                        **rw_cam, 'cam_sxy': pred_cam
+                    }, iwp_mode=cfg.MODEL.USE_IWP_CAM
+                )
                 if cfg.MODEL.USE_IWP_CAM:
                     pred_rhand_proj = pred_rhand_proj / (224. / 2.)
                 else:
                     pred_rhand_proj = j2d_processing(pred_rhand_proj, rw_cam['kps_transf'])
-                proj_hf_center = {
-                    'rhand':
-                        mesh_output['pred_rhand_kp2d'][:, self.hf_root_idx['rhand']].unsqueeze(1)
-                }
-                proj_hf_pts = {
-                    'rhand': torch.cat([proj_hf_center['rhand'], pred_rhand_proj], dim=1)
-                }
+                proj_hf_center = {'rhand': mesh_output['pred_rhand_kp2d'][:, self.hf_root_idx['rhand']].unsqueeze(1)}
+                proj_hf_pts = {'rhand': torch.cat([proj_hf_center['rhand'], pred_rhand_proj], dim=1)}
             elif self.face_only_mode:
                 pred_cam = mesh_output['pred_cam'].detach()
                 pred_face_v = mesh_output['pred_face_kp3d']
-                pred_face_proj = projection(pred_face_v, {
-                    **rw_cam, 'cam_sxy': pred_cam
-                },
-                                            iwp_mode=cfg.MODEL.USE_IWP_CAM)
+                pred_face_proj = projection(
+                    pred_face_v, {
+                        **rw_cam, 'cam_sxy': pred_cam
+                    }, iwp_mode=cfg.MODEL.USE_IWP_CAM
+                )
                 if cfg.MODEL.USE_IWP_CAM:
                     pred_face_proj = pred_face_proj / (224. / 2.)
                 else:
                     pred_face_proj = j2d_processing(pred_face_proj, rw_cam['kps_transf'])
-                proj_hf_center = {
-                    'face': mesh_output['pred_face_kp2d'][:, self.hf_root_idx['face']].unsqueeze(1)
-                }
+                proj_hf_center = {'face': mesh_output['pred_face_kp2d'][:, self.hf_root_idx['face']].unsqueeze(1)}
                 proj_hf_pts = {'face': torch.cat([proj_hf_center['face'], pred_face_proj], dim=1)}
             elif self.body_hand_mode:
                 pred_lhand_v = self.mano_sampler(pred_smpl_verts[:, self.smpl2lhand])
                 pred_rhand_v = self.mano_sampler(pred_smpl_verts[:, self.smpl2rhand])
                 pred_hand_v = torch.cat([pred_lhand_v, pred_rhand_v], dim=1)
-                pred_hand_proj = projection(pred_hand_v, {
-                    **rw_cam, 'cam_sxy': pred_cam
-                },
-                                            iwp_mode=cfg.MODEL.USE_IWP_CAM)
+                pred_hand_proj = projection(
+                    pred_hand_v, {
+                        **rw_cam, 'cam_sxy': pred_cam
+                    }, iwp_mode=cfg.MODEL.USE_IWP_CAM
+                )
                 if cfg.MODEL.USE_IWP_CAM:
                     pred_hand_proj = pred_hand_proj / (224. / 2.)
                 else:
                     pred_hand_proj = j2d_processing(pred_hand_proj, rw_cam['kps_transf'])
 
                 proj_hf_center = {
-                    'lhand':
-                        mesh_output['pred_lhand_kp2d'][:, self.hf_root_idx['lhand']].unsqueeze(1),
-                    'rhand':
-                        mesh_output['pred_rhand_kp2d'][:, self.hf_root_idx['rhand']].unsqueeze(1),
+                    'lhand': mesh_output['pred_lhand_kp2d'][:, self.hf_root_idx['lhand']].unsqueeze(1),
+                    'rhand': mesh_output['pred_rhand_kp2d'][:, self.hf_root_idx['rhand']].unsqueeze(1),
                 }
                 proj_hf_pts = {
-                    'lhand':
-                        torch.cat([proj_hf_center['lhand'], pred_hand_proj[:, :self.mano_ds_len]],
-                                  dim=1),
-                    'rhand':
-                        torch.cat([proj_hf_center['rhand'], pred_hand_proj[:, self.mano_ds_len:]],
-                                  dim=1),
+                    'lhand': torch.cat([proj_hf_center['lhand'], pred_hand_proj[:, :self.mano_ds_len]], dim=1),
+                    'rhand': torch.cat([proj_hf_center['rhand'], pred_hand_proj[:, self.mano_ds_len:]], dim=1),
                 }
             elif self.full_body_mode:
                 pred_lhand_v = self.mano_sampler(pred_smpl_verts[:, self.smpl2lhand])
                 pred_rhand_v = self.mano_sampler(pred_smpl_verts[:, self.smpl2rhand])
                 pred_hand_v = torch.cat([pred_lhand_v, pred_rhand_v], dim=1)
-                pred_hand_proj = projection(pred_hand_v, {
-                    **rw_cam, 'cam_sxy': pred_cam
-                },
-                                            iwp_mode=cfg.MODEL.USE_IWP_CAM)
+                pred_hand_proj = projection(
+                    pred_hand_v, {
+                        **rw_cam, 'cam_sxy': pred_cam
+                    }, iwp_mode=cfg.MODEL.USE_IWP_CAM
+                )
                 if cfg.MODEL.USE_IWP_CAM:
                     pred_hand_proj = pred_hand_proj / (224. / 2.)
                 else:
                     pred_hand_proj = j2d_processing(pred_hand_proj, rw_cam['kps_transf'])
 
                 proj_hf_center = {
-                    'lhand':
-                        mesh_output['pred_lhand_kp2d'][:, self.hf_root_idx['lhand']].unsqueeze(1),
-                    'rhand':
-                        mesh_output['pred_rhand_kp2d'][:, self.hf_root_idx['rhand']].unsqueeze(1),
-                    'face':
-                        mesh_output['pred_face_kp2d'][:, self.hf_root_idx['face']].unsqueeze(1)
+                    'lhand': mesh_output['pred_lhand_kp2d'][:, self.hf_root_idx['lhand']].unsqueeze(1),
+                    'rhand': mesh_output['pred_rhand_kp2d'][:, self.hf_root_idx['rhand']].unsqueeze(1),
+                    'face': mesh_output['pred_face_kp2d'][:, self.hf_root_idx['face']].unsqueeze(1)
                 }
                 proj_hf_pts = {
-                    'lhand':
-                        torch.cat([proj_hf_center['lhand'], pred_hand_proj[:, :self.mano_ds_len]],
-                                  dim=1),
-                    'rhand':
-                        torch.cat([proj_hf_center['rhand'], pred_hand_proj[:, self.mano_ds_len:]],
-                                  dim=1),
-                    'face':
-                        torch.cat([proj_hf_center['face'], mesh_output['pred_face_kp2d']], dim=1)
+                    'lhand': torch.cat([proj_hf_center['lhand'], pred_hand_proj[:, :self.mano_ds_len]], dim=1),
+                    'rhand': torch.cat([proj_hf_center['rhand'], pred_hand_proj[:, self.mano_ds_len:]], dim=1),
+                    'face': torch.cat([proj_hf_center['face'], mesh_output['pred_face_kp2d']], dim=1)
                 }
 
             # extract mesh-aligned features for the hand / face part
@@ -1402,7 +1354,8 @@ class PyMAF(nn.Module):
 
                         if limb_rf_i == 0 or cfg.MODEL.PyMAF.GRID_FEAT:
                             limb_ref_feat_ctd = self.maf_extractor[hf_key][limb_rf_i].sampling(
-                                grid_points, im_feat=limb_feat_i, reduce_dim=limb_reduce_dim)
+                                grid_points, im_feat=limb_feat_i, reduce_dim=limb_reduce_dim
+                            )
                         else:
                             if self.hand_only_mode or self.face_only_mode:
                                 proj_hf_pts_crop = proj_hf_pts[part_name][:, :, :2]
@@ -1422,12 +1375,11 @@ class PyMAF(nn.Module):
                                 theta_i_inv = batch[f'{part_name}_theta_inv']
                                 proj_hf_pts_crop = torch.bmm(
                                     theta_i_inv,
-                                    homo_vector(proj_hf_pts[part_name][:, :, :2]).permute(
-                                        0, 2, 1)).permute(0, 2, 1)
+                                    homo_vector(proj_hf_pts[part_name][:, :, :2]).permute(0, 2, 1)
+                                ).permute(0, 2, 1)
 
                                 if part_name == 'lhand':
-                                    flip_x = torch.tensor([-1, 1])[None,
-                                                                   None, :].to(proj_hf_pts_crop)
+                                    flip_x = torch.tensor([-1, 1])[None, None, :].to(proj_hf_pts_crop)
                                     proj_hf_pts_crop *= flip_x
 
                                 if cfg.MODEL.PyMAF.HF_BOX_CENTER:
@@ -1443,17 +1395,16 @@ class PyMAF(nn.Module):
                                 proj_hf_v_center = proj_hf_pts_crop[:, 0].unsqueeze(1)
 
                             limb_ref_feat_ctd = self.maf_extractor[hf_key][limb_rf_i].sampling(
-                                proj_hf_pts_crop_ctd.detach(),
-                                im_feat=limb_feat_i,
-                                reduce_dim=limb_reduce_dim)
+                                proj_hf_pts_crop_ctd.detach(), im_feat=limb_feat_i, reduce_dim=limb_reduce_dim
+                            )
 
                         if self.fuse_grid_align and limb_rf_i >= self.att_starts:
 
                             limb_grid_feature_ctd = self.maf_extractor[hf_key][limb_rf_i].sampling(
-                                grid_points, im_feat=limb_feat_i, reduce_dim=limb_reduce_dim)
-                            limb_grid_ref_feat_ctd = torch.cat(
-                                [limb_grid_feature_ctd, limb_ref_feat_ctd],
-                                dim=-1).permute(0, 2, 1)
+                                grid_points, im_feat=limb_feat_i, reduce_dim=limb_reduce_dim
+                            )
+                            limb_grid_ref_feat_ctd = torch.cat([limb_grid_feature_ctd, limb_ref_feat_ctd],
+                                                               dim=-1).permute(0, 2, 1)
 
                             if cfg.MODEL.PyMAF.GRID_ALIGN.USE_ATT:
                                 att_ref_feat_ctd = self.align_attention[hf_key][
@@ -1462,9 +1413,10 @@ class PyMAF(nn.Module):
                                 att_ref_feat_ctd = limb_grid_ref_feat_ctd
 
                             att_ref_feat_ctd = self.maf_extractor[hf_key][limb_rf_i].reduce_dim(
-                                att_ref_feat_ctd.permute(0, 2, 1)).view(batch_size, -1)
-                            limb_ref_feat_ctd = self.att_feat_reduce[hf_key][
-                                limb_rf_i - self.att_starts](att_ref_feat_ctd)
+                                att_ref_feat_ctd.permute(0, 2, 1)
+                            ).view(batch_size, -1)
+                            limb_ref_feat_ctd = self.att_feat_reduce[hf_key][limb_rf_i -
+                                                                             self.att_starts](att_ref_feat_ctd)
 
                         else:
                             # limb_ref_feat = limb_ref_feat.view(batch_size, -1)
@@ -1479,11 +1431,11 @@ class PyMAF(nn.Module):
                     reduce_dim = (not self.fuse_grid_align) or (rf_i < self.att_starts)
                     if rf_i == 0 or cfg.MODEL.PyMAF.GRID_FEAT:
                         ref_feature = self.maf_extractor['body'][rf_i].sampling(
-                            grid_points, im_feat=s_feat_i, reduce_dim=reduce_dim)
+                            grid_points, im_feat=s_feat_i, reduce_dim=reduce_dim
+                        )
                     else:
                         # TODO: use a more sparse SMPL implementation (with 431 vertices) for acceleration
-                        pred_smpl_verts_ds = self.mesh_sampler.downsample(
-                            pred_smpl_verts)  # [B, 431, 3]
+                        pred_smpl_verts_ds = self.mesh_sampler.downsample(pred_smpl_verts)    # [B, 431, 3]
                         ref_feature = self.maf_extractor['body'][rf_i](
                             pred_smpl_verts_ds,
                             im_feat=s_feat_i,
@@ -1491,29 +1443,28 @@ class PyMAF(nn.Module):
                                 **rw_cam, 'cam_sxy': pred_cam
                             },
                             add_att=True,
-                            reduce_dim=reduce_dim)  # [B, 431 * n_feat]
+                            reduce_dim=reduce_dim
+                        )    # [B, 431 * n_feat]
 
                     if self.fuse_grid_align and rf_i >= self.att_starts:
                         if rf_i > 0 and not cfg.MODEL.PyMAF.GRID_FEAT:
                             grid_feature = self.maf_extractor['body'][rf_i].sampling(
-                                grid_points, im_feat=s_feat_i, reduce_dim=reduce_dim)
+                                grid_points, im_feat=s_feat_i, reduce_dim=reduce_dim
+                            )
                             grid_ref_feat = torch.cat([grid_feature, ref_feature], dim=-1)
                         else:
                             grid_ref_feat = ref_feature
                         grid_ref_feat = grid_ref_feat.permute(0, 2, 1)
 
                         if cfg.MODEL.PyMAF.GRID_ALIGN.USE_ATT:
-                            att_ref_feat = self.align_attention['body'][rf_i - self.att_starts](
-                                grid_ref_feat)[0]
+                            att_ref_feat = self.align_attention['body'][rf_i - self.att_starts](grid_ref_feat)[0]
                         elif cfg.MODEL.PyMAF.GRID_ALIGN.USE_FC:
                             att_ref_feat = grid_ref_feat
 
-                        att_ref_feat = self.maf_extractor['body'][rf_i].reduce_dim(
-                            att_ref_feat.permute(0, 2, 1))
+                        att_ref_feat = self.maf_extractor['body'][rf_i].reduce_dim(att_ref_feat.permute(0, 2, 1))
                         att_ref_feat = att_ref_feat.view(batch_size, -1)
 
-                        ref_feature = self.att_feat_reduce['body'][rf_i -
-                                                                   self.att_starts](att_ref_feat)
+                        ref_feature = self.att_feat_reduce['body'][rf_i - self.att_starts](att_ref_feat)
                     else:
                         ref_feature = ref_feature.view(batch_size, -1)
                 else:
@@ -1550,22 +1501,17 @@ class PyMAF(nn.Module):
                     elif self.full_body_mode or self.body_hand_mode:
                         if cfg.MODEL.PyMAF.OPT_WRIST:
                             current_states['init_shape_lh'] = mesh_output['pred_shape_lh'].detach()
-                            current_states['init_orient_lh'] = mesh_output['pred_orient_lh'].detach(
-                            )
+                            current_states['init_orient_lh'] = mesh_output['pred_orient_lh'].detach()
                             current_states['init_cam_lh'] = mesh_output['pred_cam_lh'].detach()
 
                             current_states['init_shape_rh'] = mesh_output['pred_shape_rh'].detach()
-                            current_states['init_orient_rh'] = mesh_output['pred_orient_rh'].detach(
-                            )
+                            current_states['init_orient_rh'] = mesh_output['pred_orient_rh'].detach()
                             current_states['init_cam_rh'] = mesh_output['pred_cam_rh'].detach()
 
             # update mesh parameters
-            mesh_output = self.regressor[rf_i](ref_feature,
-                                               n_iter=1,
-                                               J_regressor=J_regressor,
-                                               rw_cam=rw_cam,
-                                               global_iter=rf_i,
-                                               **current_states)
+            mesh_output = self.regressor[rf_i](
+                ref_feature, n_iter=1, J_regressor=J_regressor, rw_cam=rw_cam, global_iter=rf_i, **current_states
+            )
 
             out_dict['mesh_out'].append(mesh_output)
 

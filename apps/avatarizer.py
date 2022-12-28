@@ -44,7 +44,8 @@ smpl_model = smplx.create(
     use_pca=False,
     num_betas=200,
     num_expression_coeffs=50,
-    ext='pkl')
+    ext='pkl'
+)
 
 smpl_out_lst = []
 
@@ -62,7 +63,9 @@ for pose_type in ["t-pose", "da-pose", "pose"]:
             return_full_pose=True,
             return_joint_transformation=True,
             return_vertex_transformation=True,
-            pose_type=pose_type))
+            pose_type=pose_type
+        )
+    )
 
 smpl_verts = smpl_out_lst[2].vertices.detach()[0]
 smpl_tree = cKDTree(smpl_verts.cpu().numpy())
@@ -84,7 +87,9 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
     econ_da = trimesh.Trimesh(econ_da_verts[:, :3, 0].cpu(), econ_obj.faces)
 
     # da-pose for SMPL-X
-    smpl_da = trimesh.Trimesh(smpl_out_lst[1].vertices.detach()[0], smpl_model.faces, maintain_orders=True, process=False)
+    smpl_da = trimesh.Trimesh(
+        smpl_out_lst[1].vertices.detach()[0], smpl_model.faces, maintain_orders=True, process=False
+    )
     smpl_da.export(f"{prefix}_smpl_da.obj")
 
     # remove hands from ECON for next registeration
@@ -97,7 +102,8 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
     # remove SMPL-X hand and face
     register_mask = ~np.isin(
         np.arange(smpl_da.vertices.shape[0]),
-        np.concatenate([smplx_container.smplx_mano_vid, smplx_container.smplx_front_flame_vid]))
+        np.concatenate([smplx_container.smplx_mano_vid, smplx_container.smplx_front_flame_vid])
+    )
     register_mask *= ~smplx_container.eyeball_vertex_mask.bool().numpy()
     smpl_da_body = smpl_da.copy()
     smpl_da_body.update_faces(register_mask[smpl_da.faces].all(axis=1))
@@ -115,8 +121,11 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
     # remove over-streched+hand faces from ECON
     econ_da_body = econ_da.copy()
     edge_before = np.sqrt(
-        ((econ_obj.vertices[econ_cano.edges[:, 0]] - econ_obj.vertices[econ_cano.edges[:, 1]])**2).sum(axis=1))
-    edge_after = np.sqrt(((econ_da.vertices[econ_cano.edges[:, 0]] - econ_da.vertices[econ_cano.edges[:, 1]])**2).sum(axis=1))
+        ((econ_obj.vertices[econ_cano.edges[:, 0]] - econ_obj.vertices[econ_cano.edges[:, 1]])**2).sum(axis=1)
+    )
+    edge_after = np.sqrt(
+        ((econ_da.vertices[econ_cano.edges[:, 0]] - econ_da.vertices[econ_cano.edges[:, 1]])**2).sum(axis=1)
+    )
     edge_diff = edge_after / edge_before.clip(1e-2)
     streched_mask = np.unique(econ_cano.edges[edge_diff > 6])
     mano_mask = ~np.isin(idx[:, 0], smplx_container.smplx_mano_vid)
@@ -157,8 +166,9 @@ econ_lbs_weights /= econ_lbs_weights.sum(axis=1, keepdims=True)
 # re-compute da-pose rot_mat for ECON
 rot_mat_da = smpl_out_lst[1].vertex_transformation.detach()[0][idx[:, 0]]
 econ_da_verts = torch.tensor(econ_da.vertices).float()
-econ_cano_verts = torch.inverse(rot_mat_da) @ torch.cat([econ_da_verts, torch.ones_like(econ_da_verts)[..., :1]],
-                                                        dim=1).unsqueeze(-1)
+econ_cano_verts = torch.inverse(rot_mat_da) @ torch.cat(
+    [econ_da_verts, torch.ones_like(econ_da_verts)[..., :1]], dim=1
+).unsqueeze(-1)
 econ_cano_verts = econ_cano_verts[:, :3, 0].double()
 
 # ----------------------------------------------------
@@ -174,7 +184,8 @@ posed_econ_verts, _ = general_lbs(
     posedirs=econ_posedirs,
     J_regressor=econ_J_regressor,
     parents=smpl_model.parents,
-    lbs_weights=econ_lbs_weights)
+    lbs_weights=econ_lbs_weights
+)
 
 econ_pose = trimesh.Trimesh(posed_econ_verts[0].detach(), econ_da.faces)
 econ_pose.export(f"{prefix}_econ_pose.obj")

@@ -46,8 +46,8 @@ def preprocess_video(video, joints2d, bboxes, frames, scale=1.0, crop_size=224):
 
     if joints2d is not None:
         bboxes, time_pt1, time_pt2 = get_all_bbox_params(joints2d, vis_thresh=0.3)
-        bboxes[:,2:] = 150. / bboxes[:,2:]
-        bboxes = np.stack([bboxes[:,0], bboxes[:,1], bboxes[:,2], bboxes[:,2]]).T
+        bboxes[:, 2:] = 150. / bboxes[:, 2:]
+        bboxes = np.stack([bboxes[:, 0], bboxes[:, 1], bboxes[:, 2], bboxes[:, 2]]).T
 
         video = video[time_pt1:time_pt2]
         joints2d = joints2d[time_pt1:time_pt2]
@@ -65,12 +65,7 @@ def preprocess_video(video, joints2d, bboxes, frames, scale=1.0, crop_size=224):
 
         j2d = joints2d[idx] if joints2d is not None else None
 
-        norm_img, raw_img, kp_2d = get_single_image_crop_demo(
-            img,
-            bbox,
-            kp_2d=j2d,
-            scale=scale,
-            crop_size=crop_size)
+        norm_img, raw_img, kp_2d = get_single_image_crop_demo(img, bbox, kp_2d=j2d, scale=scale, crop_size=crop_size)
 
         if joints2d is not None:
             joints2d[idx] = kp_2d
@@ -88,16 +83,7 @@ def download_youtube_clip(url, download_folder):
 
 
 def smplify_runner(
-        pred_rotmat,
-        pred_betas,
-        pred_cam,
-        j2d,
-        device,
-        batch_size,
-        lr=1.0,
-        opt_steps=1,
-        use_lbfgs=True,
-        pose2aa=True
+    pred_rotmat, pred_betas, pred_cam, j2d, device, batch_size, lr=1.0, opt_steps=1, use_lbfgs=True, pose2aa=True
 ):
     smplify = TemporalSMPLify(
         step_size=lr,
@@ -106,7 +92,7 @@ def smplify_runner(
         focal_length=5000.,
         use_lbfgs=use_lbfgs,
         device=device,
-        # max_iter=10,
+    # max_iter=10,
     )
     # Convert predicted rotation matrices to axis-angle
     if pose2aa:
@@ -115,18 +101,14 @@ def smplify_runner(
         pred_pose = pred_rotmat
 
     # Calculate camera parameters for smplify
-    pred_cam_t = torch.stack([
-        pred_cam[:, 1], pred_cam[:, 2],
-        2 * 5000 / (224 * pred_cam[:, 0] + 1e-9)
-    ], dim=-1)
+    pred_cam_t = torch.stack([pred_cam[:, 1], pred_cam[:, 2], 2 * 5000 / (224 * pred_cam[:, 0] + 1e-9)], dim=-1)
 
     gt_keypoints_2d_orig = j2d
     # Before running compute reprojection error of the network
     opt_joint_loss = smplify.get_fitting_loss(
-        pred_pose.detach(), pred_betas.detach(),
-        pred_cam_t.detach(),
-        0.5 * 224 * torch.ones(batch_size, 2, device=device),
-        gt_keypoints_2d_orig).mean(dim=-1)
+        pred_pose.detach(), pred_betas.detach(), pred_cam_t.detach(),
+        0.5 * 224 * torch.ones(batch_size, 2, device=device), gt_keypoints_2d_orig
+    ).mean(dim=-1)
 
     best_prediction_id = torch.argmin(opt_joint_loss).item()
     pred_betas = pred_betas[best_prediction_id].unsqueeze(0)
@@ -140,7 +122,8 @@ def smplify_runner(
     # new_opt_pose, new_opt_betas, \
     # new_opt_cam_t, \
     output, new_opt_joint_loss = smplify(
-        pred_pose.detach(), pred_betas.detach(),
+        pred_pose.detach(),
+        pred_betas.detach(),
         pred_cam_t.detach(),
         0.5 * 224 * torch.ones(batch_size, 2, device=device),
         gt_keypoints_2d_orig,
@@ -152,29 +135,33 @@ def smplify_runner(
     update = (new_opt_joint_loss < opt_joint_loss)
 
     new_opt_vertices = output['verts']
-    new_opt_cam_t = output['theta'][:,:3]
-    new_opt_pose = output['theta'][:,3:75]
-    new_opt_betas = output['theta'][:,75:]
+    new_opt_cam_t = output['theta'][:, :3]
+    new_opt_pose = output['theta'][:, 3:75]
+    new_opt_betas = output['theta'][:, 75:]
     new_opt_joints3d = output['kp_3d']
 
     return_val = [
-        update, new_opt_vertices.cpu(), new_opt_cam_t.cpu(),
-        new_opt_pose.cpu(), new_opt_betas.cpu(), new_opt_joints3d.cpu(),
-        new_opt_joint_loss, opt_joint_loss,
+        update,
+        new_opt_vertices.cpu(),
+        new_opt_cam_t.cpu(),
+        new_opt_pose.cpu(),
+        new_opt_betas.cpu(),
+        new_opt_joints3d.cpu(),
+        new_opt_joint_loss,
+        opt_joint_loss,
     ]
 
     return return_val
 
 
 def trim_videos(filename, start_time, end_time, output_filename):
-    command = ['ffmpeg',
-               '-i', '"%s"' % filename,
-               '-ss', str(start_time),
-               '-t', str(end_time - start_time),
-               '-c:v', 'libx264', '-c:a', 'copy',
-               '-threads', '1',
-               '-loglevel', 'panic',
-               '"%s"' % output_filename]
+    command = [
+        'ffmpeg', '-i',
+        '"%s"' % filename, '-ss',
+        str(start_time), '-t',
+        str(end_time - start_time), '-c:v', 'libx264', '-c:a', 'copy', '-threads', '1', '-loglevel', 'panic',
+        '"%s"' % output_filename
+    ]
     # command = ' '.join(command)
     subprocess.call(command)
 
@@ -187,11 +174,7 @@ def video_to_images(vid_file, img_folder=None, return_info=False):
     print(img_folder)
     os.makedirs(img_folder, exist_ok=True)
 
-    command = ['ffmpeg',
-               '-i', vid_file,
-               '-f', 'image2',
-               '-v', 'error',
-               f'{img_folder}/%06d.png']
+    command = ['ffmpeg', '-i', vid_file, '-f', 'image2', '-v', 'error', f'{img_folder}/%06d.png']
     print(f'Running \"{" ".join(command)}\"')
 
     try:
@@ -236,8 +219,24 @@ def images_to_video(img_folder, output_vid_file):
     os.makedirs(img_folder, exist_ok=True)
 
     command = [
-        'ffmpeg', '-y', '-threads', '16', '-i', f'{img_folder}/%06d.png', '-profile:v', 'baseline',
-        '-level', '3.0', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-an', '-v', 'error', output_vid_file,
+        'ffmpeg',
+        '-y',
+        '-threads',
+        '16',
+        '-i',
+        f'{img_folder}/%06d.png',
+        '-profile:v',
+        'baseline',
+        '-level',
+        '3.0',
+        '-c:v',
+        'libx264',
+        '-pix_fmt',
+        'yuv420p',
+        '-an',
+        '-v',
+        'error',
+        output_vid_file,
     ]
 
     print(f'Running \"{" ".join(command)}\"')
@@ -257,12 +256,12 @@ def convert_crop_cam_to_orig_img(cam, bbox, img_width, img_height):
     :param img_height (int): original image height
     :return:
     '''
-    cx, cy, h = bbox[:,0], bbox[:,1], bbox[:,2]
+    cx, cy, h = bbox[:, 0], bbox[:, 1], bbox[:, 2]
     hw, hh = img_width / 2., img_height / 2.
-    sx = cam[:,0] * (1. / (img_width / h))
-    sy = cam[:,0] * (1. / (img_height / h))
-    tx = ((cx - hw) / hw / sx) + cam[:,1]
-    ty = ((cy - hh) / hh / sy) + cam[:,2]
+    sx = cam[:, 0] * (1. / (img_width / h))
+    sy = cam[:, 0] * (1. / (img_height / h))
+    tx = ((cx - hw) / hw / sx) + cam[:, 1]
+    ty = ((cy - hh) / hh / sy) + cam[:, 2]
     orig_cam = np.stack([sx, sy, tx, ty]).T
     return orig_cam
 
@@ -276,15 +275,16 @@ def prepare_rendering_results(results_dict, nframes):
                 'smplx_verts': person_data['smplx_verts'][idx] if 'smplx_verts' in person_data else None,
                 'cam': person_data['orig_cam'][idx],
                 'cam_t': person_data['orig_cam_t'][idx] if 'orig_cam_t' in person_data else None,
-                # 'cam': person_data['pred_cam'][idx],
+            # 'cam': person_data['pred_cam'][idx],
             }
 
     # naive depth ordering based on the scale of the weak perspective camera
     for frame_id, frame_data in enumerate(frame_results):
         # sort based on y-scale of the cam in original image coords
-        sort_idx = np.argsort([v['cam'][1] for k,v in frame_data.items()])
+        sort_idx = np.argsort([v['cam'][1] for k, v in frame_data.items()])
         frame_results[frame_id] = OrderedDict(
-            {list(frame_data.keys())[i]:frame_data[list(frame_data.keys())[i]] for i in sort_idx}
+            {list(frame_data.keys())[i]: frame_data[list(frame_data.keys())[i]]
+             for i in sort_idx}
         )
 
     return frame_results
