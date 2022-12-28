@@ -35,7 +35,7 @@ class OurMultiheadAttention(nn.Module):
 
         # -------------- Attention -----------------
         if attn_type == 'softmax':
-            q, attn = softmax_attention(q, k, v)  # b x n x dk x h x w --> b x n x dv x h x w
+            q, attn = softmax_attention(q, k, v)    # b x n x dk x h x w --> b x n x dv x h x w
         elif attn_type == 'dotproduct':
             q, attn = dotproduct_attention(q, k, v)
         elif attn_type == 'patch':
@@ -50,7 +50,7 @@ class OurMultiheadAttention(nn.Module):
 
         # Concatenate all the heads together: b x (n*dv) x h x w
         q = q.reshape(q.shape[0], -1, q.shape[3], q.shape[4])
-        q = self.fc(q)   # b x d x h x w
+        q = self.fc(q)    # b x d x h x w
 
         return q, attn
 
@@ -65,22 +65,24 @@ class TransformerEncoderUnit(nn.Module):
 
         self.pos_en = PosEnSine(self.feat_dim // 2)
         self.attn = OurMultiheadAttention(feat_dim, n_head)
-        
+
         self.linear1 = nn.Conv2d(self.feat_dim, self.feat_dim, 1)
         self.linear2 = nn.Conv2d(self.feat_dim, self.feat_dim, 1)
         self.activation = nn.ReLU(inplace=True)
 
         self.norm1 = nn.BatchNorm2d(self.feat_dim)
-        self.norm2 = nn.BatchNorm2d(self.feat_dim) 
+        self.norm2 = nn.BatchNorm2d(self.feat_dim)
 
     def forward(self, src):
         if self.pos_en_flag:
             pos_embed = self.pos_en(src)
         else:
             pos_embed = 0
-        
+
         # multi-head attention
-        src2 = self.attn(q=src+pos_embed, k=src+pos_embed, v=src, attn_type=self.attn_type, P=self.P)[0]
+        src2 = self.attn(
+            q=src + pos_embed, k=src + pos_embed, v=src, attn_type=self.attn_type, P=self.P
+        )[0]
         src = src + src2
         src = self.norm1(src)
 
@@ -102,26 +104,40 @@ class TransformerEncoderUnitSparse(nn.Module):
         self.pos_en = PosEnSine(self.feat_dim // 2)
         self.attn1 = OurMultiheadAttention(feat_dim, n_head)    # long range
         self.attn2 = OurMultiheadAttention(feat_dim, n_head)    # short range
-        
+
         self.linear1 = nn.Conv2d(self.feat_dim, self.feat_dim, 1)
         self.linear2 = nn.Conv2d(self.feat_dim, self.feat_dim, 1)
         self.activation = nn.ReLU(inplace=True)
 
         self.norm1 = nn.BatchNorm2d(self.feat_dim)
-        self.norm2 = nn.BatchNorm2d(self.feat_dim) 
+        self.norm2 = nn.BatchNorm2d(self.feat_dim)
 
     def forward(self, src):
         if self.pos_en_flag:
             pos_embed = self.pos_en(src)
         else:
             pos_embed = 0
-        
+
         # multi-head long-range attention
-        src2 = self.attn1(q=src+pos_embed, k=src+pos_embed, v=src, attn_type='sparse_long', ah=self.ahw[0], aw=self.ahw[1])[0]
+        src2 = self.attn1(
+            q=src + pos_embed,
+            k=src + pos_embed,
+            v=src,
+            attn_type='sparse_long',
+            ah=self.ahw[0],
+            aw=self.ahw[1]
+        )[0]
         src = src + src2    # ? this might be ok to remove
-        
+
         # multi-head short-range attention
-        src2 = self.attn2(q=src+pos_embed, k=src+pos_embed, v=src, attn_type='sparse_short', ah=self.ahw[2], aw=self.ahw[3])[0]
+        src2 = self.attn2(
+            q=src + pos_embed,
+            k=src + pos_embed,
+            v=src,
+            attn_type='sparse_short',
+            ah=self.ahw[2],
+            aw=self.ahw[3]
+        )[0]
         src = src + src2
         src = self.norm1(src)
 
@@ -142,16 +158,16 @@ class TransformerDecoderUnit(nn.Module):
         self.P = P
 
         self.pos_en = PosEnSine(self.feat_dim // 2)
-        self.attn1 = OurMultiheadAttention(feat_dim, n_head)   # self-attention
-        self.attn2 = OurMultiheadAttention(feat_dim, n_head)   # cross-attention
-        
+        self.attn1 = OurMultiheadAttention(feat_dim, n_head)    # self-attention
+        self.attn2 = OurMultiheadAttention(feat_dim, n_head)    # cross-attention
+
         self.linear1 = nn.Conv2d(self.feat_dim, self.feat_dim, 1)
         self.linear2 = nn.Conv2d(self.feat_dim, self.feat_dim, 1)
         self.activation = nn.ReLU(inplace=True)
 
         self.norm1 = nn.BatchNorm2d(self.feat_dim)
-        self.norm2 = nn.BatchNorm2d(self.feat_dim) 
-        self.norm3 = nn.BatchNorm2d(self.feat_dim) 
+        self.norm2 = nn.BatchNorm2d(self.feat_dim)
+        self.norm3 = nn.BatchNorm2d(self.feat_dim)
 
     def forward(self, tgt, src):
         if self.pos_en_flag:
@@ -160,14 +176,18 @@ class TransformerDecoderUnit(nn.Module):
         else:
             src_pos_embed = 0
             tgt_pos_embed = 0
-        
+
         # self-multi-head attention
-        tgt2 = self.attn1(q=tgt+tgt_pos_embed, k=tgt+tgt_pos_embed, v=tgt, attn_type=self.attn_type, P=self.P)[0]
+        tgt2 = self.attn1(
+            q=tgt + tgt_pos_embed, k=tgt + tgt_pos_embed, v=tgt, attn_type=self.attn_type, P=self.P
+        )[0]
         tgt = tgt + tgt2
         tgt = self.norm1(tgt)
 
         # cross-multi-head attention
-        tgt2 = self.attn2(q=tgt+tgt_pos_embed, k=src+src_pos_embed, v=src, attn_type=self.attn_type, P=self.P)[0]
+        tgt2 = self.attn2(
+            q=tgt + tgt_pos_embed, k=src + src_pos_embed, v=src, attn_type=self.attn_type, P=self.P
+        )[0]
         tgt = tgt + tgt2
         tgt = self.norm2(tgt)
 
@@ -183,23 +203,25 @@ class TransformerDecoderUnitSparse(nn.Module):
     def __init__(self, feat_dim, n_head=8, pos_en_flag=True, ahw=None):
         super(TransformerDecoderUnitSparse, self).__init__()
         self.feat_dim = feat_dim
-        self.ahw = ahw   # [Ph_tgt, Pw_tgt, Qh_tgt, Qw_tgt, Ph_src, Pw_src, Qh_tgt, Qw_tgt]
+        self.ahw = ahw    # [Ph_tgt, Pw_tgt, Qh_tgt, Qw_tgt, Ph_src, Pw_src, Qh_tgt, Qw_tgt]
         self.pos_en_flag = pos_en_flag
 
         self.pos_en = PosEnSine(self.feat_dim // 2)
-        self.attn1_1 = OurMultiheadAttention(feat_dim, n_head)   # self-attention: long
-        self.attn1_2 = OurMultiheadAttention(feat_dim, n_head)   # self-attention: short
+        self.attn1_1 = OurMultiheadAttention(feat_dim, n_head)    # self-attention: long
+        self.attn1_2 = OurMultiheadAttention(feat_dim, n_head)    # self-attention: short
 
-        self.attn2_1 = OurMultiheadAttention(feat_dim, n_head)   # cross-attention: self-attention-long + cross-attention-short
+        self.attn2_1 = OurMultiheadAttention(
+            feat_dim, n_head
+        )    # cross-attention: self-attention-long + cross-attention-short
         self.attn2_2 = OurMultiheadAttention(feat_dim, n_head)
-        
+
         self.linear1 = nn.Conv2d(self.feat_dim, self.feat_dim, 1)
         self.linear2 = nn.Conv2d(self.feat_dim, self.feat_dim, 1)
         self.activation = nn.ReLU(inplace=True)
 
         self.norm1 = nn.BatchNorm2d(self.feat_dim)
-        self.norm2 = nn.BatchNorm2d(self.feat_dim) 
-        self.norm3 = nn.BatchNorm2d(self.feat_dim) 
+        self.norm2 = nn.BatchNorm2d(self.feat_dim)
+        self.norm3 = nn.BatchNorm2d(self.feat_dim)
 
     def forward(self, tgt, src):
         if self.pos_en_flag:
@@ -208,20 +230,48 @@ class TransformerDecoderUnitSparse(nn.Module):
         else:
             src_pos_embed = 0
             tgt_pos_embed = 0
-        
+
         # self-multi-head attention: sparse long
-        tgt2 = self.attn1_1(q=tgt+tgt_pos_embed, k=tgt+tgt_pos_embed, v=tgt, attn_type='sparse_long', ah=self.ahw[0], aw=self.ahw[1])[0]
+        tgt2 = self.attn1_1(
+            q=tgt + tgt_pos_embed,
+            k=tgt + tgt_pos_embed,
+            v=tgt,
+            attn_type='sparse_long',
+            ah=self.ahw[0],
+            aw=self.ahw[1]
+        )[0]
         tgt = tgt + tgt2
         # self-multi-head attention: sparse short
-        tgt2 = self.attn1_2(q=tgt+tgt_pos_embed, k=tgt+tgt_pos_embed, v=tgt, attn_type='sparse_short', ah=self.ahw[2], aw=self.ahw[3])[0]
+        tgt2 = self.attn1_2(
+            q=tgt + tgt_pos_embed,
+            k=tgt + tgt_pos_embed,
+            v=tgt,
+            attn_type='sparse_short',
+            ah=self.ahw[2],
+            aw=self.ahw[3]
+        )[0]
         tgt = tgt + tgt2
         tgt = self.norm1(tgt)
 
         # self-multi-head attention: sparse long
-        src2 = self.attn2_1(q=src+src_pos_embed, k=src+src_pos_embed, v=src, attn_type='sparse_long', ah=self.ahw[4], aw=self.ahw[5])[0]
+        src2 = self.attn2_1(
+            q=src + src_pos_embed,
+            k=src + src_pos_embed,
+            v=src,
+            attn_type='sparse_long',
+            ah=self.ahw[4],
+            aw=self.ahw[5]
+        )[0]
         src = src + src2
         # cross-multi-head attention: sparse short
-        tgt2 = self.attn2_2(q=tgt+tgt_pos_embed, k=src+src_pos_embed, v=src, attn_type='sparse_short', ah=self.ahw[6], aw=self.ahw[7])[0]
+        tgt2 = self.attn2_2(
+            q=tgt + tgt_pos_embed,
+            k=src + src_pos_embed,
+            v=src,
+            attn_type='sparse_short',
+            ah=self.ahw[6],
+            aw=self.ahw[7]
+        )[0]
         tgt = tgt + tgt2
         tgt = self.norm2(tgt)
 
@@ -231,4 +281,3 @@ class TransformerDecoderUnitSparse(nn.Module):
         tgt = self.norm3(tgt)
 
         return tgt
-

@@ -22,6 +22,7 @@ import joblib
 
 from .geometry import batch_euler2matrix
 
+
 def f_pix2vfov(f_pix, img_h):
 
     if torch.is_tensor(f_pix):
@@ -31,6 +32,7 @@ def f_pix2vfov(f_pix, img_h):
 
     return fov
 
+
 def vfov2f_pix(fov, img_h):
 
     if torch.is_tensor(fov):
@@ -39,6 +41,7 @@ def vfov2f_pix(fov, img_h):
         f_pix = img_h / 2. / np.tan(fov / 2.)
 
     return f_pix
+
 
 def read_cam_params(cam_params, orig_shape=None):
     # These are predicted camera parameters
@@ -68,6 +71,7 @@ def read_cam_params(cam_params, orig_shape=None):
     cam_int = pred_cam_int.float()
 
     return cam_rotmat, cam_int, cam_vfov, cam_pitch, cam_roll, cam_focal_length
+
 
 def homo_vector(vector):
     """

@@ -3,7 +3,17 @@ import trimesh
 import numpy as np
 from .utils.libmesh import check_mesh_contains
 
-def get_occ_gt(in_path=None, vertices=None, faces=None, pts_num=1000, points_sigma=0.01, with_dp=False, points=None, extra_points=None):
+
+def get_occ_gt(
+    in_path=None,
+    vertices=None,
+    faces=None,
+    pts_num=1000,
+    points_sigma=0.01,
+    with_dp=False,
+    points=None,
+    extra_points=None
+):
     if in_path is not None:
         mesh = trimesh.load(in_path, process=False)
         print(type(mesh.vertices), mesh.vertices.shape, mesh.faces.shape)
@@ -27,7 +37,7 @@ def get_occ_gt(in_path=None, vertices=None, faces=None, pts_num=1000, points_sig
         points_surface, index_surface = mesh.sample(n_points_surface, return_index=True)
         points_surface += points_sigma * np.random.randn(n_points_surface, 3)
         points = np.concatenate([points_uniform, points_surface], axis=0)
-    
+
     if extra_points is not None:
         extra_points += points_sigma * np.random.randn(len(extra_points), 3)
         points = np.concatenate([points, extra_points], axis=0)

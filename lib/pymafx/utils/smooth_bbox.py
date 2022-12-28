@@ -94,8 +94,11 @@ def get_all_bbox_params(kps, vis_thresh=2):
             previous = bbox_params[-1]
             # This will be 3x(n+2)
             interpolated = np.array(
-                [np.linspace(prev, curr, num_to_interpolate + 2)
-                 for prev, curr in zip(previous, bbox_param)])
+                [
+                    np.linspace(prev, curr, num_to_interpolate + 2)
+                    for prev, curr in zip(previous, bbox_param)
+                ]
+            )
             bbox_params = np.vstack((bbox_params, interpolated.T[1:-1]))
             num_to_interpolate = 0
         bbox_params = np.vstack((bbox_params, bbox_param))
@@ -116,6 +119,5 @@ def smooth_bbox_params(bbox_params, kernel_size=11, sigma=8):
     Returns:
         Smoothed bounding box parameters (Nx3).
     """
-    smoothed = np.array([signal.medfilt(param, kernel_size)
-                         for param in bbox_params.T]).T
+    smoothed = np.array([signal.medfilt(param, kernel_size) for param in bbox_params.T]).T
     return np.array([gaussian_filter1d(traj, sigma) for traj in smoothed.T]).T

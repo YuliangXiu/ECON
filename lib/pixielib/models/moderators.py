@@ -12,11 +12,7 @@ import torch.nn.functional as F
 
 
 class TempSoftmaxFusion(nn.Module):
-
-    def __init__(self,
-                 channels=[2048 * 2, 1024, 1],
-                 detach_inputs=False,
-                 detach_feature=False):
+    def __init__(self, channels=[2048 * 2, 1024, 1], detach_inputs=False, detach_feature=False):
         super(TempSoftmaxFusion, self).__init__()
         self.detach_inputs = detach_inputs
         self.detach_feature = detach_feature
@@ -63,11 +59,7 @@ class TempSoftmaxFusion(nn.Module):
 
 
 class GumbelSoftmaxFusion(nn.Module):
-
-    def __init__(self,
-                 channels=[2048 * 2, 1024, 1],
-                 detach_inputs=False,
-                 detach_feature=False):
+    def __init__(self, channels=[2048 * 2, 1024, 1], detach_inputs=False, detach_feature=False):
         super(GumbelSoftmaxFusion, self).__init__()
         self.detach_inputs = detach_inputs
         self.detach_feature = detach_feature

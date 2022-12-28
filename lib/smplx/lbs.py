@@ -79,11 +79,15 @@ def find_dynamic_lmk_idx_and_bcoords(
     else:
         rot_mats = torch.index_select(pose.view(batch_size, -1, 3, 3), 1, neck_kin_chain)
 
-    rel_rot_mat = (torch.eye(3, device=vertices.device, dtype=dtype).unsqueeze_(dim=0).repeat(batch_size, 1, 1))
+    rel_rot_mat = (
+        torch.eye(3, device=vertices.device,
+                  dtype=dtype).unsqueeze_(dim=0).repeat(batch_size, 1, 1)
+    )
     for idx in range(len(neck_kin_chain)):
         rel_rot_mat = torch.bmm(rot_mats[:, idx], rel_rot_mat)
 
-    y_rot_angle = torch.round(torch.clamp(-rot_mat_to_euler(rel_rot_mat) * 180.0 / np.pi, max=39)).to(dtype=torch.long)
+    y_rot_angle = torch.round(torch.clamp(-rot_mat_to_euler(rel_rot_mat) * 180.0 / np.pi,
+                                          max=39)).to(dtype=torch.long)
     neg_mask = y_rot_angle.lt(0).to(dtype=torch.long)
     mask = y_rot_angle.lt(-39).to(dtype=torch.long)
     neg_vals = mask * 78 + (1 - mask) * (39 - y_rot_angle)
@@ -95,7 +99,9 @@ def find_dynamic_lmk_idx_and_bcoords(
     return dyn_lmk_faces_idx, dyn_lmk_b_coords
 
 
-def vertices2landmarks(vertices: Tensor, faces: Tensor, lmk_faces_idx: Tensor, lmk_bary_coords: Tensor) -> Tensor:
+def vertices2landmarks(
+    vertices: Tensor, faces: Tensor, lmk_faces_idx: Tensor, lmk_bary_coords: Tensor
+) -> Tensor:
     """Calculates landmarks by barycentric interpolation
 
     Parameters
@@ -123,7 +129,9 @@ def vertices2landmarks(vertices: Tensor, faces: Tensor, lmk_faces_idx: Tensor, l
 
     lmk_faces = torch.index_select(faces, 0, lmk_faces_idx.view(-1)).view(batch_size, -1, 3)
 
-    lmk_faces += (torch.arange(batch_size, dtype=torch.long, device=device).view(-1, 1, 1) * num_verts)
+    lmk_faces += (
+        torch.arange(batch_size, dtype=torch.long, device=device).view(-1, 1, 1) * num_verts
+    )
 
     lmk_vertices = vertices.view(-1, 3)[lmk_faces].view(batch_size, -1, 3, 3)
 
@@ -205,7 +213,8 @@ def lbs(
         pose_feature = pose[:, 1:].view(batch_size, -1, 3, 3) - ident
         rot_mats = pose.view(batch_size, -1, 3, 3)
 
-        pose_offsets = torch.matmul(pose_feature.view(batch_size, -1), posedirs).view(batch_size, -1, 3)
+        pose_offsets = torch.matmul(pose_feature.view(batch_size, -1),
+                                    posedirs).view(batch_size, -1, 3)
 
     v_posed = pose_offsets + v_shaped
     # 4. Get the global joint location
@@ -292,7 +301,8 @@ def general_lbs(
     else:
         rot_mats = pose.view(batch_size, -1, 3, 3)
         pose_feature = pose[:, 1:].view(batch_size, -1, 3, 3) - ident
-        pose_offsets = torch.matmul(pose_feature.view(batch_size, -1), posedirs).view(batch_size, -1, 3)
+        pose_offsets = torch.matmul(pose_feature.view(batch_size, -1),
+                                    posedirs).view(batch_size, -1, 3)
 
     v_posed = pose_offsets + v_template
 
@@ -407,7 +417,9 @@ def transform_mat(R: Tensor, t: Tensor) -> Tensor:
     return torch.cat([F.pad(R, [0, 0, 0, 1]), F.pad(t, [0, 0, 0, 1], value=1)], dim=2)
 
 
-def batch_rigid_transform(rot_mats: Tensor, joints: Tensor, parents: Tensor, dtype=torch.float32) -> Tensor:
+def batch_rigid_transform(
+    rot_mats: Tensor, joints: Tensor, parents: Tensor, dtype=torch.float32
+) -> Tensor:
     """
     Applies a batch of rigid transformations to the joints
 
@@ -436,7 +448,8 @@ def batch_rigid_transform(rot_mats: Tensor, joints: Tensor, parents: Tensor, dty
     rel_joints = joints.clone()
     rel_joints[:, 1:] -= joints[:, parents[1:]]
 
-    transforms_mat = transform_mat(rot_mats.reshape(-1, 3, 3), rel_joints.reshape(-1, 3, 1)).reshape(-1, joints.shape[1], 4, 4)
+    transforms_mat = transform_mat(rot_mats.reshape(-1, 3, 3),
+                                   rel_joints.reshape(-1, 3, 1)).reshape(-1, joints.shape[1], 4, 4)
 
     transform_chain = [transforms_mat[:, 0]]
     for i in range(1, parents.shape[0]):
@@ -452,6 +465,8 @@ def batch_rigid_transform(rot_mats: Tensor, joints: Tensor, parents: Tensor, dty
 
     joints_homogen = F.pad(joints, [0, 0, 0, 1])
 
-    rel_transforms = transforms - F.pad(torch.matmul(transforms, joints_homogen), [3, 0, 0, 0, 0, 0, 0, 0])
+    rel_transforms = transforms - F.pad(
+        torch.matmul(transforms, joints_homogen), [3, 0, 0, 0, 0, 0, 0, 0]
+    )
 
     return posed_joints, rel_transforms

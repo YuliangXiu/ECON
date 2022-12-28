@@ -33,13 +33,21 @@ class Generator3D(object):
             size for refinement process (we added this functionality in this
             work)
     '''
-
-    def __init__(self, model, points_batch_size=100000,
-                 threshold=0.5, refinement_step=0, device=None,
-                 resolution0=16, upsampling_steps=3,
-                 with_normals=False, padding=0.1,
-                 simplify_nfaces=None, with_color=False,
-                 refine_max_faces=10000):
+    def __init__(
+        self,
+        model,
+        points_batch_size=100000,
+        threshold=0.5,
+        refinement_step=0,
+        device=None,
+        resolution0=16,
+        upsampling_steps=3,
+        with_normals=False,
+        padding=0.1,
+        simplify_nfaces=None,
+        with_color=False,
+        refine_max_faces=10000
+    ):
         self.model = model.to(device)
         self.points_batch_size = points_batch_size
         self.refinement_step = refinement_step
@@ -68,8 +76,7 @@ class Generator3D(object):
         kwargs = {}
 
         c = self.model.encode_inputs(inputs)
-        mesh = self.generate_from_latent(c, stats_dict=stats_dict,
-                                         data=data, **kwargs)
+        mesh = self.generate_from_latent(c, stats_dict=stats_dict, data=data, **kwargs)
 
         return mesh, stats_dict
 
@@ -95,8 +102,7 @@ class Generator3D(object):
 
         return meshes
 
-    def generate_pointcloud(self, mesh, data=None, n_points=2000000,
-                            scale_back=True):
+    def generate_pointcloud(self, mesh, data=None, n_points=2000000, scale_back=True):
         ''' Generates a point cloud from the mesh.
 
         Args:
@@ -117,8 +123,7 @@ class Generator3D(object):
         pcl_out = trimesh.Trimesh(vertices=pcl, process=False)
         return pcl_out
 
-    def generate_from_latent(self, c=None, pl=None, stats_dict={}, data=None,
-                             **kwargs):
+    def generate_from_latent(self, c=None, pl=None, stats_dict={}, data=None, **kwargs):
         ''' Generates mesh from latent.
 
         Args:
@@ -135,14 +140,11 @@ class Generator3D(object):
         # Shortcut
         if self.upsampling_steps == 0:
             nx = self.resolution0
-            pointsf = box_size * make_3d_grid(
-                (-0.5,)*3, (0.5,)*3, (nx,)*3
-            )
+            pointsf = box_size * make_3d_grid((-0.5, ) * 3, (0.5, ) * 3, (nx, ) * 3)
             values = self.eval_points(pointsf, c, pl, **kwargs).cpu().numpy()
             value_grid = values.reshape(nx, nx, nx)
         else:
-            mesh_extractor = MISE(
-                self.resolution0, self.upsampling_steps, threshold)
+            mesh_extractor = MISE(self.resolution0, self.upsampling_steps, threshold)
 
             points = mesh_extractor.query()
 
@@ -153,8 +155,7 @@ class Generator3D(object):
                 pointsf = 2 * pointsf / mesh_extractor.resolution
                 pointsf = box_size * (pointsf - 1.0)
                 # Evaluate model and update
-                values = self.eval_points(
-                    pointsf, c, pl, **kwargs).cpu().numpy()
+                values = self.eval_points(pointsf, c, pl, **kwargs).cpu().numpy()
 
                 values = values.astype(np.float64)
                 mesh_extractor.update(points, values)
@@ -203,17 +204,15 @@ class Generator3D(object):
         threshold = np.log(self.threshold) - np.log(1. - self.threshold)
         # Make sure that mesh is watertight
         t0 = time.time()
-        occ_hat_padded = np.pad(
-            occ_hat, 1, 'constant', constant_values=-1e6)
-        vertices, triangles = libmcubes.marching_cubes(
-            occ_hat_padded, threshold)
+        occ_hat_padded = np.pad(occ_hat, 1, 'constant', constant_values=-1e6)
+        vertices, triangles = libmcubes.marching_cubes(occ_hat_padded, threshold)
         stats_dict['time (marching cubes)'] = time.time() - t0
         # Strange behaviour in libmcubes: vertices are shifted by 0.5
         vertices -= 0.5
         # Undo padding
         vertices -= 1
         # Normalize to bounding box
-        vertices /= np.array([n_x-1, n_y-1, n_z-1])
+        vertices /= np.array([n_x - 1, n_y - 1, n_z - 1])
         vertices *= 2
         vertices = box_size * (vertices - 1)
 
@@ -228,10 +227,13 @@ class Generator3D(object):
         else:
             normals = None
         # Create mesh
-        mesh = trimesh.Trimesh(vertices, triangles,
-                               vertex_normals=normals,
-                               # vertex_colors=vertex_colors,
-                               process=False)
+        mesh = trimesh.Trimesh(
+            vertices,
+            triangles,
+            vertex_normals=normals,
+        # vertex_colors=vertex_colors,
+            process=False
+        )
 
         # Directly return if mesh is empty
         if vertices.shape[0] == 0:
@@ -255,9 +257,12 @@ class Generator3D(object):
             vertex_colors = self.estimate_colors(np.array(mesh.vertices), c)
             stats_dict['time (color)'] = time.time() - t0
             mesh = trimesh.Trimesh(
-                vertices=mesh.vertices, faces=mesh.faces,
+                vertices=mesh.vertices,
+                faces=mesh.faces,
                 vertex_normals=mesh.vertex_normals,
-                vertex_colors=vertex_colors, process=False)
+                vertex_colors=vertex_colors,
+                process=False
+            )
 
         return mesh
 
@@ -275,16 +280,15 @@ class Generator3D(object):
         for vi in vertices_split:
             vi = vi.to(device)
             with torch.no_grad():
-                ci = self.model.decode_color(
-                    vi.unsqueeze(0), c).squeeze(0).cpu()
+                ci = self.model.decode_color(vi.unsqueeze(0), c).squeeze(0).cpu()
             colors.append(ci)
 
         colors = np.concatenate(colors, axis=0)
         colors = np.clip(colors, 0, 1)
         colors = (colors * 255).astype(np.uint8)
-        colors = np.concatenate([
-            colors, np.full((colors.shape[0], 1), 255, dtype=np.uint8)],
-            axis=1)
+        colors = np.concatenate(
+            [colors, np.full((colors.shape[0], 1), 255, dtype=np.uint8)], axis=1
+        )
         return colors
 
     def estimate_normals(self, vertices, c=None):
@@ -328,7 +332,7 @@ class Generator3D(object):
 
         # Some shorthands
         n_x, n_y, n_z = occ_hat.shape
-        assert(n_x == n_y == n_z)
+        assert (n_x == n_y == n_z)
         # threshold = np.log(self.threshold) - np.log(1. - self.threshold)
         threshold = self.threshold
 
@@ -348,8 +352,7 @@ class Generator3D(object):
 
         # Dataset
         ds_faces = TensorDataset(faces)
-        dataloader = DataLoader(ds_faces, batch_size=self.refine_max_faces,
-                                shuffle=True)
+        dataloader = DataLoader(ds_faces, batch_size=self.refine_max_faces, shuffle=True)
 
         # We updated the refinement algorithm to subsample faces; this is
         # usefull when using a high extraction resolution / when working on
@@ -372,13 +375,16 @@ class Generator3D(object):
                 face_normal = face_normal / \
                     (face_normal.norm(dim=1, keepdim=True) + 1e-10)
 
-                face_value = torch.cat([
-                    torch.sigmoid(self.model.decode(p_split, c).logits)
-                    for p_split in torch.split(
-                        face_point.unsqueeze(0), 20000, dim=1)], dim=1)
+                face_value = torch.cat(
+                    [
+                        torch.sigmoid(self.model.decode(p_split, c).logits)
+                        for p_split in torch.split(face_point.unsqueeze(0), 20000, dim=1)
+                    ],
+                    dim=1
+                )
 
-                normal_target = -autograd.grad(
-                    [face_value.sum()], [face_point], create_graph=True)[0]
+                normal_target = -autograd.grad([face_value.sum()], [face_point],
+                                               create_graph=True)[0]
 
                 normal_target = \
                     normal_target / \

@@ -19,11 +19,11 @@ import numpy as np
 import numbers
 from torch.nn import functional as F
 from einops.einops import rearrange
-
 """
 Useful geometric operations, e.g. Perspective projection and a differentiable Rodrigues formula
 Parts of the code are taken from https://github.com/MandyMo/pytorch_HMR
 """
+
 
 def quaternion_to_rotation_matrix(quat):
     """Convert quaternion coefficients to rotation matrix.
@@ -42,11 +42,13 @@ def quaternion_to_rotation_matrix(quat):
     wx, wy, wz = w * x, w * y, w * z
     xy, xz, yz = x * y, x * z, y * z
 
-    rotMat = torch.stack([
-        w2 + x2 - y2 - z2, 2 * xy - 2 * wz, 2 * wy + 2 * xz, 2 * wz + 2 * xy, w2 - x2 + y2 - z2,
-        2 * yz - 2 * wx, 2 * xz - 2 * wy, 2 * wx + 2 * yz, w2 - x2 - y2 + z2
-    ],
-                         dim=1).view(B, 3, 3)
+    rotMat = torch.stack(
+        [
+            w2 + x2 - y2 - z2, 2 * xy - 2 * wz, 2 * wy + 2 * xz, 2 * wz + 2 * xy, w2 - x2 + y2 - z2,
+            2 * yz - 2 * wx, 2 * xz - 2 * wy, 2 * wx + 2 * yz, w2 - x2 - y2 + z2
+        ],
+        dim=1
+    ).view(B, 3, 3)
     return rotMat
 
 
@@ -56,7 +58,7 @@ def index(feat, uv):
     :param uv: [B, 2, N] uv coordinates in the image plane, range [0, 1]
     :return: [B, C, N] image features at the uv coordinates
     """
-    uv = uv.transpose(1, 2)  # [B, N, 2]
+    uv = uv.transpose(1, 2)    # [B, N, 2]
 
     (B, N, _) = uv.shape
     C = feat.shape[1]
@@ -64,14 +66,14 @@ def index(feat, uv):
     if uv.shape[-1] == 3:
         # uv = uv[:,:,[2,1,0]]
         # uv = uv * torch.tensor([1.0,-1.0,1.0]).type_as(uv)[None,None,...]
-        uv = uv.unsqueeze(2).unsqueeze(3)  # [B, N, 1, 1, 3]
+        uv = uv.unsqueeze(2).unsqueeze(3)    # [B, N, 1, 1, 3]
     else:
-        uv = uv.unsqueeze(2)  # [B, N, 1, 2]
+        uv = uv.unsqueeze(2)    # [B, N, 1, 2]
 
     # NOTE: for newer PyTorch, it seems that training results are degraded due to implementation diff in F.grid_sample
     # for old versions, simply remove the aligned_corners argument.
-    samples = torch.nn.functional.grid_sample(feat, uv, align_corners=True)  # [B, C, N, 1]
-    return samples.view(B, C, N)  # [B, C, N]
+    samples = torch.nn.functional.grid_sample(feat, uv, align_corners=True)    # [B, C, N, 1]
+    return samples.view(B, C, N)    # [B, C, N]
 
 
 def orthogonal(points, calibrations, transforms=None):
@@ -84,7 +86,7 @@ def orthogonal(points, calibrations, transforms=None):
     """
     rot = calibrations[:, :3, :3]
     trans = calibrations[:, :3, 3:4]
-    pts = torch.baddbmm(trans, rot, points)  # [B, 3, N]
+    pts = torch.baddbmm(trans, rot, points)    # [B, 3, N]
     if transforms is not None:
         scale = transforms[:2, :2]
         shift = transforms[:2, 2:3]
@@ -102,7 +104,7 @@ def perspective(points, calibrations, transforms=None):
     """
     rot = calibrations[:, :3, :3]
     trans = calibrations[:, :3, 3:4]
-    homo = torch.baddbmm(trans, rot, points)  # [B, 3, N]
+    homo = torch.baddbmm(trans, rot, points)    # [B, 3, N]
     xy = homo[:, :2, :] / homo[:, 2:3, :]
     if transforms is not None:
         scale = transforms[:2, :2]
@@ -187,7 +189,8 @@ def rotation_matrix_to_angle_axis(rotation_matrix):
     if rotation_matrix.shape[1:] == (3, 3):
         rot_mat = rotation_matrix.reshape(-1, 3, 3)
         hom = torch.tensor([0, 0, 1], dtype=torch.float32, device=rotation_matrix.device).reshape(
-            1, 3, 1).expand(rot_mat.shape[0], -1, -1)
+            1, 3, 1
+        ).expand(rot_mat.shape[0], -1, -1)
         rotation_matrix = torch.cat([rot_mat, hom], dim=-1)
 
     quaternion = rotation_matrix_to_quaternion(rotation_matrix)
@@ -222,8 +225,9 @@ def quaternion_to_angle_axis(quaternion: torch.Tensor) -> torch.Tensor:
         raise TypeError("Input type is not a torch.Tensor. Got {}".format(type(quaternion)))
 
     if not quaternion.shape[-1] == 4:
-        raise ValueError("Input must be a tensor of shape Nx4 or 4. Got {}".format(
-            quaternion.shape))
+        raise ValueError(
+            "Input must be a tensor of shape Nx4 or 4. Got {}".format(quaternion.shape)
+        )
     # unpack input and compute conversion
     q1: torch.Tensor = quaternion[..., 1]
     q2: torch.Tensor = quaternion[..., 2]
@@ -276,11 +280,13 @@ def rotation_matrix_to_quaternion(rotation_matrix, eps=1e-6):
         raise TypeError("Input type is not a torch.Tensor. Got {}".format(type(rotation_matrix)))
 
     if len(rotation_matrix.shape) > 3:
-        raise ValueError("Input size must be a three dimensional tensor. Got {}".format(
-            rotation_matrix.shape))
+        raise ValueError(
+            "Input size must be a three dimensional tensor. Got {}".format(rotation_matrix.shape)
+        )
     if not rotation_matrix.shape[-2:] == (3, 4):
-        raise ValueError("Input size must be a N x 3 x 4  tensor. Got {}".format(
-            rotation_matrix.shape))
+        raise ValueError(
+            "Input size must be a N x 3 x 4  tensor. Got {}".format(rotation_matrix.shape)
+        )
 
     rmat_t = torch.transpose(rotation_matrix, 1, 2)
 
@@ -347,8 +353,10 @@ def rotation_matrix_to_quaternion(rotation_matrix, eps=1e-6):
     mask_c3 = mask_c3.view(-1, 1).type_as(q3)
 
     q = q0 * mask_c0 + q1 * mask_c1 + q2 * mask_c2 + q3 * mask_c3
-    q /= torch.sqrt(t0_rep * mask_c0 + t1_rep * mask_c1 + t2_rep * mask_c2  # noqa
-                    + t3_rep * mask_c3)  # noqa
+    q /= torch.sqrt(
+        t0_rep * mask_c0 + t1_rep * mask_c1 + t2_rep * mask_c2    # noqa
+        + t3_rep * mask_c3
+    )    # noqa
     q *= 0.5
     return q
 
@@ -389,6 +397,7 @@ def rot6d_to_rotmat(x):
         mat = torch.stack((b1, b2, b3), dim=-1)
     return mat
 
+
 def rotmat_to_rot6d(x):
     """Convert 3x3 rotation matrix to 6D rotation representation.
     Based on Zhou et al., "On the Continuity of Rotation Representations in Neural Networks", CVPR 2019
@@ -401,6 +410,7 @@ def rotmat_to_rot6d(x):
     x = x[:, :, :2]
     x = x.reshape(batch_size, 6)
     return x
+
 
 def rotmat_to_angle(x):
     """Convert rotation to one-D angle.
@@ -440,12 +450,9 @@ def projection(pred_joints, pred_camera, retain_z=False):
     return pred_keypoints_2d
 
 
-def perspective_projection(points,
-                           rotation,
-                           translation,
-                           focal_length,
-                           camera_center,
-                           retain_z=False):
+def perspective_projection(
+    points, rotation, translation, focal_length, camera_center, retain_z=False
+):
     """
     This function computes the perspective projection of a set of points.
     Input:
@@ -501,10 +508,12 @@ def estimate_translation_np(S, joints_2d, joints_conf, focal_length=5000, img_si
     weight2 = np.reshape(np.tile(np.sqrt(joints_conf), (2, 1)).T, -1)
 
     # least squares
-    Q = np.array([
-        F * np.tile(np.array([1, 0]), num_joints), F * np.tile(np.array([0, 1]), num_joints),
-        O - np.reshape(joints_2d, -1)
-    ]).T
+    Q = np.array(
+        [
+            F * np.tile(np.array([1, 0]), num_joints), F * np.tile(np.array([0, 1]), num_joints),
+            O - np.reshape(joints_2d, -1)
+        ]
+    ).T
     c = (np.reshape(joints_2d, -1) - O) * Z - F * XY
 
     # weighted least squares
@@ -558,13 +567,10 @@ def estimate_translation(S, joints_2d, focal_length=5000., img_size=224., use_al
         S_i = S[i]
         joints_i = joints_2d[i]
         conf_i = joints_conf[i]
-        trans[i] = estimate_translation_np(S_i,
-                                           joints_i,
-                                           conf_i,
-                                           focal_length=focal_length[i],
-                                           img_size=img_size[i])
+        trans[i] = estimate_translation_np(
+            S_i, joints_i, conf_i, focal_length=focal_length[i], img_size=img_size[i]
+        )
     return torch.from_numpy(trans).to(device)
-
 
 
 def Rot_y(angle, category="torch", prepend_dim=True, device=None):
@@ -574,11 +580,13 @@ def Rot_y(angle, category="torch", prepend_dim=True, device=None):
             prepend_dim: prepend an extra dimension
     Return: Rotation matrix with shape [1, 3, 3] (prepend_dim=True)
     """
-    m = np.array([
-        [np.cos(angle), 0.0, np.sin(angle)],
-        [0.0, 1.0, 0.0],
-        [-np.sin(angle), 0.0, np.cos(angle)],
-    ])
+    m = np.array(
+        [
+            [np.cos(angle), 0.0, np.sin(angle)],
+            [0.0, 1.0, 0.0],
+            [-np.sin(angle), 0.0, np.cos(angle)],
+        ]
+    )
     if category == "torch":
         if prepend_dim:
             return torch.tensor(m, dtype=torch.float, device=device).unsqueeze(0)
@@ -600,11 +608,13 @@ def Rot_x(angle, category="torch", prepend_dim=True, device=None):
             prepend_dim: prepend an extra dimension
     Return: Rotation matrix with shape [1, 3, 3] (prepend_dim=True)
     """
-    m = np.array([
-        [1.0, 0.0, 0.0],
-        [0.0, np.cos(angle), -np.sin(angle)],
-        [0.0, np.sin(angle), np.cos(angle)],
-    ])
+    m = np.array(
+        [
+            [1.0, 0.0, 0.0],
+            [0.0, np.cos(angle), -np.sin(angle)],
+            [0.0, np.sin(angle), np.cos(angle)],
+        ]
+    )
     if category == "torch":
         if prepend_dim:
             return torch.tensor(m, dtype=torch.float, device=device).unsqueeze(0)
@@ -626,11 +636,13 @@ def Rot_z(angle, category="torch", prepend_dim=True, device=None):
             prepend_dim: prepend an extra dimension
     Return: Rotation matrix with shape [1, 3, 3] (prepend_dim=True)
     """
-    m = np.array([
-        [np.cos(angle), -np.sin(angle), 0.0],
-        [np.sin(angle), np.cos(angle), 0.0],
-        [0.0, 0.0, 1.0],
-    ])
+    m = np.array(
+        [
+            [np.cos(angle), -np.sin(angle), 0.0],
+            [np.sin(angle), np.cos(angle), 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+    )
     if category == "torch":
         if prepend_dim:
             return torch.tensor(m, dtype=torch.float, device=device).unsqueeze(0)
@@ -672,7 +684,7 @@ def compute_twist_rotation(rotation_matrix, twist_axis):
     twist_rotation = quaternion_to_rotation_matrix(twist_quaternion)
     twist_aa = quaternion_to_angle_axis(twist_quaternion)
 
-    twist_angle = torch.sum(twist_aa, dim=1, keepdim=True) / torch.sum(
-        twist_axis, dim=1, keepdim=True)
+    twist_angle = torch.sum(twist_aa, dim=1,
+                            keepdim=True) / torch.sum(twist_axis, dim=1, keepdim=True)
 
     return twist_rotation, twist_angle

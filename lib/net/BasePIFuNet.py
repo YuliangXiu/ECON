@@ -21,11 +21,10 @@ from .geometry import index, orthogonal, perspective
 
 
 class BasePIFuNet(pl.LightningModule):
-
     def __init__(
-            self,
-            projection_mode="orthogonal",
-            error_term=nn.MSELoss(),
+        self,
+        projection_mode="orthogonal",
+        error_term=nn.MSELoss(),
     ):
         """
         :param projection_mode:

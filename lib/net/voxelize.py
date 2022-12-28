@@ -13,7 +13,6 @@ class VoxelizationFunction(Function):
     Definition of differentiable voxelization function
     Currently implemented only for cuda Tensors
     """
-
     @staticmethod
     def forward(
         ctx,
@@ -48,12 +47,15 @@ class VoxelizationFunction(Function):
         smpl_face_code = smpl_face_code.contiguous()
         smpl_tetrahedrons = smpl_tetrahedrons.contiguous()
 
-        occ_volume = torch.cuda.FloatTensor(ctx.batch_size, ctx.volume_res, ctx.volume_res,
-                                            ctx.volume_res).fill_(0.0)
-        semantic_volume = torch.cuda.FloatTensor(ctx.batch_size, ctx.volume_res, ctx.volume_res,
-                                                 ctx.volume_res, 3).fill_(0.0)
-        weight_sum_volume = torch.cuda.FloatTensor(ctx.batch_size, ctx.volume_res, ctx.volume_res,
-                                                   ctx.volume_res).fill_(1e-3)
+        occ_volume = torch.cuda.FloatTensor(
+            ctx.batch_size, ctx.volume_res, ctx.volume_res, ctx.volume_res
+        ).fill_(0.0)
+        semantic_volume = torch.cuda.FloatTensor(
+            ctx.batch_size, ctx.volume_res, ctx.volume_res, ctx.volume_res, 3
+        ).fill_(0.0)
+        weight_sum_volume = torch.cuda.FloatTensor(
+            ctx.batch_size, ctx.volume_res, ctx.volume_res, ctx.volume_res
+        ).fill_(1e-3)
 
         # occ_volume [B, volume_res, volume_res, volume_res]
         # semantic_volume [B, volume_res, volume_res, volume_res, 3]
@@ -80,7 +82,6 @@ class Voxelization(nn.Module):
     """
     Wrapper around the autograd function VoxelizationFunction
     """
-
     def __init__(
         self,
         smpl_vertex_code,
@@ -151,21 +152,25 @@ class Voxelization(nn.Module):
             self.sigma,
             self.smooth_kernel_size,
         )
-        return vol.permute((0, 4, 1, 2, 3))  # (bzyxc --> bcdhw)
+        return vol.permute((0, 4, 1, 2, 3))    # (bzyxc --> bcdhw)
 
     def vertices_to_faces(self, vertices):
         assert vertices.ndimension() == 3
         bs, nv = vertices.shape[:2]
-        face = (self.smpl_face_indices_batch +
-                (torch.arange(bs, dtype=torch.int32).to(self.device) * nv)[:, None, None])
+        face = (
+            self.smpl_face_indices_batch +
+            (torch.arange(bs, dtype=torch.int32).to(self.device) * nv)[:, None, None]
+        )
         vertices_ = vertices.reshape((bs * nv, 3))
         return vertices_[face.long()]
 
     def vertices_to_tetrahedrons(self, vertices):
         assert vertices.ndimension() == 3
         bs, nv = vertices.shape[:2]
-        tets = (self.smpl_tetraderon_indices_batch +
-                (torch.arange(bs, dtype=torch.int32).to(self.device) * nv)[:, None, None])
+        tets = (
+            self.smpl_tetraderon_indices_batch +
+            (torch.arange(bs, dtype=torch.int32).to(self.device) * nv)[:, None, None]
+        )
         vertices_ = vertices.reshape((bs * nv, 3))
         return vertices_[tets.long()]
 
@@ -174,8 +179,9 @@ class Voxelization(nn.Module):
         assert face_verts.shape[2] == 3
         assert face_verts.shape[3] == 3
         bs, nf = face_verts.shape[:2]
-        face_centers = (face_verts[:, :, 0, :] + face_verts[:, :, 1, :] +
-                        face_verts[:, :, 2, :]) / 3.0
+        face_centers = (
+            face_verts[:, :, 0, :] + face_verts[:, :, 1, :] + face_verts[:, :, 2, :]
+        ) / 3.0
         face_centers = face_centers.reshape((bs, nf, 3))
         return face_centers
 

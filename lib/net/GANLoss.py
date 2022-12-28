@@ -32,13 +32,12 @@ def logistic_loss(fake_pred, real_pred, mode):
 
 
 def r1_loss(real_pred, real_img):
-    (grad_real,) = autograd.grad(outputs=real_pred.sum(), inputs=real_img, create_graph=True)
+    (grad_real, ) = autograd.grad(outputs=real_pred.sum(), inputs=real_img, create_graph=True)
     grad_penalty = grad_real.pow(2).reshape(grad_real.shape[0], -1).sum(1).mean()
     return grad_penalty
 
 
 class GANLoss(nn.Module):
-
     def __init__(
         self,
         opt,
@@ -64,7 +63,7 @@ class GANLoss(nn.Module):
         logits_fake = self.discriminator(disc_in_fake)
 
         disc_loss = self.disc_loss(fake_pred=logits_fake, real_pred=logits_real, mode='d')
-        
+
         log = {
             "disc_loss": disc_loss.detach(),
             "logits_real": logits_real.mean().detach(),

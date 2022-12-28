@@ -4,7 +4,6 @@ import logging
 from copy import deepcopy
 from .utils.libkdtree import KDTree
 
-
 logger_py = logging.getLogger(__name__)
 
 
@@ -37,6 +36,7 @@ def compute_iou(occ1, occ2):
 
     return iou
 
+
 def rgb2gray(rgb):
     ''' rgb of size B x h x w x 3
     '''
@@ -46,8 +46,9 @@ def rgb2gray(rgb):
     return gray
 
 
-def sample_patch_points(batch_size, n_points, patch_size=1,
-                        image_resolution=(128, 128), continuous=True):
+def sample_patch_points(
+    batch_size, n_points, patch_size=1, image_resolution=(128, 128), continuous=True
+):
     ''' Returns sampled points in the range [-1, 1].
 
     Args:
@@ -60,21 +61,21 @@ def sample_patch_points(batch_size, n_points, patch_size=1,
         continuous (bool): whether to sample continuously or only on pixel
             locations
     '''
-    assert(patch_size > 0)
+    assert (patch_size > 0)
     # Calculate step size for [-1, 1] that is equivalent to a pixel in
     # original resolution
     h_step = 1. / image_resolution[0]
     w_step = 1. / image_resolution[1]
     # Get number of patches
-    patch_size_squared = patch_size ** 2
+    patch_size_squared = patch_size**2
     n_patches = int(n_points / patch_size_squared)
     if continuous:
-        p = torch.rand(batch_size, n_patches, 2)  # [0, 1]
+        p = torch.rand(batch_size, n_patches, 2)    # [0, 1]
     else:
-        px = torch.randint(0, image_resolution[1], size=(
-            batch_size, n_patches, 1)).float() / (image_resolution[1] - 1)
-        py = torch.randint(0, image_resolution[0], size=(
-            batch_size, n_patches, 1)).float() / (image_resolution[0] - 1)
+        px = torch.randint(0, image_resolution[1],
+                           size=(batch_size, n_patches, 1)).float() / (image_resolution[1] - 1)
+        py = torch.randint(0, image_resolution[0],
+                           size=(batch_size, n_patches, 1)).float() / (image_resolution[0] - 1)
         p = torch.cat([px, py], dim=-1)
     # Scale p to [0, (1 - (patch_size - 1) * step) ]
     p[:, :, 0] *= 1 - (patch_size - 1) * w_step
@@ -83,9 +84,8 @@ def sample_patch_points(batch_size, n_points, patch_size=1,
     # Add points
     patch_arange = torch.arange(patch_size)
     x_offset, y_offset = torch.meshgrid(patch_arange, patch_arange)
-    patch_offsets = torch.stack(
-        [x_offset.reshape(-1), y_offset.reshape(-1)],
-        dim=1).view(1, 1, -1, 2).repeat(batch_size, n_patches, 1, 1).float()
+    patch_offsets = torch.stack([x_offset.reshape(-1), y_offset.reshape(-1)],
+                                dim=1).view(1, 1, -1, 2).repeat(batch_size, n_patches, 1, 1).float()
 
     patch_offsets[:, :, :, 0] *= w_step
     patch_offsets[:, :, :, 1] *= h_step
@@ -99,13 +99,12 @@ def sample_patch_points(batch_size, n_points, patch_size=1,
     p = p.view(batch_size, -1, 2)
 
     amax, amin = p.max(), p.min()
-    assert(amax <= 1. and amin >= -1.)
+    assert (amax <= 1. and amin >= -1.)
 
     return p
 
 
-def get_proposal_points_in_unit_cube(ray0, ray_direction, padding=0.1,
-                                     eps=1e-6, n_steps=40):
+def get_proposal_points_in_unit_cube(ray0, ray_direction, padding=0.1, eps=1e-6, n_steps=40):
     ''' Returns n_steps equally spaced points inside the unit cube on the rays
     cast from ray0 with direction ray_direction.
 
@@ -138,8 +137,7 @@ def get_proposal_points_in_unit_cube(ray0, ray_direction, padding=0.1,
     return d_proposal, mask_inside_cube
 
 
-def check_ray_intersection_with_unit_cube(ray0, ray_direction, padding=0.1,
-                                          eps=1e-6, scale=2.0):
+def check_ray_intersection_with_unit_cube(ray0, ray_direction, padding=0.1, eps=1e-6, scale=2.0):
     ''' Checks if rays ray0 + d * ray_direction intersect with unit cube with
     padding padding.
 
@@ -160,7 +158,7 @@ def check_ray_intersection_with_unit_cube(ray0, ray_direction, padding=0.1,
     # d = - <n, ray0 - p_e> / <n, ray_direction>
 
     # Get points on plane p_e
-    p_distance = (scale * 0.5) + padding/2
+    p_distance = (scale * 0.5) + padding / 2
     p_e = torch.ones(batch_size, n_pts, 6).to(device) * p_distance
     p_e[:, :, 3:] *= -1.
 
@@ -185,35 +183,32 @@ def check_ray_intersection_with_unit_cube(ray0, ray_direction, padding=0.1,
     mask_inside_cube = p_mask_inside_cube.sum(-1) == 2
 
     # Get interval values for p's which are valid
-    p_intervals = p_intersect[mask_inside_cube][p_mask_inside_cube[
-        mask_inside_cube]].view(-1, 2, 3)
+    p_intervals = p_intersect[mask_inside_cube][p_mask_inside_cube[mask_inside_cube]].view(-1, 2, 3)
     p_intervals_batch = torch.zeros(batch_size, n_pts, 2, 3).to(device)
     p_intervals_batch[mask_inside_cube] = p_intervals
 
     # Calculate ray lengths for the interval points
     d_intervals_batch = torch.zeros(batch_size, n_pts, 2).to(device)
     norm_ray = torch.norm(ray_direction[mask_inside_cube], dim=-1)
-    d_intervals_batch[mask_inside_cube] = torch.stack([
-        torch.norm(p_intervals[:, 0] -
-                   ray0[mask_inside_cube], dim=-1) / norm_ray,
-        torch.norm(p_intervals[:, 1] -
-                   ray0[mask_inside_cube], dim=-1) / norm_ray,
-    ], dim=-1)
+    d_intervals_batch[mask_inside_cube] = torch.stack(
+        [
+            torch.norm(p_intervals[:, 0] - ray0[mask_inside_cube], dim=-1) / norm_ray,
+            torch.norm(p_intervals[:, 1] - ray0[mask_inside_cube], dim=-1) / norm_ray,
+        ],
+        dim=-1
+    )
 
     # Sort the ray lengths
     d_intervals_batch, indices_sort = d_intervals_batch.sort()
-    p_intervals_batch = p_intervals_batch[
-        torch.arange(batch_size).view(-1, 1, 1),
-        torch.arange(n_pts).view(1, -1, 1),
-        indices_sort
-    ]
+    p_intervals_batch = p_intervals_batch[torch.arange(batch_size).view(-1, 1, 1),
+                                          torch.arange(n_pts).view(1, -1, 1), indices_sort]
 
     return p_intervals_batch, d_intervals_batch, mask_inside_cube
 
 
 def intersect_camera_rays_with_unit_cube(
-        pixels, camera_mat, world_mat, scale_mat, padding=0.1, eps=1e-6,
-        use_ray_length_as_depth=True):
+    pixels, camera_mat, world_mat, scale_mat, padding=0.1, eps=1e-6, use_ray_length_as_depth=True
+):
     ''' Returns the intersection points of ray cast from camera origin to
     pixel points p on the image plane.
 
@@ -231,24 +226,22 @@ def intersect_camera_rays_with_unit_cube(
     '''
     batch_size, n_points, _ = pixels.shape
 
-    pixel_world = image_points_to_world(
-        pixels, camera_mat, world_mat, scale_mat)
-    camera_world = origin_to_world(
-        n_points, camera_mat, world_mat, scale_mat)
+    pixel_world = image_points_to_world(pixels, camera_mat, world_mat, scale_mat)
+    camera_world = origin_to_world(n_points, camera_mat, world_mat, scale_mat)
     ray_vector = (pixel_world - camera_world)
 
     p_cube, d_cube, mask_cube = check_ray_intersection_with_unit_cube(
-        camera_world, ray_vector, padding=padding, eps=eps)
+        camera_world, ray_vector, padding=padding, eps=eps
+    )
     if not use_ray_length_as_depth:
-        p_cam = transform_to_camera_space(p_cube.view(
-            batch_size, -1, 3), camera_mat, world_mat, scale_mat).view(
-                batch_size, n_points, -1, 3)
+        p_cam = transform_to_camera_space(
+            p_cube.view(batch_size, -1, 3), camera_mat, world_mat, scale_mat
+        ).view(batch_size, n_points, -1, 3)
         d_cube = p_cam[:, :, :, -1]
     return p_cube, d_cube, mask_cube
 
 
-def arange_pixels(resolution=(128, 128), batch_size=1, image_range=(-1., 1.),
-                  subsample_to=None):
+def arange_pixels(resolution=(128, 128), batch_size=1, image_range=(-1., 1.), subsample_to=None):
     ''' Arranges pixels for given resolution in range image_range.
 
     The function returns the unscaled pixel locations as integers and the
@@ -266,9 +259,8 @@ def arange_pixels(resolution=(128, 128), batch_size=1, image_range=(-1., 1.),
 
     # Arrange pixel location in scale resolution
     pixel_locations = torch.meshgrid(torch.arange(0, w), torch.arange(0, h))
-    pixel_locations = torch.stack(
-        [pixel_locations[0], pixel_locations[1]],
-        dim=-1).long().view(1, -1, 2).repeat(batch_size, 1, 1)
+    pixel_locations = torch.stack([pixel_locations[0], pixel_locations[1]],
+                                  dim=-1).long().view(1, -1, 2).repeat(batch_size, 1, 1)
     pixel_scaled = pixel_locations.clone().float()
 
     # Shift and scale points to match image_range
@@ -278,10 +270,8 @@ def arange_pixels(resolution=(128, 128), batch_size=1, image_range=(-1., 1.),
     pixel_scaled[:, :, 1] = scale * pixel_scaled[:, :, 1] / (h - 1) - loc
 
     # Subsample points if subsample_to is not None and > 0
-    if (subsample_to is not None and subsample_to > 0 and
-            subsample_to < n_points):
-        idx = np.random.choice(pixel_scaled.shape[1], size=(subsample_to,),
-                               replace=False)
+    if (subsample_to is not None and subsample_to > 0 and subsample_to < n_points):
+        idx = np.random.choice(pixel_scaled.shape[1], size=(subsample_to, ), replace=False)
         pixel_scaled = pixel_scaled[:, idx]
         pixel_locations = pixel_locations[:, idx]
 
@@ -342,15 +332,13 @@ def transform_pointcloud(pointcloud, transform):
         transform (tensor): transformation of size 4 x 4
     '''
 
-    assert(transform.shape == (4, 4) and pointcloud.shape[-1] == 3)
+    assert (transform.shape == (4, 4) and pointcloud.shape[-1] == 3)
 
     pcl, is_numpy = to_pytorch(pointcloud, True)
     transform = to_pytorch(transform)
 
     # Transform point cloud to homogen coordinate system
-    pcl_hom = torch.cat([
-        pcl, torch.ones(pcl.shape[0], 1)
-    ], dim=-1).transpose(1, 0)
+    pcl_hom = torch.cat([pcl, torch.ones(pcl.shape[0], 1)], dim=-1).transpose(1, 0)
 
     # Apply transformation to point cloud
     pcl_hom_transformed = transform @ pcl_hom
@@ -371,13 +359,11 @@ def transform_points_batch(p, transform):
         transform (tensor): transformation of size B x 4 x 4
     '''
     device = p.device
-    assert(transform.shape[1:] == (4, 4) and p.shape[-1]
-           == 3 and p.shape[0] == transform.shape[0])
+    assert (transform.shape[1:] == (4, 4) and p.shape[-1] == 3 and p.shape[0] == transform.shape[0])
 
     # Transform points to homogen coordinates
-    pcl_hom = torch.cat([
-        p, torch.ones(p.shape[0], p.shape[1], 1).to(device)
-    ], dim=-1).transpose(2, 1)
+    pcl_hom = torch.cat([p, torch.ones(p.shape[0], p.shape[1], 1).to(device)],
+                        dim=-1).transpose(2, 1)
 
     # Apply transformation
     pcl_hom_transformed = transform @ pcl_hom
@@ -387,8 +373,9 @@ def transform_points_batch(p, transform):
     return pcl_out
 
 
-def get_tensor_values(tensor, p, grid_sample=True, mode='nearest',
-                      with_mask=False, squeeze_channel_dim=False):
+def get_tensor_values(
+    tensor, p, grid_sample=True, mode='nearest', with_mask=False, squeeze_channel_dim=False
+):
     '''
     Returns values from tensor at given location p.
 
@@ -415,8 +402,7 @@ def get_tensor_values(tensor, p, grid_sample=True, mode='nearest',
         p[:, :, 0] = (p[:, :, 0] + 1) * (w) / 2
         p[:, :, 1] = (p[:, :, 1] + 1) * (h) / 2
         p = p.long()
-        values = tensor[torch.arange(batch_size).unsqueeze(-1), :, p[:, :, 1],
-                        p[:, :, 0]]
+        values = tensor[torch.arange(batch_size).unsqueeze(-1), :, p[:, :, 1], p[:, :, 0]]
 
     if with_mask:
         mask = get_mask(values)
@@ -436,8 +422,7 @@ def get_tensor_values(tensor, p, grid_sample=True, mode='nearest',
     return values
 
 
-def transform_to_world(pixels, depth, camera_mat, world_mat, scale_mat,
-                       invert=True):
+def transform_to_world(pixels, depth, camera_mat, world_mat, scale_mat, invert=True):
     ''' Transforms pixel positions p with given depth value d to world coordinates.
 
     Args:
@@ -448,7 +433,7 @@ def transform_to_world(pixels, depth, camera_mat, world_mat, scale_mat,
         scale_mat (tensor): scale matrix
         invert (bool): whether to invert matrices (default: true)
     '''
-    assert(pixels.shape[-1] == 2)
+    assert (pixels.shape[-1] == 2)
 
     # Convert to pytorch
     pixels, is_numpy = to_pytorch(pixels, True)
@@ -493,8 +478,8 @@ def transform_to_camera_space(p_world, camera_mat, world_mat, scale_mat):
     device = p_world.device
 
     # Transform world points to homogen coordinates
-    p_world = torch.cat([p_world, torch.ones(
-        batch_size, n_p, 1).to(device)], dim=-1).permute(0, 2, 1)
+    p_world = torch.cat([p_world, torch.ones(batch_size, n_p, 1).to(device)],
+                        dim=-1).permute(0, 2, 1)
 
     # Apply matrices to transform p_world to camera space
     p_cam = camera_mat @ world_mat @ scale_mat @ p_world
@@ -536,8 +521,7 @@ def origin_to_world(n_points, camera_mat, world_mat, scale_mat, invert=True):
     return p_world
 
 
-def image_points_to_world(image_points, camera_mat, world_mat, scale_mat,
-                          invert=True):
+def image_points_to_world(image_points, camera_mat, world_mat, scale_mat, invert=True):
     ''' Transforms points on image plane to world coordinates.
 
     In contrast to transform_to_world, no depth value is needed as points on
@@ -551,12 +535,13 @@ def image_points_to_world(image_points, camera_mat, world_mat, scale_mat,
         invert (bool): whether to invert matrices (default: true)
     '''
     batch_size, n_pts, dim = image_points.shape
-    assert(dim == 2)
+    assert (dim == 2)
     device = image_points.device
 
     d_image = torch.ones(batch_size, n_pts, 1).to(device)
-    return transform_to_world(image_points, d_image, camera_mat, world_mat,
-                              scale_mat, invert=invert)
+    return transform_to_world(
+        image_points, d_image, camera_mat, world_mat, scale_mat, invert=invert
+    )
 
 
 def check_weights(params):
@@ -602,7 +587,7 @@ def get_logits_from_prob(probs, eps=1e-4):
         probs (tensor): probability tensor
         eps (float): epsilon value for numerical stability
     '''
-    probs = np.clip(probs, a_min=eps, a_max=1-eps)
+    probs = np.clip(probs, a_min=eps, a_max=1 - eps)
     logits = np.log(probs / (1 - probs))
     return logits
 
@@ -629,7 +614,7 @@ def chamfer_distance_naive(points1, points2):
         points1 (numpy array): first point set
         points2 (numpy array): second point set
     '''
-    assert(points1.size() == points2.size())
+    assert (points1.size() == points2.size())
     batch_size, T, _ = points1.size()
 
     points1 = points1.view(batch_size, T, 1, 3)
@@ -748,10 +733,16 @@ def make_3d_grid(bb_min, bb_max, shape):
     return p
 
 
-def get_occupancy_loss_points(pixels, camera_mat, world_mat, scale_mat,
-                              depth_image=None, use_cube_intersection=True,
-                              occupancy_random_normal=False,
-                              depth_range=[0, 2.4]):
+def get_occupancy_loss_points(
+    pixels,
+    camera_mat,
+    world_mat,
+    scale_mat,
+    depth_image=None,
+    use_cube_intersection=True,
+    occupancy_random_normal=False,
+    depth_range=[0, 2.4]
+):
     ''' Returns 3D points for occupancy loss.
 
     Args:
@@ -794,16 +785,19 @@ def get_occupancy_loss_points(pixels, camera_mat, world_mat, scale_mat,
 
     if depth_image is not None:
         depth_gt, mask_gt_depth = get_tensor_values(
-            depth_image, pixels, squeeze_channel_dim=True, with_mask=True)
+            depth_image, pixels, squeeze_channel_dim=True, with_mask=True
+        )
         d_occupancy[mask_gt_depth] = depth_gt[mask_gt_depth]
 
-    p_occupancy = transform_to_world(pixels, d_occupancy.unsqueeze(-1),
-                                     camera_mat, world_mat, scale_mat)
+    p_occupancy = transform_to_world(
+        pixels, d_occupancy.unsqueeze(-1), camera_mat, world_mat, scale_mat
+    )
     return p_occupancy
 
 
-def get_freespace_loss_points(pixels, camera_mat, world_mat, scale_mat,
-                              use_cube_intersection=True, depth_range=[0, 2.4]):
+def get_freespace_loss_points(
+    pixels, camera_mat, world_mat, scale_mat, use_cube_intersection=True, depth_range=[0, 2.4]
+):
     ''' Returns 3D points for freespace loss.
 
     Args:
@@ -832,7 +826,8 @@ def get_freespace_loss_points(pixels, camera_mat, world_mat, scale_mat,
                 device) * (d_cube[:, 1] - d_cube[:, 0])
 
     p_freespace = transform_to_world(
-        pixels, d_freespace.unsqueeze(-1), camera_mat, world_mat, scale_mat)
+        pixels, d_freespace.unsqueeze(-1), camera_mat, world_mat, scale_mat
+    )
     return p_freespace
 
 
@@ -844,7 +839,6 @@ def normalize_tensor(tensor, min_norm=1e-5, feat_dim=-1):
         min_norm (float): minimum norm for numerical stability
         feat_dim (int): feature dimension in tensor (default: -1)
     '''
-    norm_tensor = torch.clamp(torch.norm(tensor, dim=feat_dim, keepdim=True),
-                              min=min_norm)
+    norm_tensor = torch.clamp(torch.norm(tensor, dim=feat_dim, keepdim=True), min=min_norm)
     normed_tensor = tensor / norm_tensor
     return normed_tensor

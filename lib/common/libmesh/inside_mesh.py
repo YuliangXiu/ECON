@@ -5,7 +5,7 @@ from .triangle_hash import TriangleHash as _TriangleHash
 def check_mesh_contains(mesh, points, hash_resolution=512):
     intersector = MeshIntersector(mesh, hash_resolution)
     contains, hole_points = intersector.query(points)
-    return contains,  hole_points
+    return contains, hole_points
 
 
 class MeshIntersector:
@@ -25,8 +25,7 @@ class MeshIntersector:
         # assert(np.allclose(triangles.reshape(-1, 3).max(0), resolution - 0.5))
 
         triangles2d = triangles[:, :, :2]
-        self._tri_intersector2d = TriangleIntersector2d(
-            triangles2d, resolution)
+        self._tri_intersector2d = TriangleIntersector2d(triangles2d, resolution)
 
     def query(self, points):
         # Rescale points
@@ -38,8 +37,7 @@ class MeshIntersector:
 
         # cull points outside of the axis aligned bounding box
         # this avoids running ray tests unless points are close
-        inside_aabb = np.all(
-            (0 <= points) & (points <= self.resolution), axis=1)
+        inside_aabb = np.all((0 <= points) & (points <= self.resolution), axis=1)
         if not inside_aabb.any():
             return contains, hole_points
 
@@ -48,14 +46,14 @@ class MeshIntersector:
         points = points[mask]
 
         # Compute intersection depth and check order
-        points_indices, tri_indices = self._tri_intersector2d.query(
-            points[:, :2])
+        points_indices, tri_indices = self._tri_intersector2d.query(points[:, :2])
 
         triangles_intersect = self._triangles[tri_indices]
         points_intersect = points[points_indices]
 
         depth_intersect, abs_n_2 = self.compute_intersection_depth(
-            points_intersect, triangles_intersect)
+            points_intersect, triangles_intersect
+        )
 
         # Count number of intersections in both directions
         smaller_depth = depth_intersect >= points_intersect[:, 2] * abs_n_2
@@ -73,7 +71,7 @@ class MeshIntersector:
         #     print('Warning: contains1 != contains2 for some points.')
         contains[mask] = (contains1 & contains2)
         hole_points[mask] = np.logical_xor(contains1, contains2)
-        return contains,  hole_points
+        return contains, hole_points
 
     def compute_intersection_depth(self, points, triangles):
         t1 = triangles[:, 0, :]
@@ -150,7 +148,7 @@ class TriangleIntersector2d:
 
         sum_uv = u + v
         contains[mask] = (
-            (0 < u) & (u < abs_detA) & (0 < v) & (v < abs_detA)
-            & (0 < sum_uv) & (sum_uv < abs_detA)
+            (0 < u) & (u < abs_detA) & (0 < v) & (v < abs_detA) & (0 < sum_uv) &
+            (sum_uv < abs_detA)
         )
         return contains

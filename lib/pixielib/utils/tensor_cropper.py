@@ -34,21 +34,14 @@ def points2bbox(points, points_scale=None):
 
 def augment_bbox(center, bbox_size, scale=[1.0, 1.0], trans_scale=0.0):
     batch_size = center.shape[0]
-    trans_scale = (torch.rand([batch_size, 2], device=center.device) * 2.0 -
-                   1.0) * trans_scale
-    center = center + trans_scale * bbox_size  # 0.5
-    scale = (torch.rand([batch_size, 1], device=center.device) *
-             (scale[1] - scale[0]) + scale[0])
+    trans_scale = (torch.rand([batch_size, 2], device=center.device) * 2.0 - 1.0) * trans_scale
+    center = center + trans_scale * bbox_size    # 0.5
+    scale = (torch.rand([batch_size, 1], device=center.device) * (scale[1] - scale[0]) + scale[0])
     size = bbox_size * scale
     return center, size
 
 
-def crop_tensor(image,
-                center,
-                bbox_size,
-                crop_size,
-                interpolation="bilinear",
-                align_corners=False):
+def crop_tensor(image, center, bbox_size, crop_size, interpolation="bilinear", align_corners=False):
     """for batch image
     Args:
         image (torch.Tensor): the reference tensor of shape BXHxWXC.
@@ -66,11 +59,12 @@ def crop_tensor(image,
     device = image.device
     batch_size = image.shape[0]
     # points: top-left, top-right, bottom-right, bottom-left
-    src_pts = (torch.zeros([4, 2], dtype=dtype,
-                           device=device).unsqueeze(0).expand(
-                               batch_size, -1, -1).contiguous())
+    src_pts = (
+        torch.zeros([4, 2], dtype=dtype, device=device).unsqueeze(0).expand(batch_size, -1,
+                                                                            -1).contiguous()
+    )
 
-    src_pts[:, 0, :] = center - bbox_size * 0.5  # / (self.crop_size - 1)
+    src_pts[:, 0, :] = center - bbox_size * 0.5    # / (self.crop_size - 1)
     src_pts[:, 1, 0] = center[:, 0] + bbox_size[:, 0] * 0.5
     src_pts[:, 1, 1] = center[:, 1] - bbox_size[:, 0] * 0.5
     src_pts[:, 2, :] = center + bbox_size * 0.5
@@ -107,7 +101,6 @@ def crop_tensor(image,
 
 
 class Cropper(object):
-
     def __init__(self, crop_size, scale=[1, 1], trans_scale=0.0):
         self.crop_size = crop_size
         self.scale = scale
@@ -116,21 +109,14 @@ class Cropper(object):
     def crop(self, image, points, points_scale=None):
         # points to bbox
         center, bbox_size = points2bbox(points.clone(), points_scale)
-        # argument bbox. TODO: add rotation?
-        center, bbox_size = augment_bbox(center,
-                                         bbox_size,
-                                         scale=self.scale,
-                                         trans_scale=self.trans_scale)
+        center, bbox_size = augment_bbox(
+            center, bbox_size, scale=self.scale, trans_scale=self.trans_scale
+        )
         # crop
-        cropped_image, tform = crop_tensor(image, center, bbox_size,
-                                           self.crop_size)
+        cropped_image, tform = crop_tensor(image, center, bbox_size, self.crop_size)
         return cropped_image, tform
 
-    def transform_points(self,
-                         points,
-                         tform,
-                         points_scale=None,
-                         normalize=True):
+    def transform_points(self, points, tform, points_scale=None, normalize=True):
         points_2d = points[:, :, :2]
 
         #'input points must use original range'
@@ -153,11 +139,9 @@ class Cropper(object):
             ),
             tform,
         )
-        trans_points = torch.cat([trans_points_2d[:, :, :2], points[:, :, 2:]],
-                                 dim=-1)
+        trans_points = torch.cat([trans_points_2d[:, :, :2], points[:, :, 2:]], dim=-1)
         if normalize:
-            trans_points[:, :, :
-                         2] = trans_points[:, :, :2] / self.crop_size * 2 - 1
+            trans_points[:, :, :2] = trans_points[:, :, :2] / self.crop_size * 2 - 1
         return trans_points
 
 
@@ -174,14 +158,11 @@ def transform_points(points, tform, points_scale=None):
         torch.cat(
             [
                 points_2d,
-                torch.ones([batch_size, n_points, 1],
-                           device=points.device,
-                           dtype=points.dtype),
+                torch.ones([batch_size, n_points, 1], device=points.device, dtype=points.dtype),
             ],
             dim=-1,
         ),
         tform,
     )
-    trans_points = torch.cat([trans_points_2d[:, :, :2], points[:, :, 2:]],
-                             dim=-1)
+    trans_points = torch.cat([trans_points_2d[:, :, :2], points[:, :, 2:]], dim=-1)
     return trans_points

@@ -1,12 +1,12 @@
-from lib.common.BNI_utils import (verts_inverse_transform, depth_inverse_transform,
-                                  double_side_bilateral_normal_integration)
+from lib.common.BNI_utils import (
+    verts_inverse_transform, depth_inverse_transform, double_side_bilateral_normal_integration
+)
 
 import torch
 import trimesh
 
 
 class BNI:
-
     def __init__(self, dir_path, name, BNI_dict, cfg, device):
 
         self.scale = 256.0
@@ -64,22 +64,20 @@ class BNI:
 
         F_B_verts = torch.cat((F_verts, B_verts), dim=0)
         F_B_faces = torch.cat(
-            (bni_result["F_faces"], bni_result["B_faces"] + bni_result["F_faces"].max() + 1), dim=0)
+            (bni_result["F_faces"], bni_result["B_faces"] + bni_result["F_faces"].max() + 1), dim=0
+        )
 
-        self.F_B_trimesh = trimesh.Trimesh(F_B_verts.float(),
-                                           F_B_faces.long(),
-                                           process=False,
-                                           maintain_order=True)
+        self.F_B_trimesh = trimesh.Trimesh(
+            F_B_verts.float(), F_B_faces.long(), process=False, maintain_order=True
+        )
 
-        self.F_trimesh = trimesh.Trimesh(F_verts.float(),
-                                         bni_result["F_faces"].long(),
-                                         process=False,
-                                         maintain_order=True)
+        self.F_trimesh = trimesh.Trimesh(
+            F_verts.float(), bni_result["F_faces"].long(), process=False, maintain_order=True
+        )
 
-        self.B_trimesh = trimesh.Trimesh(B_verts.float(),
-                                         bni_result["B_faces"].long(),
-                                         process=False,
-                                         maintain_order=True)
+        self.B_trimesh = trimesh.Trimesh(
+            B_verts.float(), bni_result["B_faces"].long(), process=False, maintain_order=True
+        )
 
 
 if __name__ == "__main__":
@@ -93,16 +91,18 @@ if __name__ == "__main__":
     bni_dict = np.load(npy_file, allow_pickle=True).item()
 
     default_cfg = {'k': 2, 'lambda1': 1e-4, 'boundary_consist': 1e-6}
-    
+
     # for k in [1, 2, 4, 10, 100]:
     #     default_cfg['k'] = k
     # for k in [1e-8, 1e-4, 1e-2, 1e-1, 1]:
-        # default_cfg['lambda1'] = k
+    # default_cfg['lambda1'] = k
     # for k in [1e-4, 1e-2, 0]:
-        # default_cfg['boundary_consist'] = k
-        
-    bni_object = BNI(osp.dirname(npy_file), osp.basename(npy_file), bni_dict, default_cfg,
-                    torch.device('cuda:0'))
+    # default_cfg['boundary_consist'] = k
+
+    bni_object = BNI(
+        osp.dirname(npy_file), osp.basename(npy_file), bni_dict, default_cfg,
+        torch.device('cuda:0')
+    )
 
     bni_object.extract_surface()
     bni_object.F_trimesh.export(osp.join(osp.dirname(npy_file), "F.obj"))

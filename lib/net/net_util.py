@@ -71,11 +71,10 @@ def init_weights(net, init_type="normal", init_gain=0.02):
     We use 'normal' in the original pix2pix and CycleGAN paper. But xavier and kaiming might
     work better for some applications. Feel free to try yourself.
     """
-
-    def init_func(m):  # define the initialization function
+    def init_func(m):    # define the initialization function
         classname = m.__class__.__name__
-        if hasattr(m, "weight") and (classname.find("Conv") != -1 or
-                                     classname.find("Linear") != -1):
+        if hasattr(m,
+                   "weight") and (classname.find("Conv") != -1 or classname.find("Linear") != -1):
             if init_type == "normal":
                 init.normal_(m.weight.data, 0.0, init_gain)
             elif init_type == "xavier":
@@ -85,17 +84,19 @@ def init_weights(net, init_type="normal", init_gain=0.02):
             elif init_type == "orthogonal":
                 init.orthogonal_(m.weight.data, gain=init_gain)
             else:
-                raise NotImplementedError("initialization method [%s] is not implemented" %
-                                          init_type)
+                raise NotImplementedError(
+                    "initialization method [%s] is not implemented" % init_type
+                )
             if hasattr(m, "bias") and m.bias is not None:
                 init.constant_(m.bias.data, 0.0)
-        elif (classname.find("BatchNorm2d") !=
-              -1):  # BatchNorm Layer's weight is not a matrix; only normal distribution applies.
+        elif (
+            classname.find("BatchNorm2d") != -1
+        ):    # BatchNorm Layer's weight is not a matrix; only normal distribution applies.
             init.normal_(m.weight.data, 1.0, init_gain)
             init.constant_(m.bias.data, 0.0)
 
     # print('initialize network with %s' % init_type)
-    net.apply(init_func)  # apply the initialization function <init_func>
+    net.apply(init_func)    # apply the initialization function <init_func>
 
 
 def init_net(net, init_type="xavier", init_gain=0.02, gpu_ids=[]):
@@ -110,7 +111,7 @@ def init_net(net, init_type="xavier", init_gain=0.02, gpu_ids=[]):
     """
     if len(gpu_ids) > 0:
         assert torch.cuda.is_available()
-        net = torch.nn.DataParallel(net)  # multi-GPUs
+        net = torch.nn.DataParallel(net)    # multi-GPUs
     init_weights(net, init_type, init_gain=init_gain)
     return net
 
@@ -127,13 +128,9 @@ def imageSpaceRotation(xy, rot):
     return (disp * xy).sum(dim=1)
 
 
-def cal_gradient_penalty(netD,
-                         real_data,
-                         fake_data,
-                         device,
-                         type="mixed",
-                         constant=1.0,
-                         lambda_gp=10.0):
+def cal_gradient_penalty(
+    netD, real_data, fake_data, device, type="mixed", constant=1.0, lambda_gp=10.0
+):
     """Calculate the gradient penalty loss, used in WGAN-GP paper https://arxiv.org/abs/1704.00028
 
     Arguments:
@@ -155,9 +152,11 @@ def cal_gradient_penalty(netD,
             interpolatesv = fake_data
         elif type == "mixed":
             alpha = torch.rand(real_data.shape[0], 1)
-            alpha = (alpha.expand(real_data.shape[0],
-                                  real_data.nelement() //
-                                  real_data.shape[0]).contiguous().view(*real_data.shape))
+            alpha = (
+                alpha.expand(real_data.shape[0],
+                             real_data.nelement() //
+                             real_data.shape[0]).contiguous().view(*real_data.shape)
+            )
             alpha = alpha.to(device)
             interpolatesv = alpha * real_data + ((1 - alpha) * fake_data)
         else:
@@ -172,9 +171,9 @@ def cal_gradient_penalty(netD,
             retain_graph=True,
             only_inputs=True,
         )
-        gradients = gradients[0].view(real_data.size(0), -1)  # flat the data
-        gradient_penalty = ((
-            (gradients + 1e-16).norm(2, dim=1) - constant)**2).mean() * lambda_gp  # added eps
+        gradients = gradients[0].view(real_data.size(0), -1)    # flat the data
+        gradient_penalty = (((gradients + 1e-16).norm(2, dim=1) - constant)**
+                            2).mean() * lambda_gp    # added eps
         return gradient_penalty, gradients
     else:
         return 0.0, None
@@ -201,13 +200,11 @@ def get_norm_layer(norm_type="instance"):
 
 
 class Flatten(nn.Module):
-
     def forward(self, input):
         return input.view(input.size(0), -1)
 
 
 class ConvBlock(nn.Module):
-
     def __init__(self, in_planes, out_planes, opt):
         super(ConvBlock, self).__init__()
         [k, s, d, p] = opt.conv3x3
@@ -258,5 +255,3 @@ class ConvBlock(nn.Module):
         out3 += residual
 
         return out3
-
-

@@ -26,8 +26,8 @@ try:
     torch_cache_home = _get_torch_home()
 except ImportError:
     torch_cache_home = os.path.expanduser(
-        os.getenv('TORCH_HOME', os.path.join(
-            os.getenv('XDG_CACHE_HOME', '~/.cache'), 'torch')))
+        os.getenv('TORCH_HOME', os.path.join(os.getenv('XDG_CACHE_HOME', '~/.cache'), 'torch'))
+    )
 default_cache_path = os.path.join(torch_cache_home, 'pytorch_transformers')
 
 try:
@@ -38,12 +38,12 @@ except ImportError:
 try:
     from pathlib import Path
     PYTORCH_PRETRAINED_BERT_CACHE = Path(
-        os.getenv('PYTORCH_PRETRAINED_BERT_CACHE', default_cache_path))
+        os.getenv('PYTORCH_PRETRAINED_BERT_CACHE', default_cache_path)
+    )
 except (AttributeError, ImportError):
-    PYTORCH_PRETRAINED_BERT_CACHE = os.getenv('PYTORCH_PRETRAINED_BERT_CACHE',
-                                              default_cache_path)
+    PYTORCH_PRETRAINED_BERT_CACHE = os.getenv('PYTORCH_PRETRAINED_BERT_CACHE', default_cache_path)
 
-logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+logger = logging.getLogger(__name__)    # pylint: disable=invalid-name
 
 
 def url_to_filename(url, etag=None):
@@ -138,7 +138,6 @@ def s3_request(func):
     Wrapper function for s3 requests in order to create more helpful error
     messages.
     """
-
     @wraps(func)
     def wrapper(url, *args, **kwargs):
         try:
@@ -175,7 +174,7 @@ def http_get(url, temp_file):
     total = int(content_length) if content_length is not None else None
     progress = tqdm(unit="B", total=total)
     for chunk in req.iter_content(chunk_size=1024):
-        if chunk: # filter out keep-alive new chunks
+        if chunk:    # filter out keep-alive new chunks
             progress.update(len(chunk))
             temp_file.write(chunk)
     progress.close()
@@ -251,7 +250,7 @@ def get_from_cache(url, cache_dir=None):
             with open(meta_path, 'w') as meta_file:
                 output_string = json.dumps(meta)
                 if sys.version_info[0] == 2 and isinstance(output_string, str):
-                    output_string = unicode(output_string, 'utf-8')  # The beauty of python 2
+                    output_string = unicode(output_string, 'utf-8')    # The beauty of python 2
                 meta_file.write(output_string)
 
             logger.info("removing temp file %s", temp_file.name)

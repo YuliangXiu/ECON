@@ -3,7 +3,9 @@ import os
 import torch
 import datetime
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 class CheckpointSaver():
     """Class that handles saving and loading checkpoints during training."""
@@ -22,26 +24,41 @@ class CheckpointSaver():
             return False if self.latest_checkpoint is None else True
         else:
             return os.path.isfile(checkpoint_file)
-    
-    def save_checkpoint(self, models, optimizers, epoch, batch_idx, batch_size,
-                        total_step_count, is_best=False, save_by_step=False, interval=5, with_optimizer=True):
+
+    def save_checkpoint(
+        self,
+        models,
+        optimizers,
+        epoch,
+        batch_idx,
+        batch_size,
+        total_step_count,
+        is_best=False,
+        save_by_step=False,
+        interval=5,
+        with_optimizer=True
+    ):
         """Save checkpoint."""
         timestamp = datetime.datetime.now()
         if self.overwrite:
             checkpoint_filename = os.path.abspath(os.path.join(self.save_dir, 'model_latest.pt'))
         elif save_by_step:
-            checkpoint_filename = os.path.abspath(os.path.join(self.save_dir, '{:08d}.pt'.format(total_step_count)))
+            checkpoint_filename = os.path.abspath(
+                os.path.join(self.save_dir, '{:08d}.pt'.format(total_step_count))
+            )
         else:
             if epoch % interval == 0:
-                checkpoint_filename = os.path.abspath(os.path.join(self.save_dir, f'model_epoch_{epoch:02d}.pt'))
+                checkpoint_filename = os.path.abspath(
+                    os.path.join(self.save_dir, f'model_epoch_{epoch:02d}.pt')
+                )
             else:
                 checkpoint_filename = None
-        
+
         checkpoint = {}
         for model in models:
             model_dict = models[model].state_dict()
             for k in list(model_dict.keys()):
-                if '.smpl.' in k:                    
+                if '.smpl.' in k:
                     del model_dict[k]
             checkpoint[model] = model_dict
         if with_optimizer:
@@ -56,14 +73,13 @@ class CheckpointSaver():
         if checkpoint_filename is not None:
             torch.save(checkpoint, checkpoint_filename)
             print('Saving checkpoint file [' + checkpoint_filename + ']')
-        if is_best: # save the best
+        if is_best:    # save the best
             checkpoint_filename = os.path.abspath(os.path.join(self.save_dir, 'model_best.pt'))
             torch.save(checkpoint, checkpoint_filename)
             print(timestamp, 'Epoch:', epoch, 'Iteration:', batch_idx)
             print('Saving checkpoint file [' + checkpoint_filename + ']')
             torch.save(checkpoint, checkpoint_filename)
             print('Saved checkpoint file [' + checkpoint_filename + ']')
-
 
     def load_checkpoint(self, models, optimizers, checkpoint_file=None):
         """Load a checkpoint."""
@@ -74,8 +90,10 @@ class CheckpointSaver():
         for model in models:
             if model in checkpoint:
                 model_dict = models[model].state_dict()
-                pretrained_dict = {k: v for k, v in checkpoint[model].items()
-                                   if k in model_dict.keys()}
+                pretrained_dict = {
+                    k: v
+                    for k, v in checkpoint[model].items() if k in model_dict.keys()
+                }
                 model_dict.update(pretrained_dict)
                 models[model].load_state_dict(model_dict)
 
@@ -83,20 +101,23 @@ class CheckpointSaver():
         for optimizer in optimizers:
             if optimizer in checkpoint:
                 optimizers[optimizer].load_state_dict(checkpoint[optimizer])
-        return {'epoch': checkpoint['epoch'],
-                'batch_idx': checkpoint['batch_idx'],
-                'batch_size': checkpoint['batch_size'],
-                'total_step_count': checkpoint['total_step_count']}
+        return {
+            'epoch': checkpoint['epoch'],
+            'batch_idx': checkpoint['batch_idx'],
+            'batch_size': checkpoint['batch_size'],
+            'total_step_count': checkpoint['total_step_count']
+        }
 
     def get_latest_checkpoint(self):
         """Get filename of latest checkpoint if it exists."""
-        checkpoint_list = [] 
+        checkpoint_list = []
         for dirpath, dirnames, filenames in os.walk(self.save_dir):
             for filename in filenames:
                 if filename.endswith('.pt'):
                     checkpoint_list.append(os.path.abspath(os.path.join(dirpath, filename)))
         # sort
         import re
+
         def atof(text):
             try:
                 retval = float(text)
@@ -111,8 +132,8 @@ class CheckpointSaver():
             (See Toothy's implementation in the comments)
             float regex comes from https://stackoverflow.com/a/12643073/190597
             '''
-            return [ atof(c) for c in re.split(r'[+-]?([0-9]+(?:[.][0-9]*)?|[.][0-9]+)', text) ]
-        
+            return [atof(c) for c in re.split(r'[+-]?([0-9]+(?:[.][0-9]*)?|[.][0-9]+)', text)]
+
         checkpoint_list.sort(key=natural_keys)
-        self.latest_checkpoint =  None if (len(checkpoint_list) == 0) else checkpoint_list[-1]
+        self.latest_checkpoint = None if (len(checkpoint_list) == 0) else checkpoint_list[-1]
         return

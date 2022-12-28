@@ -37,7 +37,6 @@ class _PointFaceDistance(Function):
     """
     Torch autograd Function wrapper PointFaceDistance Cuda implementation
     """
-
     @staticmethod
     def forward(
         ctx,
@@ -92,12 +91,15 @@ class _PointFaceDistance(Function):
         grad_dists = grad_dists.contiguous()
         points, tris, idxs = ctx.saved_tensors
         min_triangle_area = ctx.min_triangle_area
-        grad_points, grad_tris = _C.point_face_dist_backward(points, tris, idxs, grad_dists, min_triangle_area)
+        grad_points, grad_tris = _C.point_face_dist_backward(
+            points, tris, idxs, grad_dists, min_triangle_area
+        )
         return grad_points, None, grad_tris, None, None, None
 
 
-def _rand_barycentric_coords(size1, size2, dtype: torch.dtype,
-                             device: torch.device) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+def _rand_barycentric_coords(
+    size1, size2, dtype: torch.dtype, device: torch.device
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Helper function to generate random barycentric coordinates which are uniformly
     distributed over a triangle.
@@ -167,19 +169,21 @@ def sample_points_from_meshes(meshes, num_samples: int = 10000):
     faces = meshes.faces_packed()
     mesh_to_face = meshes.mesh_to_faces_packed_first_idx()
     num_meshes = len(meshes)
-    num_valid_meshes = torch.sum(meshes.valid)  # Non empty meshes.
+    num_valid_meshes = torch.sum(meshes.valid)    # Non empty meshes.
 
     # Initialize samples tensor with fill value 0 for empty meshes.
     samples = torch.zeros((num_meshes, num_samples, 3), device=meshes.device)
 
     # Only compute samples for non empty meshes
     with torch.no_grad():
-        areas, _ = mesh_face_areas_normals(verts, faces)  # Face areas can be zero.
+        areas, _ = mesh_face_areas_normals(verts, faces)    # Face areas can be zero.
         max_faces = meshes.num_faces_per_mesh().max().item()
-        areas_padded = packed_to_padded(areas, mesh_to_face[meshes.valid], max_faces)  # (N, F)
+        areas_padded = packed_to_padded(areas, mesh_to_face[meshes.valid], max_faces)    # (N, F)
 
         # TODO (gkioxari) Confirm multinomial bug is not present with real data.
-        samples_face_idxs = areas_padded.multinomial(num_samples, replacement=True)  # (N, num_samples)
+        samples_face_idxs = areas_padded.multinomial(
+            num_samples, replacement=True
+        )    # (N, num_samples)
         samples_face_idxs += mesh_to_face[meshes.valid].view(num_valid_meshes, 1)
 
     # Randomly generate barycentric coords.
@@ -200,23 +204,25 @@ def point_mesh_distance(meshes, pcls, weighted=True):
         raise ValueError("meshes and pointclouds must be equal sized batches")
 
     # packed representation for pointclouds
-    points = pcls.points_packed()  # (P, 3)
+    points = pcls.points_packed()    # (P, 3)
     points_first_idx = pcls.cloud_to_packed_first_idx()
     max_points = pcls.num_points_per_cloud().max().item()
 
     # packed representation for faces
     verts_packed = meshes.verts_packed()
     faces_packed = meshes.faces_packed()
-    tris = verts_packed[faces_packed]  # (T, 3, 3)
+    tris = verts_packed[faces_packed]    # (T, 3, 3)
     tris_first_idx = meshes.mesh_to_faces_packed_first_idx()
 
     # point to face distance: shape (P,)
-    point_to_face, idxs = _PointFaceDistance.apply(points, points_first_idx, tris, tris_first_idx, max_points, 5e-3)
+    point_to_face, idxs = _PointFaceDistance.apply(
+        points, points_first_idx, tris, tris_first_idx, max_points, 5e-3
+    )
 
     if weighted:
         # weight each example by the inverse of number of points in the example
-        point_to_cloud_idx = pcls.packed_to_cloud_idx()  # (sum(P_i),)
-        num_points_per_cloud = pcls.num_points_per_cloud()  # (N,)
+        point_to_cloud_idx = pcls.packed_to_cloud_idx()    # (sum(P_i),)
+        num_points_per_cloud = pcls.num_points_per_cloud()    # (N,)
         weights_p = num_points_per_cloud.gather(0, point_to_cloud_idx)
         weights_p = 1.0 / weights_p.float()
         point_to_face = torch.sqrt(point_to_face) * weights_p
@@ -225,7 +231,6 @@ def point_mesh_distance(meshes, pcls, weighted=True):
 
 
 class Evaluator:
-
     def __init__(self, device):
 
         self.render = Render(size=512, device=device)
@@ -253,8 +258,8 @@ class Evaluator:
         self.render.meshes = self.tgt_mesh
         tgt_normal_imgs = self.render.get_image(cam_type="four", bg="black")
 
-        src_normal_arr = make_grid(torch.cat(src_normal_imgs, dim=0), nrow=4, padding=0)  # [-1,1]
-        tgt_normal_arr = make_grid(torch.cat(tgt_normal_imgs, dim=0), nrow=4, padding=0)  # [-1,1]
+        src_normal_arr = make_grid(torch.cat(src_normal_imgs, dim=0), nrow=4, padding=0)    # [-1,1]
+        tgt_normal_arr = make_grid(torch.cat(tgt_normal_imgs, dim=0), nrow=4, padding=0)    # [-1,1]
         src_norm = torch.norm(src_normal_arr, dim=0, keepdim=True)
         tgt_norm = torch.norm(tgt_normal_arr, dim=0, keepdim=True)
 
@@ -274,8 +279,11 @@ class Evaluator:
         # error_hf = ((((src_normal_arr - tgt_normal_arr) * sim_mask)**2).sum(dim=0).mean()) * 4.0
 
         normal_img = Image.fromarray(
-            (torch.cat([src_normal_arr, tgt_normal_arr], dim=1).permute(1, 2, 0).detach().cpu().numpy() * 255.0).astype(
-                np.uint8))
+            (
+                torch.cat([src_normal_arr, tgt_normal_arr],
+                          dim=1).permute(1, 2, 0).detach().cpu().numpy() * 255.0
+            ).astype(np.uint8)
+        )
         normal_img.save(normal_path)
 
         return error
@@ -291,7 +299,9 @@ class Evaluator:
         p2s_dist_all, _ = point_mesh_distance(self.src_mesh, tgt_points) * 100.0
         p2s_dist = p2s_dist_all.sum()
 
-        chamfer_dist = (point_mesh_distance(self.tgt_mesh, src_points)[0].sum() * 100.0 + p2s_dist) * 0.5
+        chamfer_dist = (
+            point_mesh_distance(self.tgt_mesh, src_points)[0].sum() * 100.0 + p2s_dist
+        ) * 0.5
 
         return chamfer_dist, p2s_dist
 
