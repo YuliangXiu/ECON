@@ -29,7 +29,7 @@ bni:
   boundary_consist: 1e-6
   poisson_depth: 10
   use_smpl: ["hand", "face"]
-  use_ifnet: True
+  use_ifnet: False
   use_poisson: True
   hand_thres: 8e-2
   face_thres: 6e-2

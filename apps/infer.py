@@ -470,7 +470,7 @@ if __name__ == "__main__":
 
                 side_mesh = trimesh.Trimesh(verts_IF, faces_IF)
                 side_mesh.export(side_mesh_path)
-                side_mesh = remesh(side_mesh_path)
+                side_mesh = remesh_laplacian(side_mesh_path)
 
             else:
                 side_mesh = apply_vertex_mask(

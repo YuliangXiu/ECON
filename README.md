@@ -103,7 +103,7 @@ python -m apps.avatarizer -n {filename}
 
 ### Some adjustable parameters in _config/econ.yaml_
 
-- `use_ifnet: True`
+- `use_ifnet: False`
   - True: use IF-Nets+ for mesh completion ( $\text{ECON}_\text{IF}$ - Better quality, **~3min / img**)
   - False: use SMPL-X for mesh completion ( $\text{ECON}_\text{EX}$ - Faster speed, **~2min / img**)
 - `use_smpl: ["hand", "face"]`
@@ -160,7 +160,6 @@ Here are some great resources we benefit from:
 - [BiNI](https://github.com/hoshino042/bilateral_normal_integration) for Bilateral Normal Integration
 - [MonoPortDataset](https://github.com/Project-Splinter/MonoPortDataset) for Data Processing, [MonoPort](https://github.com/Project-Splinter/MonoPort) for fast implicit surface query
 - [rembg](https://github.com/danielgatis/rembg) for Human Segmentation
-- [pypoisson](https://github.com/mmolero/pypoisson) for poisson reconstruction
 - [MediaPipe](https://google.github.io/mediapipe/getting_started/python.html) for full-body landmark estimation
 - [PyTorch-NICP](https://github.com/wuhaozhe/pytorch-nicp) for non-rigid registration
 - [smplx](https://github.com/vchoutas/smplx), [PyMAF-X](https://www.liuyebin.com/pymaf-x/), [PIXIE](https://github.com/YadiraF/PIXIE) for Human Pose & Shape Estimation

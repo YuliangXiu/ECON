@@ -32,7 +32,6 @@ from lib.common.render_utils import Pytorch3dRasterizer
 from pytorch3d.renderer.mesh import rasterize_meshes
 from PIL import Image, ImageFont, ImageDraw
 from pytorch3d.loss import mesh_laplacian_smoothing, mesh_normal_consistency
-from pypoisson import poisson_reconstruction
 
 
 class SMPLX:
@@ -352,30 +351,34 @@ def mesh_edge_loss(meshes, target_length: float = 0.0):
     return loss_all
 
 
-def remesh(obj_path, type="mc"):
+def remesh_laplacian(obj_path):
 
     ms = pymeshlab.MeshSet()
     ms.load_new_mesh(obj_path)
-    if type == "mc":
-        ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.Percentage(0.5), adaptive=True)
-        ms.apply_coord_laplacian_smoothing()
-    elif type == "poisson":
-        ms.meshing_decimation_quadric_edge_collapse(targetfacenum=50000)
+    ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.Percentage(0.5), adaptive=True)
+    ms.apply_coord_laplacian_smoothing()
     ms.save_current_mesh(obj_path)
-    polished_mesh = trimesh.load_mesh(obj_path)
 
-    return polished_mesh
+    return trimesh.load_mesh(obj_path)
 
 
 def poisson(mesh, obj_path, depth=10):
 
-    faces, vertices = poisson_reconstruction(mesh.vertices, mesh.vertex_normals, depth=depth)
+    mesh.export(obj_path)
 
-    largest_mesh = keep_largest(trimesh.Trimesh(vertices, faces))
+    # screened poisson reconstruction with MeshLab
+    ms = pymeshlab.MeshSet(verbose=False)
+    ms.set_verbosity(False)
+    ms.load_new_mesh(obj_path)
+    ms.surface_reconstruction_screened_poisson(depth=depth, preclean=True)
+    ms.meshing_decimation_quadric_edge_collapse(targetfacenum=50000)
+    ms.save_current_mesh(obj_path)
+
+    # only keep the largest component
+    largest_mesh = keep_largest(trimesh.load(obj_path))
     largest_mesh.export(obj_path)
-    final_mesh = remesh(obj_path, type="poisson")
 
-    return final_mesh
+    return largest_mesh
 
 
 # Losses to smooth / regularize the mesh shape
