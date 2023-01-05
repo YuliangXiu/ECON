@@ -384,7 +384,7 @@ def remesh_laplacian(mesh, obj_path):
     return mesh
 
 
-def poisson(mesh, obj_path, depth=10):
+def poisson(mesh, obj_path, depth=10, decimation=True):
 
     pcd_path = obj_path[:-4] + ".ply"
     assert (mesh.vertex_normals.shape[1] == 3)
@@ -400,10 +400,12 @@ def poisson(mesh, obj_path, depth=10):
     largest_mesh = keep_largest(trimesh.Trimesh(np.array(mesh.vertices), np.array(mesh.triangles)))
     largest_mesh.export(obj_path)
 
-    # mesh decimation for faster rendering
-    low_res_mesh = largest_mesh.simplify_quadratic_decimation(50000)
-
-    return low_res_mesh
+    if decimation:
+        # mesh decimation for faster rendering
+        low_res_mesh = largest_mesh.simplify_quadratic_decimation(50000)
+        return low_res_mesh
+    else:
+        return largest_mesh
 
 
 # Losses to smooth / regularize the mesh shape

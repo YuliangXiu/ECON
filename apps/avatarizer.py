@@ -146,7 +146,7 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
     smpl_hand.update_faces(smplx_container.mano_vertex_mask.numpy()[smpl_hand.faces].all(axis=1))
     smpl_hand.remove_unreferenced_vertices()
     econ_da = sum([smpl_hand, smpl_da_body, econ_da_body])
-    econ_da = poisson(econ_da, f"{prefix}_econ_da.obj")
+    econ_da = poisson(econ_da, f"{prefix}_econ_da.obj", depth=10, decimation=False)
 else:
     econ_da = trimesh.load(f"{prefix}_econ_da.obj")
     smpl_da = trimesh.load(f"{prefix}_smpl_da.obj", maintain_orders=True, process=False)
@@ -156,16 +156,16 @@ dist, idx = smpl_tree.query(econ_da.vertices, k=5)
 knn_weights = np.exp(-dist**2)
 knn_weights /= knn_weights.sum(axis=1, keepdims=True)
 
-econ_J_regressor = (smpl_model.J_regressor[:, idx] * knn_weights[None]).sum(axis=-1)
-econ_lbs_weights = (smpl_model.lbs_weights.T[:, idx] * knn_weights[None]).sum(axis=-1).T
+econ_J_regressor = (smpl_model.J_regressor[:, idx] * knn_weights[None]).sum(dim=-1)
+econ_lbs_weights = (smpl_model.lbs_weights.T[:, idx] * knn_weights[None]).sum(dim=-1).T
 
 num_posedirs = smpl_model.posedirs.shape[0]
 econ_posedirs = (
     smpl_model.posedirs.view(num_posedirs, -1, 3)[:, idx, :] * knn_weights[None, ..., None]
-).sum(axis=-2).view(num_posedirs, -1).float()
+).sum(dim=-2).view(num_posedirs, -1).float()
 
-econ_J_regressor /= econ_J_regressor.sum(axis=1, keepdims=True)
-econ_lbs_weights /= econ_lbs_weights.sum(axis=1, keepdims=True)
+econ_J_regressor /= econ_J_regressor.sum(dim=1, keepdims=True).clip(min=1e-10)
+econ_lbs_weights /= econ_lbs_weights.sum(dim=1, keepdims=True)
 
 # re-compute da-pose rot_mat for ECON
 rot_mat_da = smpl_out_lst[1].vertex_transformation.detach()[0][idx[:, 0]]
