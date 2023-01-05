@@ -43,8 +43,8 @@ def get_affine_matrix_box(boxes, w2, h2):
     ).T    #(N,2)
     scale = torch.min(torch.tensor([w2 / width, h2 / height]),
                       dim=0)[0].unsqueeze(1).repeat(1, 2) * 0.9    #(N,2)
-    transl = torch.tensor([w2 / 2.0 - center[:, 0], h2 / 2.0 - center[:, 1]]).unsqueeze(0)    #(N,2)
-    M = get_affine_matrix2d(transl, center, scale, angle=torch.tensor([0.]))
+    transl = torch.cat([w2 / 2.0 - center[:, 0:1], h2 / 2.0 - center[:, 1:2]], dim=1)   #(N,2)
+    M = get_affine_matrix2d(transl, center, scale, angle=torch.tensor([0.,]*transl.shape[0]))
 
     return M
 
