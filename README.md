@@ -86,8 +86,11 @@ ECON is designed for "Human digitization from a color image", which combines the
 ## Demo
 
 ```bash
-# For single-person image-based reconstruction
+# For single-person image-based reconstruction (w/ all visualization steps, 1.8min)
 python -m apps.infer -cfg ./configs/econ.yaml -in_dir ./examples -out_dir ./results
+
+# For single-person image-based reconstruction (w/o any visualization steps, 1.5min)
+python -m apps.infer -cfg ./configs/econ.yaml -in_dir ./examples -out_dir ./results -novis
 
 # For multi-person image-based reconstruction (see config/econ.yaml)
 python -m apps.infer -cfg ./configs/econ.yaml -in_dir ./examples -out_dir ./results -multi
@@ -105,7 +108,7 @@ python -m apps.avatarizer -n {filename}
 
 - `use_ifnet: False`
   - True: use IF-Nets+ for mesh completion ( $\text{ECON}_\text{IF}$ - Better quality, **~2min / img**)
-  - False: use SMPL-X for mesh completion ( $\text{ECON}_\text{EX}$ - Faster speed, **~1.5min / img**)
+  - False: use SMPL-X for mesh completion ( $\text{ECON}_\text{EX}$ - Faster speed, **~1.8min / img**)
 - `use_smpl: ["hand", "face"]`
   - [ ]: don't use either hands or face parts from SMPL-X
   - ["hand"]: only use the **visible** hands from SMPL-X

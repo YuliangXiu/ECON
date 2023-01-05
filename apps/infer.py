@@ -54,12 +54,12 @@ if __name__ == "__main__":
     parser.add_argument("-gpu", "--gpu_device", type=int, default=0)
     parser.add_argument("-loop_smpl", "--loop_smpl", type=int, default=50)
     parser.add_argument("-patience", "--patience", type=int, default=5)
-    parser.add_argument("-vis_freq", "--vis_freq", type=int, default=1000)
-    parser.add_argument("-multi", action="store_false")
     parser.add_argument("-in_dir", "--in_dir", type=str, default="./examples")
     parser.add_argument("-out_dir", "--out_dir", type=str, default="./results")
     parser.add_argument("-seg_dir", "--seg_dir", type=str, default=None)
     parser.add_argument("-cfg", "--config", type=str, default="./configs/econ.yaml")
+    parser.add_argument("-multi", action="store_false")
+    parser.add_argument("-novis", action="store_true")
 
     args = parser.parse_args()
 
@@ -319,8 +319,8 @@ if __name__ == "__main__":
                 pbar_desc += colored(f"| loose:{loose_str}, occluded:{occlude_str}", "yellow")
                 loop_smpl.set_description(pbar_desc)
 
-                # save intermediate results / vis_freq and final_step
-                if (i % args.vis_freq == 0) or (i == args.loop_smpl - 1):
+                # save intermediate results
+                if (i == args.loop_smpl - 1) and (not args.novis):
 
                     per_loop_lst.extend(
                         [
@@ -348,26 +348,32 @@ if __name__ == "__main__":
 
             in_tensor["smpl_verts"] = smpl_verts * torch.tensor([1.0, 1.0, -1.0]).to(device)
             in_tensor["smpl_faces"] = in_tensor["smpl_faces"][:, :, [0, 2, 1]]
-            per_data_lst[-1].save(osp.join(args.out_dir, cfg.name, f"png/{data['name']}_smpl.png"))
 
-        img_crop_path = osp.join(args.out_dir, cfg.name, "png", f"{data['name']}_crop.png")
-        torchvision.utils.save_image(
-            torch.cat(
-                [
-                    data["img_crop"][:, :3], (in_tensor['normal_F'].detach().cpu() + 1.0) * 0.5,
-                    (in_tensor['normal_B'].detach().cpu() + 1.0) * 0.5
-                ],
-                dim=3
-            ), img_crop_path
-        )
+            if not args.novis:
+                per_data_lst[-1].save(
+                    osp.join(args.out_dir, cfg.name, f"png/{data['name']}_smpl.png")
+                )
 
-        rgb_norm_F = blend_rgb_norm(in_tensor["normal_F"], data)
-        rgb_norm_B = blend_rgb_norm(in_tensor["normal_B"], data)
+        if not args.novis:
+            img_crop_path = osp.join(args.out_dir, cfg.name, "png", f"{data['name']}_crop.png")
+            torchvision.utils.save_image(
+                torch.cat(
+                    [
+                        data["img_crop"][:, :3], (in_tensor['normal_F'].detach().cpu() + 1.0) * 0.5,
+                        (in_tensor['normal_B'].detach().cpu() + 1.0) * 0.5
+                    ],
+                    dim=3
+                ), img_crop_path
+            )
 
-        img_overlap_path = osp.join(args.out_dir, cfg.name, f"png/{data['name']}_overlap.png")
-        torchvision.utils.save_image(
-            torch.cat([data["img_raw"], rgb_norm_F, rgb_norm_B], dim=-1) / 255., img_overlap_path
-        )
+            rgb_norm_F = blend_rgb_norm(in_tensor["normal_F"], data)
+            rgb_norm_B = blend_rgb_norm(in_tensor["normal_B"], data)
+
+            img_overlap_path = osp.join(args.out_dir, cfg.name, f"png/{data['name']}_overlap.png")
+            torchvision.utils.save_image(
+                torch.cat([data["img_raw"], rgb_norm_F, rgb_norm_B], dim=-1) / 255.,
+                img_overlap_path
+            )
 
         smpl_obj_lst = []
 
@@ -618,12 +624,13 @@ if __name__ == "__main__":
                 final_mesh = sum(full_lst)
                 final_mesh.export(final_path)
 
-            dataset.render.load_meshes(final_mesh.vertices, final_mesh.faces)
-            rotate_recon_lst = dataset.render.get_image(cam_type="four")
-            per_loop_lst.extend([in_tensor['image'][idx:idx + 1]] + rotate_recon_lst)
+            if not args.novis:
+                dataset.render.load_meshes(final_mesh.vertices, final_mesh.faces)
+                rotate_recon_lst = dataset.render.get_image(cam_type="four")
+                per_loop_lst.extend([in_tensor['image'][idx:idx + 1]] + rotate_recon_lst)
 
             if cfg.bni.texture_src == 'image':
-                
+
                 # coloring the final mesh (front: RGB pixels, back: normal colors)
                 final_colors = query_color(
                     torch.tensor(final_mesh.vertices).float(),
@@ -633,22 +640,24 @@ if __name__ == "__main__":
                 )
                 final_mesh.visual.vertex_colors = final_colors
                 final_mesh.export(final_path)
-                
+
             elif cfg.bni.texture_src == 'SD':
-                
+
                 # !TODO: add texture from Stable Diffusion
                 pass
+
+        if len(per_loop_lst) > 0 and (not args.novis):
+
+            per_data_lst.append(get_optim_grid_image(per_loop_lst, None, nrow=5, type="cloth"))
+            per_data_lst[-1].save(osp.join(args.out_dir, cfg.name, f"png/{data['name']}_cloth.png"))
 
             # for video rendering
             in_tensor["BNI_verts"].append(torch.tensor(final_mesh.vertices).float())
             in_tensor["BNI_faces"].append(torch.tensor(final_mesh.faces).long())
 
-        if len(per_loop_lst) > 0:
-
-            per_data_lst.append(get_optim_grid_image(per_loop_lst, None, nrow=5, type="cloth"))
-            per_data_lst[-1].save(osp.join(args.out_dir, cfg.name, f"png/{data['name']}_cloth.png"))
-
-        os.makedirs(osp.join(args.out_dir, cfg.name, "vid"), exist_ok=True)
-        in_tensor["uncrop_param"] = data["uncrop_param"]
-        in_tensor["img_raw"] = data["img_raw"]
-        torch.save(in_tensor, osp.join(args.out_dir, cfg.name, f"vid/{data['name']}_in_tensor.pt"))
+            os.makedirs(osp.join(args.out_dir, cfg.name, "vid"), exist_ok=True)
+            in_tensor["uncrop_param"] = data["uncrop_param"]
+            in_tensor["img_raw"] = data["img_raw"]
+            torch.save(
+                in_tensor, osp.join(args.out_dir, cfg.name, f"vid/{data['name']}_in_tensor.pt")
+            )
