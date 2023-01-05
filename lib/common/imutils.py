@@ -49,6 +49,11 @@ def get_affine_matrix_box(boxes, w2, h2):
 def load_img(img_file):
 
     img = cv2.imread(img_file, cv2.IMREAD_UNCHANGED)
+
+    # considering 16-bit image
+    if img.dtype == np.uint16 :
+        img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+
     if len(img.shape) == 2:
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
