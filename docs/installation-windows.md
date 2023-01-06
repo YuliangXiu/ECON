@@ -20,7 +20,7 @@
 Start by cloning the repo:
 
 ```bash
-git clone https://github.com/justinjohn0306/ECON.git
+git clone --depth 1 git@github.com:justinjohn0306/ECON.git
 cd ECON
 ```
 
