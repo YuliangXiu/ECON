@@ -40,7 +40,7 @@ conda env create -f environment-windows.yaml
 conda activate econ
 # install pytorch
 pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
-pip install -r requirements.txt
+pip install -r requirements-win.txt
 pip install cupy-cuda11x
 
 ## If you have a RTX 30 series GPU then run this cmd below for installing neural_voxelization_layer
