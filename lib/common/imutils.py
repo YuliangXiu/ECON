@@ -1,3 +1,5 @@
+import os
+os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1"
 import cv2
 import mediapipe as mp
 import torch
@@ -51,10 +53,13 @@ def get_affine_matrix_box(boxes, w2, h2):
 
 def load_img(img_file):
 
-    img = cv2.imread(img_file, cv2.IMREAD_UNCHANGED)
+    if img_file.endswith("exr"):
+        img = cv2.imread(img_file, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)  
+    else :
+        img = cv2.imread(img_file, cv2.IMREAD_UNCHANGED)
 
-    # considering 16-bit image
-    if img.dtype == np.uint16:
+    # considering non 8-bit image
+    if img.dtype != np.uint8 :
         img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
 
     if len(img.shape) == 2:
