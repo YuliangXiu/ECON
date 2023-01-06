@@ -45,7 +45,9 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 ## News :triangular_flag_on_post:
 
-- [2022/12/22] <a href='https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing' style='padding-left: 0.5rem;'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a> is now available, created by [AroArz](https://github.com/AroArz)!
+- [2023/01/06] [Justin John](https://github.com/justinjohn0306) and [
+Carlos Barreto](https://github.com/carlosedubarreto) creates [install-on-windows](docs/installation-windows.md) for ECON .
+- [2022/12/22] <a href='https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing' style='padding-left: 0.5rem;'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a> is now available, created by [Aron Arzoomand](https://github.com/AroArz).
 - [2022/12/15] Both <a href="#demo">demo</a> and <a href="https://arxiv.org/abs/2212.07422">arXiv</a> are available.
 
 ## TODO
@@ -69,9 +71,6 @@ ECON is designed for "Human digitization from a color image", which combines the
       <a href="#applications">Applications</a>
     </li>
     <li>
-      <a href="#tricks">Tricks</a>
-    </li>
-    <li>
       <a href="#citation">Citation</a>
     </li>
   </ol>
@@ -81,48 +80,25 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 ## Instructions
 
-- See [docs/installation.md](docs/installation.md) to install all the required packages and setup the models
+- See [installion doc for Windows](docs/installation-windows.md) to install all the required packages and setup the models on _Windows_
+- See [installion doc for Ubuntu](docs/installation-ubuntu.md) to install all the required packages and setup the models on _Ubuntu_
+- See [magic tricks](docs/tricks.md) to know a few technical tricks to further improve and accelerate ECON
 
 ## Demo
 
 ```bash
-# For single-person image-based reconstruction (w/ all visualization steps, 1.8min)
+# For single-person image-based reconstruction (w/ l visualization steps, 1.8min)
 python -m apps.infer -cfg ./configs/econ.yaml -in_dir ./examples -out_dir ./results
-
-# For single-person image-based reconstruction (w/o any visualization steps, 1.5min)
-python -m apps.infer -cfg ./configs/econ.yaml -in_dir ./examples -out_dir ./results -novis
 
 # For multi-person image-based reconstruction (see config/econ.yaml)
 python -m apps.infer -cfg ./configs/econ.yaml -in_dir ./examples -out_dir ./results -multi
 
 # To generate the demo video of reconstruction results
-python -m apps.multi_render -n {filename}
+python -m apps.multi_render -n <filename>
 
 # To animate the reconstruction with SMPL-X pose parameters
-python -m apps.avatarizer -n {filename}
+python -m apps.avatarizer -n <filename>
 ```
-
-## Tricks
-
-### Some adjustable parameters in _config/econ.yaml_
-
-- `use_ifnet: False`
-  - True: use IF-Nets+ for mesh completion ( $\text{ECON}_\text{IF}$ - Better quality, **~2min / img**)
-  - False: use SMPL-X for mesh completion ( $\text{ECON}_\text{EX}$ - Faster speed, **~1.8min / img**)
-- `use_smpl: ["hand", "face"]`
-  - [ ]: don't use either hands or face parts from SMPL-X
-  - ["hand"]: only use the **visible** hands from SMPL-X
-  - ["hand", "face"]: use both **visible** hands and face from SMPL-X
-- `thickness: 2cm`
-  - could be increased accordingly in case final reconstruction **xx_full.obj** looks flat
-- `k: 4`
-  - could be reduced accordingly in case the surface of **xx_full.obj** has discontinous artifacts
-- `hps_type: PIXIE`
-  - "pixie": more accurate for face and hands
-  - "pymafx": more robust for challenging poses
-- `texture_src: image`
-  - "image": direct mapping the aligned pixels to final mesh
-  - "SD": use Stable Diffusion to generate full texture (TODO)
 
 <br/>
 
@@ -175,6 +151,17 @@ Here are some great resources we benefit from:
 Some images used in the qualitative examples come from [pinterest.com](https://www.pinterest.com/).
 
 This project has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Skłodowska-Curie grant agreement No.860768 ([CLIPE Project](https://www.clipe-itn.eu)).
+
+
+## Contributors
+
+Kudos to all of our amazing contributors! ECON thrives through open-source. In that spirit, we welcome all kinds of contributions from the community.
+
+<a href="https://github.com/yuliangxiu/ECON/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=yuliangxiu/ECON" />
+</a>
+
+_Contributor avatars are randomly shuffled._
 
 ---
 
