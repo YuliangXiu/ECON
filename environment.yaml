@@ -1,5 +1,6 @@
 name: econ
 channels:
+  - pytorch
   - nvidia
   - conda-forge
   - fvcore
@@ -8,8 +9,12 @@ channels:
   - defaults
 dependencies:
   - python=3.8
+  - pytorch
+  - torchvision
   - fvcore
   - iopath
+  - nvidiacub
+  - pyembree
   - cupy
   - cython
   - pip
