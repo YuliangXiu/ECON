@@ -81,7 +81,7 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 ## Instructions
 
-- See [docs/installation.md](docs/installation-windows.md) to install all the required packages and setup the models
+- See [docs/installation.md](docs/installation.md) to install all the required packages and setup the models
 
 ## Demo
 
