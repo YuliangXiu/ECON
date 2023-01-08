@@ -26,7 +26,8 @@
     <a href="https://cupy.dev/"><img alt="cupy" src="https://img.shields.io/badge/-Cupy-46C02B?logo=numpy&logoColor=white"></a>
     <a href="https://twitter.com/yuliangxiu"><img alt='Twitter' src="https://img.shields.io/twitter/follow/yuliangxiu?label=%40yuliangxiu"></a>
     <br></br>
-     <a href='https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing' style='padding-left: 0.5rem;'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a><br></br>
+    <a href='https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a>
+    <a href='https://github.com/YuliangXiu/ECON/blob/master/docs/installation-docker.md'><img src='https://img.shields.io/badge/Run%20the%20Docker-9cf.svg?logo=Docker' alt='Docker'></a><br></br>
     <a href="https://arxiv.org/abs/2212.07422">
       <img src='https://img.shields.io/badge/Paper-PDF-green?style=for-the-badge&logo=adobeacrobatreader&logoWidth=20&logoColor=white&labelColor=66cc00&color=94DD15' alt='Paper PDF'>
     </a>
@@ -45,8 +46,8 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 ## News :triangular_flag_on_post:
 
-- [2023/01/06] [Justin John](https://github.com/justinjohn0306) and [
-Carlos Barreto](https://github.com/carlosedubarreto) creates [install-on-windows](docs/installation-windows.md) for ECON .
+- [2023/01/08] [Teddy Huang](https://github.com/Teddy12155555) creates [install-with-docker](docs/installation-docker.md) for ECON .
+- [2023/01/06] [Justin John](https://github.com/justinjohn0306) and [Carlos Barreto](https://github.com/carlosedubarreto) creates [install-on-windows](docs/installation-windows.md) for ECON .
 - [2022/12/22] <a href='https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing' style='padding-left: 0.5rem;'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a> is now available, created by [Aron Arzoomand](https://github.com/AroArz).
 - [2022/12/15] Both <a href="#demo">demo</a> and <a href="https://arxiv.org/abs/2212.07422">arXiv</a> are available.
 
@@ -80,6 +81,7 @@ Carlos Barreto](https://github.com/carlosedubarreto) creates [install-on-windows
 
 ## Instructions
 
+- See [installion doc for Docker](docs/installation-docker.md) to run a docker container with pre-built image for ECON demo
 - See [installion doc for Windows](docs/installation-windows.md) to install all the required packages and setup the models on _Windows_
 - See [installion doc for Ubuntu](docs/installation-ubuntu.md) to install all the required packages and setup the models on _Ubuntu_
 - See [magic tricks](docs/tricks.md) to know a few technical tricks to further improve and accelerate ECON
@@ -151,7 +153,6 @@ Here are some great resources we benefit from:
 Some images used in the qualitative examples come from [pinterest.com](https://www.pinterest.com/).
 
 This project has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Skłodowska-Curie grant agreement No.860768 ([CLIPE Project](https://www.clipe-itn.eu)).
-
 
 ## Contributors
 

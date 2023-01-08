@@ -1,0 +1,19 @@
+# build Image from Docker Hub
+version: "2.4"
+services:
+  econ:
+    container_name: econ-container
+    image: teddy12155555/econ:v1
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - DISPLAY=${DISPLAY}
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/root/code
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    ports:
+      - "8000:8000"
+    privileged: true
+    command: "bash"
