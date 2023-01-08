@@ -8,8 +8,9 @@ cd ECON
 ```
 ## Environment
 - **GPU Memory > 12GB**
+
+start with [docker compose](https://docs.docker.com/compose/)
 ```bash
-# start with docker compose
 # you can change your container name by passing --name "parameter" 
 docker compose run [--name myecon] econ
 ```
