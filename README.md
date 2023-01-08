@@ -45,6 +45,7 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 ## News :triangular_flag_on_post:
 
+- [2023/01/08] [Teddy Huang](https://github.com/Teddy12155555) creates [install-with-docker](docs/installation-docker.md) for ECON .
 - [2023/01/06] [Justin John](https://github.com/justinjohn0306) and [
 Carlos Barreto](https://github.com/carlosedubarreto) creates [install-on-windows](docs/installation-windows.md) for ECON .
 - [2022/12/22] <a href='https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing' style='padding-left: 0.5rem;'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a> is now available, created by [Aron Arzoomand](https://github.com/AroArz).
@@ -80,6 +81,7 @@ Carlos Barreto](https://github.com/carlosedubarreto) creates [install-on-windows
 
 ## Instructions
 
+- See [installion doc for Docker](docs/installation-docker.md) to run a container with pre-built image for running demos without env-engineering. 
 - See [installion doc for Windows](docs/installation-windows.md) to install all the required packages and setup the models on _Windows_
 - See [installion doc for Ubuntu](docs/installation-ubuntu.md) to install all the required packages and setup the models on _Ubuntu_
 - See [magic tricks](docs/tricks.md) to know a few technical tricks to further improve and accelerate ECON
