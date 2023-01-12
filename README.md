@@ -27,7 +27,9 @@
     <a href="https://twitter.com/yuliangxiu"><img alt='Twitter' src="https://img.shields.io/twitter/follow/yuliangxiu?label=%40yuliangxiu"></a>
     <br></br>
     <a href='https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a>
-    <a href='https://github.com/YuliangXiu/ECON/blob/master/docs/installation-docker.md'><img src='https://img.shields.io/badge/Run%20the%20Docker-9cf.svg?logo=Docker' alt='Docker'></a><br></br>
+    <a href='https://github.com/YuliangXiu/ECON/blob/master/docs/installation-docker.md'><img src='https://img.shields.io/badge/Docker-9cf.svg?logo=Docker' alt='Docker'></a>
+    <a href='https://carlosedubarreto.gumroad.com/l/CEB_ECONd'><img src='https://img.shields.io/badge/Blender-F6DDCC.svg?logo=Blender' alt='Blender'></a>
+    <br></br>
     <a href="https://arxiv.org/abs/2212.07422">
       <img src='https://img.shields.io/badge/Paper-PDF-green?style=for-the-badge&logo=adobeacrobatreader&logoWidth=20&logoColor=white&labelColor=66cc00&color=94DD15' alt='Paper PDF'>
     </a>
