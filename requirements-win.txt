@@ -16,4 +16,4 @@ boto3
 open3d
 tinyobjloader==2.0.0rc7
 git+https://github.com/facebookresearch/pytorch3d.git
-git+https://github.com
+git+https://github.com/YuliangXiu/rembg.git
