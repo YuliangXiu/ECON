@@ -14,7 +14,7 @@
     ·
     <a href="https://ps.is.tuebingen.mpg.de/person/black"><strong>Michael J. Black</strong></a>
   </p>
-  <h2 align="center">arXiv 2022</h2>
+  <h2 align="center">CVPR 2023</h2>
   <div align="center">
     <img src="./assets/teaser.gif" alt="Logo" width="100%">
   </div>
@@ -48,6 +48,7 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 ## News :triangular_flag_on_post:
 
+- [2023/02/27] ECON got accepted by CVPR 2023!
 - [2023/01/12] [Carlos Barreto](https://twitter.com/carlosedubarret/status/1613252471035494403) creates a Blender Addon ([Download](https://carlosedubarreto.gumroad.com/l/CEB_ECON), [Tutorial](https://youtu.be/sbWZbTf6ZYk)).
 - [2023/01/08] [Teddy Huang](https://github.com/Teddy12155555) creates [install-with-docker](docs/installation-docker.md) for ECON .
 - [2023/01/06] [Justin John](https://github.com/justinjohn0306) and [Carlos Barreto](https://github.com/carlosedubarreto) creates [install-on-windows](docs/installation-windows.md) for ECON .
@@ -127,11 +128,12 @@ python -m apps.avatarizer -n <filename>
 ## Citation
 
 ```bibtex
-@article{xiu2022econ,
-    title={{ECON: Explicit Clothed humans Obtained from Normals}},
-    author={Xiu, Yuliang and Yang, Jinlong and Cao, Xu and Tzionas, Dimitrios and Black, Michael J.},
-    year={2022}
-    journal={{arXiv}:2212.07422},
+@inproceedings{xiu2023econ,
+  title     = {{ECON: Explicit Clothed humans Obtained from Normals}},
+  author    = {Xiu, Yuliang and Yang, Jinlong and Cao, Xu and Tzionas, Dimitrios and Black, Michael J.},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  month     = {June},
+  year      = {2023},
 }
 ```
 

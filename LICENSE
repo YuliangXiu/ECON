@@ -39,11 +39,12 @@ You acknowledge that the Data & Software is a valuable scientific resource and a
 
 Citation:
 
-@article{xiu2022econ,
-    title={{ECON: Explicit Clothed humans Obtained from Normals}},
-    author={Xiu, Yuliang and Yang, Jinlong and Cao, Xu and Tzionas, Dimitrios and Black, Michael J.},
-    year={2022}
-    journal={{arXiv}:2212.07422},
+@inproceedings{xiu2023econ,
+  title     = {{ECON: Explicit Clothed humans Obtained from Normals}},
+  author    = {Xiu, Yuliang and Yang, Jinlong and Cao, Xu and Tzionas, Dimitrios and Black, Michael J.},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  month     = {June},
+  year      = {2023},
 }
 
 Commercial licensing opportunities
