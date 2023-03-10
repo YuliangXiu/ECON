@@ -89,6 +89,7 @@ ECON is designed for "Human digitization from a color image", which combines the
 - See [installion doc for Windows](docs/installation-windows.md) to install all the required packages and setup the models on _Windows_
 - See [installion doc for Ubuntu](docs/installation-ubuntu.md) to install all the required packages and setup the models on _Ubuntu_
 - See [magic tricks](docs/tricks.md) to know a few technical tricks to further improve and accelerate ECON
+- See [testing](docs/testing.md) to prepare the testing data and evaluate ECON
 
 ## Demo
 

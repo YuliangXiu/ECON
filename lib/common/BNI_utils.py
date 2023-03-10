@@ -435,7 +435,8 @@ def double_side_bilateral_normal_integration(
     max_iter=150,
     tol=1e-4,
     cg_max_iter=5000,
-    cg_tol=1e-3
+    cg_tol=1e-3,
+    cut_intersection=True,
 ):
 
     # To avoid confusion, we list the coordinate systems in this code as follows
@@ -538,6 +539,13 @@ def double_side_bilateral_normal_integration(
              lambda_depth_back * (z_back - z_prior_back).T @ M @ (z_back - z_prior_back) + \
              lambda_boundary_consistency * (z_back - z_front).T @ B @ (z_back - z_front)
 
+    depth_map_front_est = cp.ones_like(normal_mask, float) * cp.nan
+    depth_map_back_est = cp.ones_like(normal_mask, float) * cp.nan
+
+    facets_back = cp.asnumpy(construct_facets_from(normal_mask))
+    faces_back = np.concatenate((facets_back[:, [1, 4, 3]], facets_back[:, [1, 3, 2]]), axis=0)
+    faces_front = np.concatenate((facets_back[:, [1, 2, 3]], facets_back[:, [1, 3, 4]]), axis=0)
+
     for i in range(max_iter):
         A_mat_front = A_front_data.T @ W_front @ A_front_data
         b_vec_front = A_front_data.T @ W_front @ b_front
@@ -606,22 +614,61 @@ def double_side_bilateral_normal_integration(
 
         energy_list.append(energy)
         relative_energy = cp.abs(energy - energy_old) / energy_old
+        
         # print(f"step {i + 1}/{max_iter} energy: {energy:.3e}"
         #       f" relative energy: {relative_energy:.3e}")
+
+        if False:
+            # intermediate results
+            depth_map_front_est[normal_mask] = z_front
+            depth_map_back_est[normal_mask] = z_back
+            vertices_front = cp.asnumpy(
+                map_depth_map_to_point_clouds(
+                    depth_map_front_est, normal_mask, K=None, step_size=step_size
+                )
+            )
+            vertices_back = cp.asnumpy(
+                map_depth_map_to_point_clouds(
+                    depth_map_back_est, normal_mask, K=None, step_size=step_size
+                )
+            )
+
+            vertices_front, faces_front_ = remove_stretched_faces(vertices_front, faces_front)
+            vertices_back, faces_back_ = remove_stretched_faces(vertices_back, faces_back)
+
+            F_verts = verts_inverse_transform(torch.as_tensor(vertices_front).float(), 256.0)
+            B_verts = verts_inverse_transform(torch.as_tensor(vertices_back).float(), 256.0)
+
+            F_B_verts = torch.cat((F_verts, B_verts), dim=0)
+            F_B_faces = torch.cat(
+                (
+                    torch.as_tensor(faces_front_).long(),
+                    torch.as_tensor(faces_back_).long() + faces_front_.max() + 1
+                ),
+                dim=0
+            )
+
+            front_surf = trimesh.Trimesh(F_verts, faces_front_)
+            back_surf = trimesh.Trimesh(B_verts, faces_back_)
+            double_surf = trimesh.Trimesh(F_B_verts, F_B_faces)
+
+            bini_dir = "/home/yxiu/Code/ECON/log/bini/OBJ"
+            front_surf.export(osp.join(bini_dir, f"{i:04d}_F.obj"))
+            back_surf.export(osp.join(bini_dir, f"{i:04d}_B.obj"))
+            double_surf.export(osp.join(bini_dir, f"{i:04d}_FB.obj"))
+
         if relative_energy < tol:
             break
     # del A1, A2, A3, A4, nx, ny
 
-    depth_map_front_est = cp.ones_like(normal_mask, float) * cp.nan
     depth_map_front_est[normal_mask] = z_front
-
-    depth_map_back_est = cp.ones_like(normal_mask, float) * cp.nan
     depth_map_back_est[normal_mask] = z_back
 
-    # manually cut the intersection
-    normal_mask[depth_map_front_est >= depth_map_back_est] = False
-    depth_map_front_est[~normal_mask] = cp.nan
-    depth_map_back_est[~normal_mask] = cp.nan
+    if cut_intersection:
+        # manually cut the intersection
+        normal_mask[depth_map_front_est >= depth_map_back_est] = False
+        depth_map_front_est[~normal_mask] = cp.nan
+        depth_map_back_est[~normal_mask] = cp.nan
 
     vertices_front = cp.asnumpy(
         map_depth_map_to_point_clouds(
@@ -633,7 +680,6 @@ def double_side_bilateral_normal_integration(
     )
 
     facets_back = cp.asnumpy(construct_facets_from(normal_mask))
-
     faces_back = np.concatenate((facets_back[:, [1, 4, 3]], facets_back[:, [1, 3, 2]]), axis=0)
     faces_front = np.concatenate((facets_back[:, [1, 2, 3]], facets_back[:, [1, 3, 4]]), axis=0)
 

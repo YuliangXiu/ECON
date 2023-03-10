@@ -101,6 +101,7 @@ _C.bni.hand_thres = 4e-2
 _C.bni.face_thres = 6e-2
 _C.bni.hps_type = "pixie"
 _C.bni.texture_src = "image"
+_C.bni.cut_intersection = True
 
 # kernel_size, stride, dilation, padding
 

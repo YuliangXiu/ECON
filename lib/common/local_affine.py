@@ -73,7 +73,7 @@ def trimesh2meshes(mesh):
     return mesh
 
 
-def register(target_mesh, src_mesh, device):
+def register(target_mesh, src_mesh, device, verbose=True):
 
     # define local_affine deform verts
     tgt_mesh = trimesh2meshes(target_mesh).to(device)
@@ -100,8 +100,11 @@ def register(target_mesh, src_mesh, device):
 
     losses = init_loss()
 
-    loop_cloth = tqdm(range(100))
-
+    if verbose:
+        loop_cloth = tqdm(range(100))
+    else:
+        loop_cloth = range(100)
+    
     for i in loop_cloth:
 
         optimizer_cloth.zero_grad()
@@ -128,8 +131,9 @@ def register(target_mesh, src_mesh, device):
                     losses[k]["value"] * losses[k]["weight"]
                 pbar_desc += f"{k}:{losses[k]['value']* losses[k]['weight']:.3f} | "
 
-        pbar_desc += f"TOTAL: {cloth_loss:.3f}"
-        loop_cloth.set_description(pbar_desc)
+        if verbose:
+            pbar_desc += f"TOTAL: {cloth_loss:.3f}"
+            loop_cloth.set_description(pbar_desc)
 
         # update params
         cloth_loss.backward(retain_graph=True)
