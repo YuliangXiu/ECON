@@ -521,7 +521,7 @@ if __name__ == "__main__":
                 side_mesh = apply_vertex_mask(
                     side_mesh,
                     (
-                        SMPLX_object.front_flame_vertex_mask + SMPLX_object.mano_vertex_mask +
+                        SMPLX_object.front_flame_vertex_mask + SMPLX_object.smplx_mano_vertex_mask +
                         SMPLX_object.eyeball_vertex_mask
                     ).eq(0).float(),
                 )
@@ -619,6 +619,12 @@ if __name__ == "__main__":
                     sum(full_lst),
                     final_path,
                     cfg.bni.poisson_depth,
+                )
+                print(
+                    colored(
+                        f"\n Poisson completion to {Format.start} {final_path} {Format.end}",
+                        "yellow"
+                    )
                 )
             else:
                 final_mesh = sum(full_lst)

@@ -19,6 +19,7 @@ import numpy as np
 import torch
 import torchvision
 import trimesh
+import json
 import open3d as o3d
 import tinyobjloader
 import os.path as osp
@@ -59,6 +60,9 @@ class SMPLX:
             self.current_dir, "smpl_data/FLAME_SMPLX_vertex_ids.npy"
         )
         self.smplx_mano_vid_path = osp.join(self.current_dir, "smpl_data/MANO_SMPLX_vertex_ids.pkl")
+        self.smpl_vert_seg_path = osp.join(
+            osp.dirname(__file__), "../../lib/common/smpl_vert_segmentation.json"
+        )
         self.front_flame_path = osp.join(self.current_dir, "smpl_data/FLAME_face_mask_ids.npy")
         self.smplx_vertex_lmkid_path = osp.join(
             self.current_dir, "smpl_data/smplx_vertex_lmkid.npy"
@@ -70,6 +74,14 @@ class SMPLX:
         self.smpl_faces = np.load(self.smpl_faces_path)
         self.smplx_vertex_lmkid = np.load(self.smplx_vertex_lmkid_path)
 
+        self.smpl_vert_seg = json.load(open(self.smpl_vert_seg_path))
+        self.smpl_mano_vid = np.concatenate(
+            [
+                self.smpl_vert_seg["rightHand"], self.smpl_vert_seg["rightHandIndex1"],
+                self.smpl_vert_seg["leftHand"], self.smpl_vert_seg["leftHandIndex1"]
+            ]
+        )
+
         self.smplx_eyeball_fid_mask = np.load(self.smplx_eyeball_fid_path)
         self.smplx_mouth_fid = np.load(self.smplx_fill_mouth_fid_path)
         self.smplx_mano_vid_dict = np.load(self.smplx_mano_vid_path, allow_pickle=True)
@@ -80,9 +92,13 @@ class SMPLX:
         self.smplx_front_flame_vid = self.smplx_flame_vid[np.load(self.front_flame_path)]
 
         # hands
-        self.mano_vertex_mask = torch.zeros(self.smplx_verts.shape[0], ).index_fill_(
+        self.smplx_mano_vertex_mask = torch.zeros(self.smplx_verts.shape[0], ).index_fill_(
             0, torch.tensor(self.smplx_mano_vid), 1.0
         )
+        self.smpl_mano_vertex_mask = torch.zeros(self.smpl_verts.shape[0], ).index_fill_(
+            0, torch.tensor(self.smpl_mano_vid), 1.0
+        )
+
         # face
         self.front_flame_vertex_mask = torch.zeros(self.smplx_verts.shape[0], ).index_fill_(
             0, torch.tensor(self.smplx_front_flame_vid), 1.0
@@ -237,11 +253,20 @@ def part_removal(full_mesh, part_mesh, thres, device, smpl_obj, region, clean=Tr
 
     if region == "hand":
         _, idx = smpl_tree.query(full_mesh.vertices, k=1)
-        full_lmkid = SMPL_container.smplx_vertex_lmkid[idx]
-        remove_mask = torch.logical_and(
-            remove_mask,
-            torch.tensor(full_lmkid >= 20).type_as(remove_mask).unsqueeze(0)
-        )
+        if smpl_obj.vertices.shape[0] > 6890:
+            full_lmkid = SMPL_container.smplx_vertex_lmkid[idx]
+            remove_mask = torch.logical_and(
+                remove_mask,
+                torch.tensor(full_lmkid >= 20).type_as(remove_mask).unsqueeze(0)
+            )
+        else:
+            remove_mask = torch.logical_and(
+                remove_mask,
+                torch.isin(
+                    torch.tensor(idx).long(),
+                    torch.tensor(SMPL_container.smpl_mano_vid).long()
+                ).type_as(remove_mask).unsqueeze(0)
+            )
 
     elif region == "face":
         _, idx = smpl_tree.query(full_mesh.vertices, k=5)
@@ -386,15 +411,14 @@ def remesh_laplacian(mesh, obj_path):
 
 def poisson(mesh, obj_path, depth=10, decimation=True):
 
-    pcd_path = obj_path[:-4] + ".ply"
+    pcd_path = obj_path[:-4] + "_soups.ply"
     assert (mesh.vertex_normals.shape[1] == 3)
     mesh.export(pcd_path)
     pcl = o3d.io.read_point_cloud(pcd_path)
     with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Error) as cm:
         mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
-            pcl, depth=depth, n_threads=-1
+            pcl, depth=depth, n_threads=6
         )
-    print(colored(f"\n Poisson completion to {Format.start} {obj_path} {Format.end}", "yellow"))
 
     # only keep the largest component
     largest_mesh = keep_largest(trimesh.Trimesh(np.array(mesh.vertices), np.array(mesh.triangles)))

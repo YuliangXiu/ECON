@@ -143,7 +143,7 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
     smpl_da_body.remove_unreferenced_vertices()
 
     smpl_hand = smpl_da.copy()
-    smpl_hand.update_faces(smplx_container.mano_vertex_mask.numpy()[smpl_hand.faces].all(axis=1))
+    smpl_hand.update_faces(smplx_container.smplx_mano_vertex_mask.numpy()[smpl_hand.faces].all(axis=1))
     smpl_hand.remove_unreferenced_vertices()
     econ_da = sum([smpl_hand, smpl_da_body, econ_da_body])
     econ_da = poisson(econ_da, f"{prefix}_econ_da.obj", depth=10, decimation=False)

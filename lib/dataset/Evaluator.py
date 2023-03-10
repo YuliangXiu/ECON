@@ -296,8 +296,7 @@ class Evaluator:
         tgt_points = Pointclouds(samples_tgt)
         src_points = Pointclouds(samples_src)
 
-        p2s_dist_all, _ = point_mesh_distance(self.src_mesh, tgt_points) * 100.0
-        p2s_dist = p2s_dist_all.sum()
+        p2s_dist = point_mesh_distance(self.src_mesh, tgt_points)[0].sum() * 100.0
 
         chamfer_dist = (
             point_mesh_distance(self.tgt_mesh, src_points)[0].sum() * 100.0 + p2s_dist

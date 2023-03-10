@@ -28,6 +28,7 @@ class BNI:
         self.k = self.cfg['k']
         self.lambda1 = self.cfg['lambda1']
         self.boundary_consist = self.cfg['boundary_consist']
+        self.cut_intersection = self.cfg['cut_intersection']
 
         self.F_B_surface = None
         self.F_B_trimesh = None
@@ -54,6 +55,7 @@ class BNI:
             lambda_depth_front=self.lambda1,
             lambda_depth_back=self.lambda1,
             lambda_boundary_consistency=self.boundary_consist,
+            cut_intersection=self.cut_intersection,
         )
 
         F_verts = verts_inverse_transform(bni_result["F_verts"], self.scale)
@@ -71,13 +73,13 @@ class BNI:
             F_B_verts.float(), F_B_faces.long(), process=False, maintain_order=True
         )
 
-        self.F_trimesh = trimesh.Trimesh(
-            F_verts.float(), bni_result["F_faces"].long(), process=False, maintain_order=True
-        )
+        # self.F_trimesh = trimesh.Trimesh(
+        #     F_verts.float(), bni_result["F_faces"].long(), process=False, maintain_order=True
+        # )
 
-        self.B_trimesh = trimesh.Trimesh(
-            B_verts.float(), bni_result["B_faces"].long(), process=False, maintain_order=True
-        )
+        # self.B_trimesh = trimesh.Trimesh(
+        #     B_verts.float(), bni_result["B_faces"].long(), process=False, maintain_order=True
+        # )
 
 
 if __name__ == "__main__":

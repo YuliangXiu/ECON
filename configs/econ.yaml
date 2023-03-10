@@ -15,7 +15,7 @@ dataset:
   prior_type: "SMPL"
 
 vol_res: 256
-mcube_res: 128
+mcube_res: 256
 clean_mesh: True
 cloth_overlap_thres: 0.50
 body_overlap_thres: 0.00
@@ -36,3 +36,4 @@ bni:
   thickness: 0.02
   hps_type: "pixie"
   texture_src: "SD"
+  cut_intersection: True
