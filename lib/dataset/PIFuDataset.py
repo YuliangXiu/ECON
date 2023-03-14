@@ -352,7 +352,10 @@ class PIFuDataset:
         mesh_path = data_dict["mesh_path"]
         scale = data_dict["scale"]
 
-        verts, faces = obj_loader(mesh_path, with_uv=False)
+        # verts, faces = obj_loader(mesh_path, with_uv=False)
+        trimesh_mesh = trimesh.load(mesh_path)
+        verts = trimesh_mesh.vertices
+        faces = trimesh_mesh.faces
 
         mesh = HoppeMesh(verts * scale, faces)
 
