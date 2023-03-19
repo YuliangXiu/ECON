@@ -2,9 +2,7 @@ from pickle import TRUE
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from lib.net.voxelize import Voxelization
 from lib.net.geometry import orthogonal
-from lib.dataset.mesh_util import read_smpl_constants, SMPLX
 
 
 class SelfAttention(torch.nn.Module):
@@ -81,20 +79,6 @@ class IFGeoNet(nn.Module):
         self.conv2_1_bn = nn.InstanceNorm3d(128)
         self.conv3_1_bn = nn.InstanceNorm3d(128)
         self.conv4_1_bn = nn.InstanceNorm3d(128)
-
-        self.smplx = SMPLX()
-        voxel_param = read_smpl_constants(self.smplx.tedra_dir)
-
-        self.voxelization = Voxelization(
-            torch.ones_like(voxel_param["smpl_vertex_code"]),
-            torch.ones_like(voxel_param["smpl_face_code"]),
-            voxel_param["smpl_faces"],
-            voxel_param["smpl_tetras"],
-            volume_res=cfg.dataset.voxel_res,
-            sigma=0.05,
-            smooth_kernel_size=7,
-            batch_size=cfg.batch_size,
-        )
 
         self.l1_loss = nn.SmoothL1Loss()
 

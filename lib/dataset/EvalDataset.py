@@ -239,12 +239,9 @@ class EvalDataset:
         mesh_path = data_dict["mesh_path"]
         scale = data_dict["scale"]
 
-        # tinyobjloader has wired bug
         scan_mesh = trimesh.load(mesh_path)
         verts = scan_mesh.vertices
         faces = scan_mesh.faces
-
-        # verts, faces = obj_loader(mesh_path, with_uv=False)
 
         mesh = HoppeMesh(verts * scale, faces)
 

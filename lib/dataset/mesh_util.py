@@ -21,7 +21,6 @@ import torchvision
 import trimesh
 import json
 import open3d as o3d
-import tinyobjloader
 import os.path as osp
 import _pickle as cPickle
 from termcolor import colored
@@ -110,7 +109,6 @@ class SMPLX:
         self.smplx_to_smpl = cPickle.load(open(self.smplx_to_smplx_path, "rb"))
 
         self.model_dir = osp.join(self.current_dir, "models")
-        self.tedra_dir = osp.join(self.current_dir, "../tedra_data")
 
         self.ghum_smpl_pairs = torch.tensor(
             [
@@ -286,33 +284,6 @@ def part_removal(full_mesh, part_mesh, thres, device, smpl_obj, region, clean=Tr
         full_mesh = clean_floats(full_mesh)
 
     return full_mesh
-
-
-def obj_loader(path, with_uv=True):
-    # Create reader.
-    reader = tinyobjloader.ObjReader()
-
-    # Load .obj(and .mtl) using default configuration
-    ret = reader.ParseFromFile(path)
-
-    # note here for wavefront obj, #v might not equal to #vt, same as #vn.
-    attrib = reader.GetAttrib()
-    v = np.array(attrib.vertices).reshape(-1, 3)
-    vt = np.array(attrib.texcoords).reshape(-1, 2)
-
-    shapes = reader.GetShapes()
-    tri = shapes[0].mesh.numpy_indices().reshape(-1, 9)
-    f_v = tri[:, [0, 3, 6]]
-    f_vt = tri[:, [2, 5, 8]]
-
-    if with_uv:
-        face_uvs = vt[f_vt].mean(axis=1)    #[m, 2]
-        vert_uvs = np.zeros((v.shape[0], 2), dtype=np.float32)    #[n, 2]
-        vert_uvs[f_v.reshape(-1)] = vt[f_vt.reshape(-1)]
-
-        return v, f_v, vert_uvs, face_uvs
-    else:
-        return v, f_v
 
 
 class HoppeMesh:

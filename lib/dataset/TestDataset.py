@@ -144,47 +144,6 @@ class TestDataset:
             ]).unsqueeze(0).to(self.device),
         }
 
-    def compute_voxel_verts(self, body_pose, global_orient, betas, trans, scale):
-
-        smpl_path = osp.join(self.smpl_data.model_dir, "smpl/SMPL_NEUTRAL.pkl")
-        tetra_path = osp.join(self.smpl_data.tedra_dir, "tetra_neutral_adult_smpl.npz")
-        smpl_model = TetraSMPLModel(smpl_path, tetra_path, "adult")
-
-        pose = torch.cat([global_orient[0], body_pose[0]], dim=0)
-        smpl_model.set_params(rotation_matrix_to_angle_axis(rot6d_to_rotmat(pose)), beta=betas[0])
-
-        verts = (
-            np.concatenate([smpl_model.verts, smpl_model.verts_added], axis=0) * scale.item() +
-            trans.detach().cpu().numpy()
-        )
-        faces = (
-            np.loadtxt(
-                osp.join(self.smpl_data.tedra_dir, "tetrahedrons_neutral_adult.txt"),
-                dtype=np.int32,
-            ) - 1
-        )
-
-        pad_v_num = int(8000 - verts.shape[0])
-        pad_f_num = int(25100 - faces.shape[0])
-
-        verts = (
-            np.pad(verts, ((0, pad_v_num),
-                           (0, 0)), mode="constant", constant_values=0.0).astype(np.float32) * 0.5
-        )
-        faces = np.pad(faces, ((0, pad_f_num), (0, 0)), mode="constant",
-                       constant_values=0.0).astype(np.int32)
-
-        verts[:, 2] *= -1.0
-
-        voxel_dict = {
-            "voxel_verts": torch.from_numpy(verts).to(self.device).unsqueeze(0).float(),
-            "voxel_faces": torch.from_numpy(faces).to(self.device).unsqueeze(0).long(),
-            "pad_v_num": torch.tensor(pad_v_num).to(self.device).unsqueeze(0).long(),
-            "pad_f_num": torch.tensor(pad_f_num).to(self.device).unsqueeze(0).long(),
-        }
-
-        return voxel_dict
-
     def __getitem__(self, index):
 
         img_path = self.subject_list[index]

@@ -10,11 +10,11 @@ cd ECON
 ## Environment
 
 - Ubuntu 20 / 18, (Windows as well, see [issue#7](https://github.com/YuliangXiu/ECON/issues/7))
-- **CUDA=11.4, GPU Memory > 12GB**
+- **CUDA=11.6, GPU Memory > 12GB**
 - Python = 3.8
 - PyTorch >= 1.13.0 (official [Get Started](https://pytorch.org/get-started/locally/))
 - Cupy >= 11.3.0 (offcial [Installation](https://docs.cupy.dev/en/stable/install.html#installing-cupy-from-pypi))
-- PyTorch3D (official [INSTALL.md](https://github.com/facebookresearch/pytorch3d/blob/main/INSTALL.md), recommend [install-from-local-clone](https://github.com/facebookresearch/pytorch3d/blob/main/INSTALL.md#2-install-from-a-local-clone))
+- PyTorch3D = 0.7.1 (official [INSTALL.md](https://github.com/facebookresearch/pytorch3d/blob/main/INSTALL.md), recommend [install-from-local-clone](https://github.com/facebookresearch/pytorch3d/blob/main/INSTALL.md#2-install-from-a-local-clone))
 
 ```bash
 
@@ -25,6 +25,9 @@ cd ECON
 conda env create -f environment.yaml
 conda activate econ
 pip install -r requirements.txt
+
+# the installation(incl. compilation) of PyTorch3D will take ~20min
+pip install git+https://github.com/facebookresearch/pytorch3d.git@v0.7.1
 
 # install libmesh & libvoxelize
 cd lib/common/libmesh

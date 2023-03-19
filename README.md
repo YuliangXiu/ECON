@@ -14,7 +14,7 @@
     ·
     <a href="https://ps.is.tuebingen.mpg.de/person/black"><strong>Michael J. Black</strong></a>
   </p>
-  <h2 align="center">CVPR 2023</h2>
+  <h2 align="center">CVPR 2023 (Highlight)</h2>
   <div align="center">
     <img src="./assets/teaser.gif" alt="Logo" width="100%">
   </div>
@@ -48,7 +48,7 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 ## News :triangular_flag_on_post:
 
-- [2023/02/27] ECON got accepted by CVPR 2023!
+- [2023/02/27] ECON got accepted by CVPR 2023 as Highlight (top 10%)!
 - [2023/01/12] [Carlos Barreto](https://twitter.com/carlosedubarret/status/1613252471035494403) creates a Blender Addon ([Download](https://carlosedubarreto.gumroad.com/l/CEB_ECON), [Tutorial](https://youtu.be/sbWZbTf6ZYk)).
 - [2023/01/08] [Teddy Huang](https://github.com/Teddy12155555) creates [install-with-docker](docs/installation-docker.md) for ECON .
 - [2023/01/06] [Justin John](https://github.com/justinjohn0306) and [Carlos Barreto](https://github.com/carlosedubarreto) creates [install-on-windows](docs/installation-windows.md) for ECON .
@@ -59,6 +59,28 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 - [ ] Blender add-on for FBX export
 - [ ] Full RGB texture generation
+
+## Key idea: d-BiNI
+
+d-BiNI jointly optimizes front-back 2.5D surfaces such that: (1) high-frequency surface details agree with normal maps, (2) low-frequency surface variations, including discontinuities, align with SMPL-X surfaces, and (3) front-back 2.5D surface silhouettes are coherent with each other.
+
+|Front-view|Back-view|Side-view|
+|:--:|:--:|:---:|
+|![](assets/front-45.gif)|![](assets/back-45.gif)|![](assets/double-90.gif)||
+
+<details><summary>Please consider cite <strong>BiNI</strong> if it also helps on your project</summary>
+
+```bibtex
+@inproceedings{cao2022bilateral,
+  title={Bilateral normal integration},
+  author={Cao, Xu and Santo, Hiroaki and Shi, Boxin and Okura, Fumio and Matsushita, Yasuyuki},
+  booktitle={Computer Vision--ECCV 2022: 17th European Conference, Tel Aviv, Israel, October 23--27, 2022, Proceedings, Part I},
+  pages={552--567},
+  year={2022},
+  organization={Springer}
+}
+```
+</details>
 
 <br>
 
