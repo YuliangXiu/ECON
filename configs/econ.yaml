@@ -35,5 +35,5 @@ bni:
   face_thres: 6e-2
   thickness: 0.02
   hps_type: "pixie"
-  texture_src: "SD"
+  texture_src: "image"
   cut_intersection: True

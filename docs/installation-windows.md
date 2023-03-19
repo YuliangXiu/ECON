@@ -31,11 +31,11 @@ cd ECON
 ## Environment
 
 - Windows 10 / 11
-- **CUDA=11.4**
+- **CUDA=11.3**
 - Python = 3.8
 - PyTorch >= 1.12.1 (official [Get Started](https://pytorch.org/get-started/locally/))
 - Cupy >= 11.3.0 (offcial [Installation](https://docs.cupy.dev/en/stable/install.html#installing-cupy-from-pypi))
-- PyTorch3D (official [INSTALL.md](https://github.com/facebookresearch/pytorch3d/blob/main/INSTALL.md), recommend [install-from-local-clone](https://github.com/facebookresearch/pytorch3d/blob/main/INSTALL.md#2-install-from-a-local-clone))
+- PyTorch3D = 0.7.1 (official [INSTALL.md](https://github.com/facebookresearch/pytorch3d/blob/main/INSTALL.md), recommend [install-from-local-clone](https://github.com/facebookresearch/pytorch3d/blob/main/INSTALL.md#2-install-from-a-local-clone))
 
 ```bash
 # install required packages
@@ -44,18 +44,10 @@ conda env create -f environment-windows.yaml
 conda activate econ
 
 # install pytorch and cupy
-pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
-pip install -r requirements-win.txt
+pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 --extra-index-url https://download.pytorch.org/whl/cu113
+pip install -r requirements.txt
 pip install cupy-cuda11x
-
-## If you have a RTX 30 series GPU then run this cmd below for installing neural_voxelization_layer
-pip install git+https://github.com/YuliangXiu/neural_voxelization_layer.git
-## If you have GPU below RTX 30 series then you gotta build neural_voxelization_layer (steps below)
-git clone https://github.com/justinjohn0306/neural_voxelization_layer.git
-
-cd neural_voxelization_layer
-python setup install
-cd..
+pip install git+https://github.com/facebookresearch/pytorch3d.git@v0.7.1
 
 # install libmesh & libvoxelize
 cd lib/common/libmesh

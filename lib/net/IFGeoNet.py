@@ -2,9 +2,7 @@ from pickle import TRUE
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from lib.net.voxelize import Voxelization
 from lib.net.geometry import orthogonal
-from lib.dataset.mesh_util import read_smpl_constants, SMPLX
 
 
 class SelfAttention(torch.nn.Module):
@@ -88,31 +86,11 @@ class IFGeoNet(nn.Module):
         self.conv3_1_bn = nn.InstanceNorm3d(128)
         self.conv4_1_bn = nn.InstanceNorm3d(128)
 
-        self.smplx = SMPLX()
-        voxel_param = read_smpl_constants(self.smplx.tedra_dir)
-
-        self.voxelization = Voxelization(
-            torch.ones_like(voxel_param["smpl_vertex_code"]),
-            torch.ones_like(voxel_param["smpl_face_code"]),
-            voxel_param["smpl_faces"],
-            voxel_param["smpl_tetras"],
-            volume_res=cfg.dataset.voxel_res,
-            sigma=0.05,
-            smooth_kernel_size=7,
-            batch_size=cfg.batch_size,
-        )
-
         self.l1_loss = nn.SmoothL1Loss()
 
     def forward(self, batch):
 
-        if "body_voxels" in batch.keys():
-            x_smpl = batch["body_voxels"]
-        else:
-            with torch.no_grad():
-                self.voxelization.update_param(batch["voxel_faces"])
-                x_smpl = self.voxelization(batch["voxel_verts"])[:, 0]    #[B, 128, 128, 128]
-
+        x_smpl = batch["body_voxels"]
         p = orthogonal(batch["samples_geo"].permute(0, 2, 1),
                        batch["calib"]).permute(0, 2, 1)    #[2, 60000, 3]
         x = batch["depth_voxels"]    #[B, 128, 128, 128]

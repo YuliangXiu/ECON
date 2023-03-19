@@ -9,11 +9,12 @@ channels:
   - defaults
 dependencies:
   - python=3.8
-  - pytorch
+  - pytorch-cuda=11.7
+  - pytorch=1.13.0
+  - nvidiacub
   - torchvision
   - fvcore
   - iopath
-  - nvidiacub
   - pyembree
   - cupy
   - cython
