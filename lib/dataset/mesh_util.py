@@ -388,7 +388,7 @@ def poisson(mesh, obj_path, depth=10, decimation=True):
     pcl = o3d.io.read_point_cloud(pcd_path)
     with o3d.utility.VerbosityContextManager(o3d.utility.VerbosityLevel.Error) as cm:
         mesh, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
-            pcl, depth=depth, n_threads=6
+            pcl, depth=depth, n_threads=-1
         )
 
     # only keep the largest component
