@@ -9,7 +9,7 @@ channels:
   - defaults
 dependencies:
   - python=3.8
-  - pytorch-cuda=11.7
+  - pytorch-cuda=11.6
   - pytorch=1.13.0
   - nvidiacub
   - torchvision

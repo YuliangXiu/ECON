@@ -2,7 +2,7 @@
 
 <p align="center">
 
-  <h1 align="center">ECON: Explicit Clothed humans Obtained from Normals</h1>
+  <h1 align="center">ECON: Explicit Clothed humans Optimized via Normal integration</h1>
   <p align="center">
     <a href="http://xiuyuliang.cn/"><strong>Yuliang Xiu</strong></a>
     ·
@@ -152,7 +152,7 @@ python -m apps.avatarizer -n <filename>
 
 ```bibtex
 @inproceedings{xiu2023econ,
-  title     = {{ECON: Explicit Clothed humans Obtained from Normals}},
+  title     = {{ECON: Explicit Clothed humans Optimized via Normal integration}},
   author    = {Xiu, Yuliang and Yang, Jinlong and Cao, Xu and Tzionas, Dimitrios and Black, Michael J.},
   booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
   month     = {June},

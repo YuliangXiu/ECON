@@ -40,7 +40,7 @@ You acknowledge that the Data & Software is a valuable scientific resource and a
 Citation:
 
 @inproceedings{xiu2023econ,
-  title     = {{ECON: Explicit Clothed humans Obtained from Normals}},
+  title     = {{ECON: Explicit Clothed humans Optimized via Normal integration}},
   author    = {Xiu, Yuliang and Yang, Jinlong and Cao, Xu and Tzionas, Dimitrios and Black, Michael J.},
   booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
   month     = {June},

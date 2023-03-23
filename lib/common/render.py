@@ -315,7 +315,7 @@ class Render:
             save_path,
             fourcc,
             self.fps,
-            (width, int(height * 1.5)),
+            (width*3, int(height)),
         )
 
         pbar = tqdm(range(len(self.meshes)))
@@ -358,15 +358,9 @@ class Render:
             img_cloth = blend_rgb_norm(
                 (torch.stack(mesh_renders)[num_obj:, cam_id] - 0.5) * 2.0, data
             )
-
-            top_img = cv2.resize(
-                torch.cat([img_raw, img_smpl],
-                          dim=-1).squeeze(0).permute(1, 2, 0).numpy().astype(np.uint8),
-                (width, height // 2)
-            )
-            final_img = np.concatenate(
-                [top_img, img_cloth.squeeze(0).permute(1, 2, 0).numpy().astype(np.uint8)], axis=0
-            )
+            final_img = torch.cat(
+                [img_raw, img_smpl, img_cloth], dim=-1).squeeze(0).permute(1, 2, 0).numpy().astype(np.uint8)
+            
             video.write(final_img[:, :, ::-1])
 
         video.release()
