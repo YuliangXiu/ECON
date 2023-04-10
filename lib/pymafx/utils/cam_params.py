@@ -15,10 +15,11 @@
 # Contact: ps-license@tuebingen.mpg.de
 
 import os
-from numpy.testing._private.utils import print_assert_equal
-import torch
-import numpy as np
+
 import joblib
+import numpy as np
+import torch
+from numpy.testing._private.utils import print_assert_equal
 
 from .geometry import batch_euler2matrix
 

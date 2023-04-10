@@ -17,3 +17,4 @@ dist
 *egg-info
 *.so
 run.sh
+*.log

@@ -8,7 +8,7 @@ only support crop to squared images
 """
 
 import numpy as np
-from skimage.transform import estimate_transform, warp, resize, rescale
+from skimage.transform import estimate_transform, rescale, resize, warp
 
 
 def points2bbox(points, points_scale=None):
@@ -47,13 +47,11 @@ def crop_array(image, center, bboxsize, crop_size):
         tform: 3x3 affine matrix
     """
     # points: top-left, top-right, bottom-right
-    src_pts = np.array(
-        [
-            [center[0] - bboxsize / 2, center[1] - bboxsize / 2],
-            [center[0] + bboxsize / 2, center[1] - bboxsize / 2],
-            [center[0] + bboxsize / 2, center[1] + bboxsize / 2],
-        ]
-    )
+    src_pts = np.array([
+        [center[0] - bboxsize / 2, center[1] - bboxsize / 2],
+        [center[0] + bboxsize / 2, center[1] - bboxsize / 2],
+        [center[0] + bboxsize / 2, center[1] + bboxsize / 2],
+    ])
     DST_PTS = np.array([[0, 0], [crop_size - 1, 0], [crop_size - 1, crop_size - 1]])
 
     # estimate transformation between points

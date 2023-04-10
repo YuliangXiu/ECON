@@ -14,12 +14,13 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-import os
+import argparse
 import json
+import os
 import random
 import string
-import argparse
 from datetime import datetime
+
 from yacs.config import CfgNode as CN
 
 # Configuration variables

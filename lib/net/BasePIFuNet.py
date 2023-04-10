@@ -14,8 +14,8 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-import torch.nn as nn
 import pytorch_lightning as pl
+import torch.nn as nn
 
 from .geometry import index, orthogonal, perspective
 

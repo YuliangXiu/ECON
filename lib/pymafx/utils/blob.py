@@ -22,16 +22,17 @@
 # --------------------------------------------------------
 """blob helper functions."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import (
+    absolute_import,
+    division,
+    print_function,
+    unicode_literals,
+)
 
-from six.moves import cPickle as pickle
-import numpy as np
 import cv2
-
+import numpy as np
 from models.core.config import cfg
+from six.moves import cPickle as pickle
 
 
 def get_image_blob(im, target_scale, target_max_size):

@@ -6,15 +6,15 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-import os
 import glob
-import torch
-import torch.utils.cpp_extension
-import importlib
 import hashlib
+import importlib
+import os
 import shutil
 from pathlib import Path
 
+import torch
+import torch.utils.cpp_extension
 from torch.utils.file_baton import FileBaton
 
 #----------------------------------------------------------------------------

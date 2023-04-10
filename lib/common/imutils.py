@@ -1,17 +1,18 @@
 import os
-os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1"
+
+os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
 import cv2
 import mediapipe as mp
-import torch
 import numpy as np
+import torch
 import torch.nn.functional as F
+from kornia.geometry.transform import get_affine_matrix2d, warp_affine
 from PIL import Image
-from lib.pymafx.core import constants
-
 from rembg import remove
 from rembg.session_factory import new_session
 from torchvision import transforms
-from kornia.geometry.transform import get_affine_matrix2d, warp_affine
+
+from lib.pymafx.core import constants
 
 
 def transform_to_tensor(res, mean=None, std=None, is_tensor=False):
@@ -40,13 +41,14 @@ def get_affine_matrix_box(boxes, w2, h2):
     # boxes [left, top, right, bottom]
     width = boxes[:, 2] - boxes[:, 0]    #(N,)
     height = boxes[:, 3] - boxes[:, 1]    #(N,)
-    center = torch.tensor(
-        [(boxes[:, 0] + boxes[:, 2]) / 2.0, (boxes[:, 1] + boxes[:, 3]) / 2.0]
-    ).T    #(N,2)
+    center = torch.tensor([(boxes[:, 0] + boxes[:, 2]) / 2.0,
+                           (boxes[:, 1] + boxes[:, 3]) / 2.0]).T    #(N,2)
     scale = torch.min(torch.tensor([w2 / width, h2 / height]),
                       dim=0)[0].unsqueeze(1).repeat(1, 2) * 0.9    #(N,2)
-    transl = torch.cat([w2 / 2.0 - center[:, 0:1], h2 / 2.0 - center[:, 1:2]], dim=1)   #(N,2)
-    M = get_affine_matrix2d(transl, center, scale, angle=torch.tensor([0.,]*transl.shape[0]))
+    transl = torch.cat([w2 / 2.0 - center[:, 0:1], h2 / 2.0 - center[:, 1:2]], dim=1)    #(N,2)
+    M = get_affine_matrix2d(transl, center, scale, angle=torch.tensor([
+        0.,
+    ] * transl.shape[0]))
 
     return M
 
@@ -54,12 +56,12 @@ def get_affine_matrix_box(boxes, w2, h2):
 def load_img(img_file):
 
     if img_file.endswith("exr"):
-        img = cv2.imread(img_file, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)  
-    else :
+        img = cv2.imread(img_file, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
+    else:
         img = cv2.imread(img_file, cv2.IMREAD_UNCHANGED)
 
     # considering non 8-bit image
-    if img.dtype != np.uint8 :
+    if img.dtype != np.uint8:
         img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
 
     if len(img.shape) == 2:
@@ -112,8 +114,8 @@ def get_pymafx(image, landmarks):
     # image [3,512,512]
 
     item = {
-        'img_body':
-            F.interpolate(image.unsqueeze(0), size=224, mode='bicubic', align_corners=True)[0]
+        'img_body': F.interpolate(image.unsqueeze(0), size=224, mode='bicubic',
+                                  align_corners=True)[0]
     }
 
     for part in ['lhand', 'rhand', 'face']:
@@ -211,11 +213,8 @@ def process_image(img_file, hps_type, single, input_res, detector):
     img_pymafx_lst = []
 
     uncrop_param = {
-        "ori_shape": [in_height, in_width],
-        "box_shape": [input_res, input_res],
-        "square_shape": [tgt_res, tgt_res],
-        "M_square": M_square,
-        "M_crop": M_crop
+        "ori_shape": [in_height, in_width], "box_shape": [input_res, input_res], "square_shape":
+        [tgt_res, tgt_res], "M_square": M_square, "M_crop": M_crop
     }
 
     for idx in range(len(boxes)):
@@ -226,11 +225,11 @@ def process_image(img_file, hps_type, single, input_res, detector):
         else:
             mask_detection = masks[0] * 0.
 
-        img_square_rgba = torch.cat(
-            [img_square.squeeze(0).permute(1, 2, 0),
-             torch.tensor(mask_detection < 0.4) * 255],
-            dim=2
-        )
+        img_square_rgba = torch.cat([
+            img_square.squeeze(0).permute(1, 2, 0),
+            torch.tensor(mask_detection < 0.4) * 255
+        ],
+                                    dim=2)
 
         img_crop = warp_affine(
             img_square_rgba.unsqueeze(0).permute(0, 3, 1, 2),

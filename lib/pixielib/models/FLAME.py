@@ -13,10 +13,11 @@
 # For comments or questions, please email us at pixie@tue.mpg.de
 # For commercial licensing contact, please contact ps-license@tuebingen.mpg.de
 
+import pickle
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-import pickle
 import torch.nn.functional as F
 
 

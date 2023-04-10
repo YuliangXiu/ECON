@@ -3,8 +3,8 @@
 # output: fused feature, weight
 """
 import numpy as np
-import torch.nn as nn
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 # MLP + temperature softmax

@@ -14,4 +14,5 @@ mediapipe
 einops
 boto3
 open3d
+xatlas
 git+https://github.com/YuliangXiu/rembg.git

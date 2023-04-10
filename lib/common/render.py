@@ -14,35 +14,36 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
+import math
+import os
+
+import cv2
+import numpy as np
+import torch
+from PIL import ImageColor
 from pytorch3d.renderer import (
-    BlendParams,
-    blending,
-    look_at_view_transform,
-    FoVOrthographicCameras,
-    RasterizationSettings,
-    PointsRasterizationSettings,
-    PointsRenderer,
     AlphaCompositor,
-    PointsRasterizer,
-    MeshRenderer,
+    BlendParams,
+    FoVOrthographicCameras,
     MeshRasterizer,
+    MeshRenderer,
+    PointsRasterizationSettings,
+    PointsRasterizer,
+    PointsRenderer,
+    RasterizationSettings,
     SoftSilhouetteShader,
     TexturesVertex,
+    blending,
+    look_at_view_transform,
 )
 from pytorch3d.renderer.mesh import TexturesVertex
 from pytorch3d.structures import Meshes
-from lib.dataset.mesh_util import get_visibility
-from lib.common.imutils import blend_rgb_norm
+from termcolor import colored
+from tqdm import tqdm
 
 import lib.common.render_utils as util
-import torch
-import numpy as np
-from PIL import ImageColor
-from tqdm import tqdm
-import os
-import cv2
-import math
-from termcolor import colored
+from lib.common.imutils import blend_rgb_norm
+from lib.dataset.mesh_util import get_visibility
 
 
 def image2vid(images, vid_path):
@@ -58,7 +59,7 @@ def image2vid(images, vid_path):
     video.release()
 
 
-def query_color(verts, faces, image, device):
+def query_color(verts, faces, image, device, paint_normal=True):
     """query colors from points and image
 
     Args:
@@ -77,16 +78,16 @@ def query_color(verts, faces, image, device):
     visibility = get_visibility(xy, z, faces[:, [0, 2, 1]]).flatten()
     uv = xy.unsqueeze(0).unsqueeze(2)    # [B, N, 2]
     uv = uv * torch.tensor([1.0, -1.0]).type_as(uv)
-    colors = (
-        (
-            torch.nn.functional.grid_sample(image, uv, align_corners=True)[0, :, :,
-                                                                           0].permute(1, 0) + 1.0
-        ) * 0.5 * 255.0
-    )
-    colors[visibility == 0.0] = (
-        (Meshes(verts.unsqueeze(0), faces.unsqueeze(0)).verts_normals_padded().squeeze(0) + 1.0) *
-        0.5 * 255.0
-    )[visibility == 0.0]
+    colors = ((
+        torch.nn.functional.grid_sample(image, uv, align_corners=True)[0, :, :, 0].permute(1, 0) +
+        1.0
+    ) * 0.5 * 255.0)
+    if paint_normal:
+        colors[visibility == 0.0] = ((
+            Meshes(verts.unsqueeze(0), faces.unsqueeze(0)).verts_normals_padded().squeeze(0) + 1.0
+        ) * 0.5 * 255.0)[visibility == 0.0]
+    else:
+        colors[visibility == 0.0] = torch.tensor([0.0, 0.0, 0.0]).to(device)
 
     return colors.detach().cpu()
 
@@ -121,31 +122,25 @@ class Render:
         self.step = 3
 
         self.cam_pos = {
-            "frontback":
-                torch.tensor(
-                    [
-                        (0, self.mesh_y_center, self.dis),
-                        (0, self.mesh_y_center, -self.dis),
-                    ]
-                ),
-            "four":
-                torch.tensor(
-                    [
-                        (0, self.mesh_y_center, self.dis),
-                        (self.dis, self.mesh_y_center, 0),
-                        (0, self.mesh_y_center, -self.dis),
-                        (-self.dis, self.mesh_y_center, 0),
-                    ]
-                ),
-            "around":
-                torch.tensor(
-                    [
-                        (
-                            100.0 * math.cos(np.pi / 180 * angle), self.mesh_y_center,
-                            100.0 * math.sin(np.pi / 180 * angle)
-                        ) for angle in range(0, 360, self.step)
-                    ]
-                )
+            "front":
+            torch.tensor([
+                (0, self.mesh_y_center, self.dis),
+                (0, self.mesh_y_center, -self.dis),
+            ]), "frontback":
+            torch.tensor([
+                (0, self.mesh_y_center, self.dis),
+                (0, self.mesh_y_center, -self.dis),
+            ]), "four":
+            torch.tensor([
+                (0, self.mesh_y_center, self.dis),
+                (self.dis, self.mesh_y_center, 0),
+                (0, self.mesh_y_center, -self.dis),
+                (-self.dis, self.mesh_y_center, 0),
+            ]), "around":
+            torch.tensor([(
+                100.0 * math.cos(np.pi / 180 * angle), self.mesh_y_center,
+                100.0 * math.sin(np.pi / 180 * angle)
+            ) for angle in range(0, 360, self.step)])
         }
 
         self.type = "color"
@@ -315,7 +310,7 @@ class Render:
             save_path,
             fourcc,
             self.fps,
-            (width*3, int(height)),
+            (width * 3, int(height)),
         )
 
         pbar = tqdm(range(len(self.meshes)))
@@ -352,15 +347,13 @@ class Render:
         for cam_id in pbar:
             img_raw = data["img_raw"]
             num_obj = len(mesh_renders) // 2
-            img_smpl = blend_rgb_norm(
-                (torch.stack(mesh_renders)[:num_obj, cam_id] - 0.5) * 2.0, data
-            )
-            img_cloth = blend_rgb_norm(
-                (torch.stack(mesh_renders)[num_obj:, cam_id] - 0.5) * 2.0, data
-            )
-            final_img = torch.cat(
-                [img_raw, img_smpl, img_cloth], dim=-1).squeeze(0).permute(1, 2, 0).numpy().astype(np.uint8)
-            
+            img_smpl = blend_rgb_norm((torch.stack(mesh_renders)[:num_obj, cam_id] - 0.5) * 2.0,
+                                      data)
+            img_cloth = blend_rgb_norm((torch.stack(mesh_renders)[num_obj:, cam_id] - 0.5) * 2.0,
+                                       data)
+            final_img = torch.cat([img_raw, img_smpl, img_cloth],
+                                  dim=-1).squeeze(0).permute(1, 2, 0).numpy().astype(np.uint8)
+
             video.write(final_img[:, :, ::-1])
 
         video.release()

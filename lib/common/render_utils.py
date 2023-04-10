@@ -14,13 +14,15 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-import torch
-from torch import nn
-import trimesh
 import math
 from typing import NewType
-from pytorch3d.structures import Meshes
+
+import numpy as np
+import torch
+import trimesh
 from pytorch3d.renderer.mesh import rasterize_meshes
+from pytorch3d.structures import Meshes
+from torch import nn
 
 Tensor = NewType("Tensor", torch.Tensor)
 
@@ -125,8 +127,6 @@ def batch_contains(verts, faces, points):
 
 
 def dict2obj(d):
-    # if isinstance(d, list):
-    #     d = [dict2obj(x) for x in d]
     if not isinstance(d, dict):
         return d
 
@@ -161,7 +161,9 @@ class Pytorch3dRasterizer(nn.Module):
         x,y,z are in image space, normalized
         can only render squared image now
     """
-    def __init__(self, image_size=224, blur_radius=0.0, faces_per_pixel=1):
+    def __init__(
+        self, image_size=224, blur_radius=0.0, faces_per_pixel=1, device=torch.device("cuda:0")
+    ):
         """
         use fixed raster_settings for rendering faces
         """
@@ -177,6 +179,7 @@ class Pytorch3dRasterizer(nn.Module):
         }
         raster_settings = dict2obj(raster_settings)
         self.raster_settings = raster_settings
+        self.device = device
 
     def forward(self, vertices, faces, attributes=None):
         fixed_vertices = vertices.clone()
@@ -209,3 +212,15 @@ class Pytorch3dRasterizer(nn.Module):
         pixel_vals = pixel_vals[:, :, :, 0].permute(0, 3, 1, 2)
         pixel_vals = torch.cat([pixel_vals, vismask[:, :, :, 0][:, None, :, :]], dim=1)
         return pixel_vals
+
+    def get_texture(self, uvcoords, uvfaces, verts, faces, verts_color):
+
+        batch_size = verts.shape[0]
+        uv_verts_color = face_vertices(verts_color, faces.expand(batch_size, -1,
+                                                                 -1)).to(self.device)
+        uv_map = self.forward(
+            uvcoords.expand(batch_size, -1, -1), uvfaces.expand(batch_size, -1, -1), uv_verts_color
+        )[:, :3]
+        uv_map_npy = np.flip(uv_map.squeeze(0).permute(1, 2, 0).cpu().numpy(), 0)
+
+        return uv_map_npy

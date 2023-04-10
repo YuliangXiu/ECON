@@ -14,21 +14,20 @@
 # For commercial licensing contact, please contact ps-license@tuebingen.mpg.de
 
 import os
-import torch
-import torchvision
-import torch.nn.functional as F
-import torch.nn as nn
 
-import numpy as np
-from skimage.io import imread
 import cv2
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torchvision
+from skimage.io import imread
 
-from .models.encoders import ResnetEncoder, MLP, HRNEncoder
+from .models.encoders import MLP, HRNEncoder, ResnetEncoder
 from .models.moderators import TempSoftmaxFusion
 from .models.SMPLX import SMPLX
-from .utils import util
 from .utils import rotation_converter as converter
-from .utils import tensor_cropper
+from .utils import tensor_cropper, util
 from .utils.config import cfg
 
 
@@ -55,9 +54,7 @@ class PIXIE(object):
 
         # encode + decode
         param_dict = self.encode(
-            {"body": {
-                "image": data
-            }},
+            {"body": {"image": data}},
             threthold=True,
             keep_local=True,
             copy_and_paste=False,
@@ -559,9 +556,10 @@ class PIXIE(object):
         }
 
         # change the order of face keypoints, to be the same as "standard" 68 keypoints
-        prediction["face_kpt"] = torch.cat(
-            [prediction["face_kpt"][:, -17:], prediction["face_kpt"][:, :-17]], dim=1
-        )
+        prediction["face_kpt"] = torch.cat([
+            prediction["face_kpt"][:, -17:], prediction["face_kpt"][:, :-17]
+        ],
+                                           dim=1)
 
         prediction.update(param_dict)
 

@@ -8,13 +8,13 @@
 """Custom PyTorch ops for efficient resampling of 2D images."""
 
 import os
+import traceback
 import warnings
+
 import numpy as np
 import torch
-import traceback
 
-from .. import custom_ops
-from .. import misc
+from .. import custom_ops, misc
 from . import conv2d_gradfix
 
 #----------------------------------------------------------------------------

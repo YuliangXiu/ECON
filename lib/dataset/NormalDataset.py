@@ -14,12 +14,13 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-import kornia
 import os.path as osp
+
+import kornia
 import numpy as np
+import torchvision.transforms as transforms
 from PIL import Image
 from termcolor import colored
-import torchvision.transforms as transforms
 
 
 class NormalDataset:
@@ -59,22 +60,18 @@ class NormalDataset:
         self.subject_list = self.get_subject_list(split)
 
         # PIL to tensor
-        self.image_to_tensor = transforms.Compose(
-            [
-                transforms.Resize(self.input_size),
-                transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-            ]
-        )
+        self.image_to_tensor = transforms.Compose([
+            transforms.Resize(self.input_size),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ])
 
         # PIL to tensor
-        self.mask_to_tensor = transforms.Compose(
-            [
-                transforms.Resize(self.input_size),
-                transforms.ToTensor(),
-                transforms.Normalize((0.0, ), (1.0, )),
-            ]
-        )
+        self.mask_to_tensor = transforms.Compose([
+            transforms.Resize(self.input_size),
+            transforms.ToTensor(),
+            transforms.Normalize((0.0, ), (1.0, )),
+        ])
 
     def get_subject_list(self, split):
 
@@ -128,21 +125,15 @@ class NormalDataset:
         for name, channel in zip(self.in_total, self.in_total_dim):
 
             if f"{name}_path" not in data_dict.keys():
-                data_dict.update(
-                    {
-                        f"{name}_path":
-                            osp.join(self.root, render_folder, name, f"{rotation:03d}.png")
-                    }
-                )
+                data_dict.update({
+                    f"{name}_path":
+                    osp.join(self.root, render_folder, name, f"{rotation:03d}.png")
+                })
 
-            data_dict.update(
-                {
-                    name:
-                        self.imagepath2tensor(
-                            data_dict[f"{name}_path"], channel, inv=False, erasing=False
-                        )
-                }
-            )
+            data_dict.update({
+                name:
+                self.imagepath2tensor(data_dict[f"{name}_path"], channel, inv=False, erasing=False)
+            })
 
         path_keys = [key for key in data_dict.keys() if "_path" in key or "_dir" in key]
 

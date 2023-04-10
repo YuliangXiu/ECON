@@ -1,16 +1,16 @@
 import time
-import torch
-import trimesh
-import numpy as np
-import torch.optim as optim
-from torch import autograd
-from torch.utils.data import TensorDataset, DataLoader
 
-from .common import make_3d_grid
+import numpy as np
+import torch
+import torch.optim as optim
+import trimesh
+from torch import autograd
+from torch.utils.data import DataLoader, TensorDataset
+
+from .common import make_3d_grid, transform_pointcloud
 from .utils import libmcubes
 from .utils.libmise import MISE
 from .utils.libsimplify import simplify_mesh
-from .common import transform_pointcloud
 
 
 class Generator3D(object):
@@ -286,9 +286,8 @@ class Generator3D(object):
         colors = np.concatenate(colors, axis=0)
         colors = np.clip(colors, 0, 1)
         colors = (colors * 255).astype(np.uint8)
-        colors = np.concatenate(
-            [colors, np.full((colors.shape[0], 1), 255, dtype=np.uint8)], axis=1
-        )
+        colors = np.concatenate([colors, np.full((colors.shape[0], 1), 255, dtype=np.uint8)],
+                                axis=1)
         return colors
 
     def estimate_normals(self, vertices, c=None):
@@ -375,13 +374,11 @@ class Generator3D(object):
                 face_normal = face_normal / \
                     (face_normal.norm(dim=1, keepdim=True) + 1e-10)
 
-                face_value = torch.cat(
-                    [
-                        torch.sigmoid(self.model.decode(p_split, c).logits)
-                        for p_split in torch.split(face_point.unsqueeze(0), 20000, dim=1)
-                    ],
-                    dim=1
-                )
+                face_value = torch.cat([
+                    torch.sigmoid(self.model.decode(p_split, c).logits)
+                    for p_split in torch.split(face_point.unsqueeze(0), 20000, dim=1)
+                ],
+                                       dim=1)
 
                 normal_target = -autograd.grad([face_value.sum()], [face_point],
                                                create_graph=True)[0]

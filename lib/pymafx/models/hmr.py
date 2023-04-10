@@ -1,13 +1,14 @@
 # This script is borrowed from https://github.com/nkolot/SPIN/blob/master/models/hmr.py
 
+import logging
+import math
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torchvision.models.resnet as resnet
-import numpy as np
-import math
-from lib.net.geometry import rot6d_to_rotmat
 
-import logging
+from lib.net.geometry import rot6d_to_rotmat
 
 logger = logging.getLogger(__name__)
 

@@ -14,17 +14,15 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
+from __future__ import absolute_import, division, print_function
 
-from typing import Tuple, List, Optional
+from typing import List, Optional, Tuple
+
 import numpy as np
-
 import torch
 import torch.nn.functional as F
 
-from .utils import rot_mat_to_euler, Tensor
+from .utils import Tensor, rot_mat_to_euler
 
 
 def find_dynamic_lmk_idx_and_bcoords(

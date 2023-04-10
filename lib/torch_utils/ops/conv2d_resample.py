@@ -10,10 +10,8 @@
 import torch
 
 from .. import misc
-from . import conv2d_gradfix
-from . import upfirdn2d
-from .upfirdn2d import _parse_padding
-from .upfirdn2d import _get_filter_size
+from . import conv2d_gradfix, upfirdn2d
+from .upfirdn2d import _get_filter_size, _parse_padding
 
 #----------------------------------------------------------------------------
 

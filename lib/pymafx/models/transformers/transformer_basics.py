@@ -1,6 +1,13 @@
 import torch.nn as nn
-from .net_utils import PosEnSine, softmax_attention, dotproduct_attention, long_range_attention, \
-                                   short_range_attention, patch_attention
+
+from .net_utils import (
+    PosEnSine,
+    dotproduct_attention,
+    long_range_attention,
+    patch_attention,
+    short_range_attention,
+    softmax_attention,
+)
 
 
 class OurMultiheadAttention(nn.Module):

@@ -4,15 +4,29 @@ Licensed under the MIT license.
 
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import (
+    absolute_import,
+    division,
+    print_function,
+    unicode_literals,
+)
 
+import code
 import logging
 import math
 import os
-import code
+
 import torch
 from torch import nn
-from .modeling_bert import BertPreTrainedModel, BertEmbeddings, BertPooler, BertIntermediate, BertOutput, BertSelfOutput
+
+from .modeling_bert import (
+    BertEmbeddings,
+    BertIntermediate,
+    BertOutput,
+    BertPooler,
+    BertPreTrainedModel,
+    BertSelfOutput,
+)
 # import src.modeling.data.config as cfg
 # from src.modeling._gcnn import GraphConvolution, GraphResBlock
 from .modeling_utils import prune_linear_layer
@@ -180,9 +194,9 @@ class GraphormerEncoder(nn.Module):
         super(GraphormerEncoder, self).__init__()
         self.output_attentions = config.output_attentions
         self.output_hidden_states = config.output_hidden_states
-        self.layer = nn.ModuleList(
-            [GraphormerLayer(config) for _ in range(config.num_hidden_layers)]
-        )
+        self.layer = nn.ModuleList([
+            GraphormerLayer(config) for _ in range(config.num_hidden_layers)
+        ])
 
     def forward(self, hidden_states, attention_mask, head_mask=None, encoder_history_states=None):
         all_hidden_states = ()

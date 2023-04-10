@@ -17,24 +17,26 @@
 # limitations under the License.
 ##############################################################################
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
+from __future__ import (
+    absolute_import,
+    division,
+    print_function,
+    unicode_literals,
+)
+
+import math
+import os
 
 import cv2
+# Use a non-interactive backend
+import matplotlib
 import numpy as np
-import os
 import pycocotools.mask as mask_util
-import math
 import torchvision
 
 from .colormap import colormap
-from .keypoints import get_keypoints
 from .imutils import normalize_2d_kp
-
-# Use a non-interactive backend
-import matplotlib
+from .keypoints import get_keypoints
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -191,15 +193,13 @@ def vis_one_image(
         print(dataset.classes[classes[i]], score)
         # show box (off by default, box_alpha=0.0)
         ax.add_patch(
-            plt.Rectangle(
-                (bbox[0], bbox[1]),
-                bbox[2] - bbox[0],
-                bbox[3] - bbox[1],
-                fill=False,
-                edgecolor='g',
-                linewidth=0.5,
-                alpha=box_alpha
-            )
+            plt.Rectangle((bbox[0], bbox[1]),
+                          bbox[2] - bbox[0],
+                          bbox[3] - bbox[1],
+                          fill=False,
+                          edgecolor='g',
+                          linewidth=0.5,
+                          alpha=box_alpha)
         )
 
         if show_class:

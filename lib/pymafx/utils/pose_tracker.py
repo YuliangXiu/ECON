@@ -14,12 +14,13 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-import os
 import json
+import os
+import os.path as osp
 import shutil
 import subprocess
+
 import numpy as np
-import os.path as osp
 
 
 def run_openpose(

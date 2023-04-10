@@ -1,11 +1,11 @@
 from __future__ import division, print_function
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-from torch.autograd import Function
-
 import voxelize_cuda
+from torch.autograd import Function
 
 
 class VoxelizationFunction(Function):

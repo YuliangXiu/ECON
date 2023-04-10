@@ -1,10 +1,12 @@
 
 # distutils: language=c++
 import numpy as np
-cimport numpy as np
+
 cimport cython
+cimport numpy as np
+from libc.math cimport ceil, floor
 from libcpp.vector cimport vector
-from libc.math cimport floor, ceil
+
 
 cdef class TriangleHash:
     cdef vector[vector[int]] spatial_hash

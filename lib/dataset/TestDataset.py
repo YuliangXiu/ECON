@@ -14,37 +14,34 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-import warnings
 import logging
+import warnings
 
 warnings.filterwarnings("ignore")
 logging.getLogger("lightning").setLevel(logging.ERROR)
 logging.getLogger("trimesh").setLevel(logging.ERROR)
 
-from lib.pixielib.utils.config import cfg as pixie_cfg
-from lib.pixielib.pixie import PIXIE
-from lib.pixielib.models.SMPLX import SMPLX as PIXIE_SMPLX
-from lib.common.imutils import process_image
-from lib.common.train_util import Format
-from lib.net.geometry import rotation_matrix_to_angle_axis, rot6d_to_rotmat
+import glob
+import os.path as osp
 
-from lib.pymafx.core import path_config
-from lib.pymafx.models import pymaf_net
-
-from lib.common.config import cfg
-from lib.common.render import Render
-from lib.dataset.body_model import TetraSMPLModel
-from lib.dataset.mesh_util import get_visibility, SMPLX
+import numpy as np
+import torch
 import torch.nn.functional as F
+from PIL import ImageFile
+from termcolor import colored
 from torchvision import transforms
 from torchvision.models import detection
 
-import os.path as osp
-import torch
-import glob
-import numpy as np
-from termcolor import colored
-from PIL import ImageFile
+from lib.common.config import cfg
+from lib.common.imutils import process_image
+from lib.common.render import Render
+from lib.common.train_util import Format
+from lib.dataset.mesh_util import SMPLX, get_visibility
+from lib.pixielib.models.SMPLX import SMPLX as PIXIE_SMPLX
+from lib.pixielib.pixie import PIXIE
+from lib.pixielib.utils.config import cfg as pixie_cfg
+from lib.pymafx.core import path_config
+from lib.pymafx.models import pymaf_net
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -66,9 +63,8 @@ class TestDataset:
         keep_lst = sorted(glob.glob(f"{self.image_dir}/*"))
         img_fmts = ["jpg", "png", "jpeg", "JPG", "bmp", "exr"]
 
-        self.subject_list = sorted(
-            [item for item in keep_lst if item.split(".")[-1] in img_fmts], reverse=False
-        )
+        self.subject_list = sorted([item for item in keep_lst if item.split(".")[-1] in img_fmts],
+                                   reverse=False)
 
         # smpl related
         self.smpl_data = SMPLX()

@@ -2,7 +2,7 @@
 
 ### If the reconstructed geometry is not satisfying, play with the adjustable parameters in _config/econ.yaml_
 
-- `use_smpl: ["hand", "face"]`
+- `use_smpl: ["hand"]`
   - [ ]: don't use either hands or face parts from SMPL-X
   - ["hand"]: only use the **visible** hands from SMPL-X
   - ["hand", "face"]: use both **visible** hands and face from SMPL-X

@@ -1,5 +1,12 @@
 import torch.nn as nn
-from .net_utils import single_conv, double_conv, double_conv_down, double_conv_up, PosEnSine
+
+from .net_utils import (
+    PosEnSine,
+    double_conv,
+    double_conv_down,
+    double_conv_up,
+    single_conv,
+)
 from .transformer_basics import OurMultiheadAttention
 
 
@@ -86,14 +93,12 @@ class Texformer(nn.Module):
         self.unet_k = Unet(src_ch, self.feat_dim, self.feat_dim)
         self.unet_v = Unet(v_ch, self.feat_dim, self.feat_dim)
 
-        self.trans_dec = nn.ModuleList(
-            [
-                None, None, None,
-                TransformerDecoderUnit(self.feat_dim, opts.nhead, True, 'softmax'),
-                TransformerDecoderUnit(self.feat_dim, opts.nhead, True, 'dotproduct'),
-                TransformerDecoderUnit(self.feat_dim, opts.nhead, True, 'dotproduct')
-            ]
-        )
+        self.trans_dec = nn.ModuleList([
+            None, None, None,
+            TransformerDecoderUnit(self.feat_dim, opts.nhead, True, 'softmax'),
+            TransformerDecoderUnit(self.feat_dim, opts.nhead, True, 'dotproduct'),
+            TransformerDecoderUnit(self.feat_dim, opts.nhead, True, 'dotproduct')
+        ])
 
         self.conv0 = double_conv(self.feat_dim, self.feat_dim)
         self.conv1 = double_conv_down(self.feat_dim, self.feat_dim)

@@ -14,8 +14,9 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-from yacs.config import CfgNode as CN
 import os
+
+from yacs.config import CfgNode as CN
 
 _C = CN(new_allowed=True)
 

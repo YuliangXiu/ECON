@@ -1,6 +1,8 @@
-from lib.common.render import Render
-import torch
 import argparse
+
+import torch
+
+from lib.common.render import Render
 
 root = "./results/econ/vid"
 

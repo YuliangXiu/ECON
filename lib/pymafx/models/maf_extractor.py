@@ -1,22 +1,22 @@
 # This script is borrowed and extended from https://github.com/shunsukesaito/PIFu/blob/master/lib/model/SurfaceClassifier.py
 
-import torch
-import scipy
+import logging
+
 import numpy as np
+import scipy
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from lib.pymafx.core import path_config
 from lib.pymafx.utils.geometry import projection
 
-import logging
-
 logger = logging.getLogger(__name__)
+
+from lib.pymafx.utils.imutils import j2d_processing
 
 from .transformers.net_utils import PosEnSine
 from .transformers.transformer_basics import OurMultiheadAttention
-
-from lib.pymafx.utils.imutils import j2d_processing
 
 
 class TransformerDecoderUnit(nn.Module):

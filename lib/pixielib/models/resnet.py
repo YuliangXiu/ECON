@@ -11,13 +11,14 @@ Loads different resnet models
     mark:   copied from pytorch source code
 """
 
+import math
+
+import numpy as np
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch
-from torch.nn.parameter import Parameter
-import numpy as np
-import math
 import torchvision
+from torch.nn.parameter import Parameter
 from torchvision import models
 
 

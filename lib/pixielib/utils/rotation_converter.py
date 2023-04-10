@@ -1,6 +1,7 @@
+import numpy as np
 import torch
 import torch.nn.functional as F
-import numpy as np
+
 """ Rotation Converter
     This function is borrowed from https://github.com/kornia/kornia
 

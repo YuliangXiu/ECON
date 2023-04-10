@@ -11,6 +11,7 @@ Only works on 2D images and assumes
 `mode='bilinear'`, `padding_mode='zeros'`, `align_corners=False`."""
 
 import warnings
+
 import torch
 
 # pylint: disable=redefined-builtin

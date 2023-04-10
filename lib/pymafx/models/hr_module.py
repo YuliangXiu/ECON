@@ -1,12 +1,13 @@
+import logging
 import os
+
 import torch
-import torch.nn as nn
 import torch._utils
+import torch.nn as nn
 import torch.nn.functional as F
+
 # from core.cfgs import cfg
 from .res_module import BasicBlock, Bottleneck
-
-import logging
 
 logger = logging.getLogger(__name__)
 

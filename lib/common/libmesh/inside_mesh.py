@@ -1,4 +1,5 @@
 import numpy as np
+
 from .triangle_hash import TriangleHash as _TriangleHash
 
 
@@ -147,8 +148,6 @@ class TriangleIntersector2d:
         v = (-A[:, 1, 0] * y[:, 0] + A[:, 0, 0] * y[:, 1]) * s_detA
 
         sum_uv = u + v
-        contains[mask] = (
-            (0 < u) & (u < abs_detA) & (0 < v) & (v < abs_detA) & (0 < sum_uv) &
-            (sum_uv < abs_detA)
-        )
+        contains[mask] = ((0 < u) & (u < abs_detA) & (0 < v) & (v < abs_detA) & (0 < sum_uv) &
+                          (sum_uv < abs_detA))
         return contains

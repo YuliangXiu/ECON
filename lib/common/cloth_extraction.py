@@ -1,10 +1,11 @@
-import numpy as np
+import itertools
 import json
 import os
-import itertools
+from collections import Counter
+
+import numpy as np
 import trimesh
 from matplotlib.path import Path
-from collections import Counter
 from sklearn.neighbors import KNeighborsClassifier
 
 
@@ -36,13 +37,11 @@ def load_segmentation(path, shape):
                 xy = np.vstack((x, y)).T
                 coordinates.append(xy)
 
-            segmentations.append(
-                {
-                    "type": val["category_name"],
-                    "type_id": val["category_id"],
-                    "coordinates": coordinates,
-                }
-            )
+            segmentations.append({
+                "type": val["category_name"],
+                "type_id": val["category_id"],
+                "coordinates": coordinates,
+            })
 
         return segmentations
 

@@ -3,10 +3,10 @@ borrowed from https://github.com/vchoutas/expose/blob/master/expose/models/backb
 """
 
 import os.path as osp
+
 import torch
 import torch.nn as nn
-
-from torchvision.models.resnet import Bottleneck, BasicBlock
+from torchvision.models.resnet import BasicBlock, Bottleneck
 
 BN_MOMENTUM = 0.1
 
@@ -15,42 +15,38 @@ def load_HRNet(pretrained=False):
     hr_net_cfg_dict = {
         "use_old_impl": False,
         "pretrained_layers": ["*"],
-        "stage1":
-            {
-                "num_modules": 1,
-                "num_branches": 1,
-                "num_blocks": [4],
-                "num_channels": [64],
-                "block": "BOTTLENECK",
-                "fuse_method": "SUM",
-            },
-        "stage2":
-            {
-                "num_modules": 1,
-                "num_branches": 2,
-                "num_blocks": [4, 4],
-                "num_channels": [48, 96],
-                "block": "BASIC",
-                "fuse_method": "SUM",
-            },
-        "stage3":
-            {
-                "num_modules": 4,
-                "num_branches": 3,
-                "num_blocks": [4, 4, 4],
-                "num_channels": [48, 96, 192],
-                "block": "BASIC",
-                "fuse_method": "SUM",
-            },
-        "stage4":
-            {
-                "num_modules": 3,
-                "num_branches": 4,
-                "num_blocks": [4, 4, 4, 4],
-                "num_channels": [48, 96, 192, 384],
-                "block": "BASIC",
-                "fuse_method": "SUM",
-            },
+        "stage1": {
+            "num_modules": 1,
+            "num_branches": 1,
+            "num_blocks": [4],
+            "num_channels": [64],
+            "block": "BOTTLENECK",
+            "fuse_method": "SUM",
+        },
+        "stage2": {
+            "num_modules": 1,
+            "num_branches": 2,
+            "num_blocks": [4, 4],
+            "num_channels": [48, 96],
+            "block": "BASIC",
+            "fuse_method": "SUM",
+        },
+        "stage3": {
+            "num_modules": 4,
+            "num_branches": 3,
+            "num_blocks": [4, 4, 4],
+            "num_channels": [48, 96, 192],
+            "block": "BASIC",
+            "fuse_method": "SUM",
+        },
+        "stage4": {
+            "num_modules": 3,
+            "num_branches": 4,
+            "num_blocks": [4, 4, 4, 4],
+            "num_channels": [48, 96, 192, 384],
+            "block": "BASIC",
+            "fuse_method": "SUM",
+        },
     }
     hr_net_cfg = hr_net_cfg_dict
     model = HighResolutionNet(hr_net_cfg)

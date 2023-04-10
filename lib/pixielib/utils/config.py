@@ -1,10 +1,11 @@
 """
 Default config for PIXIE
 """
-from yacs.config import CfgNode as CN
 import argparse
-import yaml
 import os
+
+import yaml
+from yacs.config import CfgNode as CN
 
 cfg = CN()
 
