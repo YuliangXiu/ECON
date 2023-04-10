@@ -3,15 +3,20 @@ Utilities for working with the local dataset cache.
 This file is adapted from the AllenNLP library at https://github.com/allenai/allennlp
 Copyright by the AllenNLP authors.
 """
-from __future__ import (absolute_import, division, print_function, unicode_literals)
+from __future__ import (
+    absolute_import,
+    division,
+    print_function,
+    unicode_literals,
+)
 
-import sys
+import fnmatch
 import json
 import logging
 import os
 import shutil
+import sys
 import tempfile
-import fnmatch
 from functools import wraps
 from hashlib import sha256
 from io import open

@@ -14,11 +14,13 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-import torch
-import numpy as np
 import numbers
-from torch.nn import functional as F
+
+import numpy as np
+import torch
 from einops.einops import rearrange
+from torch.nn import functional as F
+
 """
 Useful geometric operations, e.g. Perspective projection and a differentiable Rodrigues formula
 Parts of the code are taken from https://github.com/MandyMo/pytorch_HMR
@@ -42,13 +44,11 @@ def quaternion_to_rotation_matrix(quat):
     wx, wy, wz = w * x, w * y, w * z
     xy, xz, yz = x * y, x * z, y * z
 
-    rotMat = torch.stack(
-        [
-            w2 + x2 - y2 - z2, 2 * xy - 2 * wz, 2 * wy + 2 * xz, 2 * wz + 2 * xy, w2 - x2 + y2 - z2,
-            2 * yz - 2 * wx, 2 * xz - 2 * wy, 2 * wx + 2 * yz, w2 - x2 - y2 + z2
-        ],
-        dim=1
-    ).view(B, 3, 3)
+    rotMat = torch.stack([
+        w2 + x2 - y2 - z2, 2 * xy - 2 * wz, 2 * wy + 2 * xz, 2 * wz + 2 * xy, w2 - x2 + y2 - z2,
+        2 * yz - 2 * wx, 2 * xz - 2 * wy, 2 * wx + 2 * yz, w2 - x2 - y2 + z2
+    ],
+                         dim=1).view(B, 3, 3)
     return rotMat
 
 
@@ -508,12 +508,10 @@ def estimate_translation_np(S, joints_2d, joints_conf, focal_length=5000, img_si
     weight2 = np.reshape(np.tile(np.sqrt(joints_conf), (2, 1)).T, -1)
 
     # least squares
-    Q = np.array(
-        [
-            F * np.tile(np.array([1, 0]), num_joints), F * np.tile(np.array([0, 1]), num_joints),
-            O - np.reshape(joints_2d, -1)
-        ]
-    ).T
+    Q = np.array([
+        F * np.tile(np.array([1, 0]), num_joints), F * np.tile(np.array([0, 1]), num_joints),
+        O - np.reshape(joints_2d, -1)
+    ]).T
     c = (np.reshape(joints_2d, -1) - O) * Z - F * XY
 
     # weighted least squares
@@ -580,13 +578,11 @@ def Rot_y(angle, category="torch", prepend_dim=True, device=None):
             prepend_dim: prepend an extra dimension
     Return: Rotation matrix with shape [1, 3, 3] (prepend_dim=True)
     """
-    m = np.array(
-        [
-            [np.cos(angle), 0.0, np.sin(angle)],
-            [0.0, 1.0, 0.0],
-            [-np.sin(angle), 0.0, np.cos(angle)],
-        ]
-    )
+    m = np.array([
+        [np.cos(angle), 0.0, np.sin(angle)],
+        [0.0, 1.0, 0.0],
+        [-np.sin(angle), 0.0, np.cos(angle)],
+    ])
     if category == "torch":
         if prepend_dim:
             return torch.tensor(m, dtype=torch.float, device=device).unsqueeze(0)
@@ -608,13 +604,11 @@ def Rot_x(angle, category="torch", prepend_dim=True, device=None):
             prepend_dim: prepend an extra dimension
     Return: Rotation matrix with shape [1, 3, 3] (prepend_dim=True)
     """
-    m = np.array(
-        [
-            [1.0, 0.0, 0.0],
-            [0.0, np.cos(angle), -np.sin(angle)],
-            [0.0, np.sin(angle), np.cos(angle)],
-        ]
-    )
+    m = np.array([
+        [1.0, 0.0, 0.0],
+        [0.0, np.cos(angle), -np.sin(angle)],
+        [0.0, np.sin(angle), np.cos(angle)],
+    ])
     if category == "torch":
         if prepend_dim:
             return torch.tensor(m, dtype=torch.float, device=device).unsqueeze(0)
@@ -636,13 +630,11 @@ def Rot_z(angle, category="torch", prepend_dim=True, device=None):
             prepend_dim: prepend an extra dimension
     Return: Rotation matrix with shape [1, 3, 3] (prepend_dim=True)
     """
-    m = np.array(
-        [
-            [np.cos(angle), -np.sin(angle), 0.0],
-            [np.sin(angle), np.cos(angle), 0.0],
-            [0.0, 0.0, 1.0],
-        ]
-    )
+    m = np.array([
+        [np.cos(angle), -np.sin(angle), 0.0],
+        [np.sin(angle), np.cos(angle), 0.0],
+        [0.0, 0.0, 1.0],
+    ])
     if category == "torch":
         if prepend_dim:
             return torch.tensor(m, dtype=torch.float, device=device).unsqueeze(0)

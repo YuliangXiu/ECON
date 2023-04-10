@@ -3,12 +3,12 @@ Author: Yao Feng
 Copyright (c) 2020, Yao Feng
 All rights reserved.
 """
+import imageio
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from skimage.io import imread
-import imageio
 
 from . import util
 
@@ -16,17 +16,18 @@ from . import util
 def set_rasterizer(type="pytorch3d"):
     if type == "pytorch3d":
         global Meshes, load_obj, rasterize_meshes
-        from pytorch3d.structures import Meshes
         from pytorch3d.io import load_obj
         from pytorch3d.renderer.mesh import rasterize_meshes
+        from pytorch3d.structures import Meshes
     elif type == "standard":
         global standard_rasterize, load_obj
         import os
-        from .util import load_obj
 
         # Use JIT Compiling Extensions
         # ref: https://pytorch.org/tutorials/advanced/cpp_extension.html
-        from torch.utils.cpp_extension import load, CUDA_HOME
+        from torch.utils.cpp_extension import CUDA_HOME, load
+
+        from .util import load_obj
 
         curr_dir = os.path.dirname(__file__)
         standard_rasterize_cuda = load(
@@ -207,19 +208,17 @@ class SRenderY(nn.Module):
 
         # SH factors for lighting
         pi = np.pi
-        constant_factor = torch.tensor(
-            [
-                1 / np.sqrt(4 * pi),
-                ((2 * pi) / 3) * (np.sqrt(3 / (4 * pi))),
-                ((2 * pi) / 3) * (np.sqrt(3 / (4 * pi))),
-                ((2 * pi) / 3) * (np.sqrt(3 / (4 * pi))),
-                (pi / 4) * (3) * (np.sqrt(5 / (12 * pi))),
-                (pi / 4) * (3) * (np.sqrt(5 / (12 * pi))),
-                (pi / 4) * (3) * (np.sqrt(5 / (12 * pi))),
-                (pi / 4) * (3 / 2) * (np.sqrt(5 / (12 * pi))),
-                (pi / 4) * (1 / 2) * (np.sqrt(5 / (4 * pi))),
-            ]
-        ).float()
+        constant_factor = torch.tensor([
+            1 / np.sqrt(4 * pi),
+            ((2 * pi) / 3) * (np.sqrt(3 / (4 * pi))),
+            ((2 * pi) / 3) * (np.sqrt(3 / (4 * pi))),
+            ((2 * pi) / 3) * (np.sqrt(3 / (4 * pi))),
+            (pi / 4) * (3) * (np.sqrt(5 / (12 * pi))),
+            (pi / 4) * (3) * (np.sqrt(5 / (12 * pi))),
+            (pi / 4) * (3) * (np.sqrt(5 / (12 * pi))),
+            (pi / 4) * (3 / 2) * (np.sqrt(5 / (12 * pi))),
+            (pi / 4) * (1 / 2) * (np.sqrt(5 / (4 * pi))),
+        ]).float()
         self.register_buffer("constant_factor", constant_factor)
 
     def forward(
@@ -310,17 +309,17 @@ class SRenderY(nn.Module):
                         normal_images.permute(0, 2, 3, 1).reshape([batch_size, -1, 3]),
                         lights,
                     )
-                    shading_images = shading.reshape(
-                        [batch_size, albedo_images.shape[2], albedo_images.shape[3], 3]
-                    ).permute(0, 3, 1, 2)
+                    shading_images = shading.reshape([
+                        batch_size, albedo_images.shape[2], albedo_images.shape[3], 3
+                    ]).permute(0, 3, 1, 2)
                 else:
                     shading = self.add_directionlight(
                         normal_images.permute(0, 2, 3, 1).reshape([batch_size, -1, 3]),
                         lights,
                     )
-                    shading_images = shading.reshape(
-                        [batch_size, albedo_images.shape[2], albedo_images.shape[3], 3]
-                    ).permute(0, 3, 1, 2)
+                    shading_images = shading.reshape([
+                        batch_size, albedo_images.shape[2], albedo_images.shape[3], 3
+                    ]).permute(0, 3, 1, 2)
             images = albedo_images * shading_images
         else:
             images = albedo_images
@@ -402,9 +401,8 @@ class SRenderY(nn.Module):
         )
         # normals_dot_lights = torch.clamp((normals[:,None,:,:]*directions_to_lights).sum(dim=3), 0., 1.)
         # normals_dot_lights = (normals[:,None,:,:]*directions_to_lights).sum(dim=3)
-        normals_dot_lights = torch.clamp(
-            (normals[:, None, :, :] * directions_to_lights).sum(dim=3), 0.0, 1.0
-        )
+        normals_dot_lights = torch.clamp((normals[:, None, :, :] * directions_to_lights).sum(dim=3),
+                                         0.0, 1.0)
         shading = normals_dot_lights[:, :, :, None] * light_intensities[:, :, None, :]
         return shading.mean(1)
 

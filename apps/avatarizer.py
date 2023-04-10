@@ -1,17 +1,25 @@
-import numpy as np
-import trimesh
-import torch
 import argparse
+import os
 import os.path as osp
-import lib.smplx as smplx
+
+import numpy as np
+import torch
+import trimesh
 from pytorch3d.ops import SubdivideMeshes
 from pytorch3d.structures import Meshes
-
-from lib.smplx.lbs import general_lbs
-from lib.dataset.mesh_util import keep_largest, poisson
 from scipy.spatial import cKDTree
-from lib.dataset.mesh_util import SMPLX
+
+import lib.smplx as smplx
 from lib.common.local_affine import register
+from lib.dataset.mesh_util import (
+    SMPLX,
+    export_obj,
+    keep_largest,
+    o3d_ransac,
+    poisson,
+    remesh_laplacian,
+)
+from lib.smplx.lbs import general_lbs
 
 # loading cfg file
 parser = argparse.ArgumentParser()
@@ -22,12 +30,18 @@ args = parser.parse_args()
 smplx_container = SMPLX()
 device = torch.device(f"cuda:{args.gpu}")
 
+# loading SMPL-X and econ objs inferred with ECON
 prefix = f"./results/econ/obj/{args.name}"
 smpl_path = f"{prefix}_smpl_00.npy"
-econ_path = f"{prefix}_0_full.obj"
-
 smplx_param = np.load(smpl_path, allow_pickle=True).item()
+
+# export econ obj with pre-computed normals
+econ_path = f"{prefix}_0_full.obj"
 econ_obj = trimesh.load(econ_path)
+assert (econ_obj.vertex_normals.shape[1] == 3)
+econ_obj.export(f"{prefix}_econ_raw.ply")
+
+# align econ with SMPL-X
 econ_obj.vertices *= np.array([1.0, -1.0, -1.0])
 econ_obj.vertices /= smplx_param["scale"].cpu().numpy()
 econ_obj.vertices -= smplx_param["transl"].cpu().numpy()
@@ -49,6 +63,7 @@ smpl_model = smplx.create(
 
 smpl_out_lst = []
 
+# obtain the pose params of T-pose, DA-pose, and the original pose
 for pose_type in ["t-pose", "da-pose", "pose"]:
     smpl_out_lst.append(
         smpl_model(
@@ -66,6 +81,12 @@ for pose_type in ["t-pose", "da-pose", "pose"]:
             pose_type=pose_type
         )
     )
+
+# -------------------------- align econ and SMPL-X in DA-pose space ------------------------- #
+# 1. find the vertex-correspondence between SMPL-X and econ
+# 2. ECON + SMPL-X: posed space --> T-pose space --> DA-pose space
+# 3. ECON (w/o hands & over-streched faces) + SMPL-X (w/ hands & registered inpainting parts)
+# ------------------------------------------------------------------------------------------- #
 
 smpl_verts = smpl_out_lst[2].vertices.detach()[0]
 smpl_tree = cKDTree(smpl_verts.cpu().numpy())
@@ -143,13 +164,24 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
     smpl_da_body.remove_unreferenced_vertices()
 
     smpl_hand = smpl_da.copy()
-    smpl_hand.update_faces(smplx_container.smplx_mano_vertex_mask.numpy()[smpl_hand.faces].all(axis=1))
+    smpl_hand.update_faces(
+        smplx_container.smplx_mano_vertex_mask.numpy()[smpl_hand.faces].all(axis=1)
+    )
     smpl_hand.remove_unreferenced_vertices()
     econ_da = sum([smpl_hand, smpl_da_body, econ_da_body])
-    econ_da = poisson(econ_da, f"{prefix}_econ_da.obj", depth=10, decimation=False)
+    econ_da = poisson(econ_da, f"{prefix}_econ_da.obj", depth=10, face_count=50000)
+    econ_da = remesh_laplacian(econ_da, f"{prefix}_econ_da.obj")
 else:
     econ_da = trimesh.load(f"{prefix}_econ_da.obj")
     smpl_da = trimesh.load(f"{prefix}_smpl_da.obj", maintain_orders=True, process=False)
+
+# ---------------------- SMPL-X compatible ECON ---------------------- #
+# 1. Find the new vertex-correspondence between NEW ECON and SMPL-X
+# 2. Build the new J_regressor, lbs_weights, posedirs
+# 3. canonicalize the NEW ECON
+# ------------------------------------------------------------------- #
+
+print("Start building the SMPL-X compatible ECON model...")
 
 smpl_tree = cKDTree(smpl_da.vertices)
 dist, idx = smpl_tree.query(econ_da.vertices, k=5)
@@ -167,19 +199,137 @@ econ_posedirs = (
 econ_J_regressor /= econ_J_regressor.sum(dim=1, keepdims=True).clip(min=1e-10)
 econ_lbs_weights /= econ_lbs_weights.sum(dim=1, keepdims=True)
 
-# re-compute da-pose rot_mat for ECON
 rot_mat_da = smpl_out_lst[1].vertex_transformation.detach()[0][idx[:, 0]]
 econ_da_verts = torch.tensor(econ_da.vertices).float()
-econ_cano_verts = torch.inverse(rot_mat_da) @ torch.cat(
-    [econ_da_verts, torch.ones_like(econ_da_verts)[..., :1]], dim=1
-).unsqueeze(-1)
+econ_cano_verts = torch.inverse(rot_mat_da) @ torch.cat([
+    econ_da_verts, torch.ones_like(econ_da_verts)[..., :1]
+],
+                                                        dim=1).unsqueeze(-1)
 econ_cano_verts = econ_cano_verts[:, :3, 0].double()
 
 # ----------------------------------------------------
-# use any SMPL-X pose to animate ECON reconstruction
+# use original pose to animate ECON reconstruction
 # ----------------------------------------------------
 
 new_pose = smpl_out_lst[2].full_pose
+# new_pose[:, :3] = 0.
+
+posed_econ_verts, _ = general_lbs(
+    pose=new_pose,
+    v_template=econ_cano_verts.unsqueeze(0),
+    posedirs=econ_posedirs,
+    J_regressor=econ_J_regressor,
+    parents=smpl_model.parents,
+    lbs_weights=econ_lbs_weights
+)
+
+aligned_econ_verts = posed_econ_verts[0].detach().cpu().numpy()
+aligned_econ_verts += smplx_param["transl"].cpu().numpy()
+aligned_econ_verts *= smplx_param["scale"].cpu().numpy() * np.array([1.0, -1.0, -1.0])
+econ_pose = trimesh.Trimesh(aligned_econ_verts, econ_da.faces)
+assert (econ_pose.vertex_normals.shape[1] == 3)
+econ_pose.export(f"{prefix}_econ_pose.ply")
+
+# -------------------------------------------------------------------------
+# Align posed ECON with original ECON, for pixel-aligned texture extraction
+# -------------------------------------------------------------------------
+
+print("Start ICP registration between posed & original ECON...")
+import open3d as o3d
+
+source = o3d.io.read_point_cloud(f"{prefix}_econ_pose.ply")
+target = o3d.io.read_point_cloud(f"{prefix}_econ_raw.ply")
+trans_init = o3d_ransac(source, target)
+icp_criteria = o3d.pipelines.registration.ICPConvergenceCriteria(
+    relative_fitness=0.000001, relative_rmse=0.000001, max_iteration=100
+)
+
+reg_p2l = o3d.pipelines.registration.registration_icp(
+    source,
+    target,
+    0.1,
+    trans_init,
+    o3d.pipelines.registration.TransformationEstimationPointToPlane(),
+    criteria=icp_criteria
+)
+econ_pose.apply_transform(reg_p2l.transformation)
+
+cache_path = f"{prefix.replace('obj','cache')}"
+os.makedirs(cache_path, exist_ok=True)
+
+# -----------------------------------------------------------------
+# create UV texture (.obj .mtl .png) from posed ECON reconstruction
+# -----------------------------------------------------------------
+
+print("Start Color mapping...")
+from PIL import Image
+from torchvision import transforms
+
+from lib.common.render import query_color
+from lib.common.render_utils import Pytorch3dRasterizer
+
+if not osp.exists(f"{prefix}_econ_icp_rgb.ply"):
+    masked_image = f"./results/econ/png/{args.name}_cloth.png"
+    tensor_image = transforms.ToTensor()(Image.open(masked_image))[:, :, :512]
+    final_colors = query_color(
+        torch.tensor(econ_pose.vertices).float(),
+        torch.tensor(econ_pose.faces).long(),
+        ((tensor_image - 0.5) * 2.0).unsqueeze(0).to(device),
+        device=device,
+        paint_normal=False,
+    )
+    final_colors[final_colors == tensor_image[:, 0, 0] * 255.0] = 0.0
+    final_colors = final_colors.detach().cpu().numpy()
+    econ_pose.visual.vertex_colors = final_colors
+    econ_pose.export(f"{prefix}_econ_icp_rgb.ply")
+else:
+    mesh = trimesh.load(f"{prefix}_econ_icp_rgb.ply")
+    final_colors = mesh.visual.vertex_colors[:, :3]
+
+print("Start UV texture generation...")
+
+# Generate UV coords
+v_np = econ_pose.vertices
+f_np = econ_pose.faces
+
+vt_cache = osp.join(cache_path, "vt.pt")
+ft_cache = osp.join(cache_path, "ft.pt")
+
+if osp.exists(vt_cache) and osp.exists(ft_cache):
+    vt = torch.load(vt_cache).to(device)
+    ft = torch.load(ft_cache).to(device)
+else:
+    import xatlas
+    atlas = xatlas.Atlas()
+    atlas.add_mesh(v_np, f_np)
+    chart_options = xatlas.ChartOptions()
+    chart_options.max_iterations = 4
+    atlas.generate(chart_options=chart_options)
+    vmapping, ft_np, vt_np = atlas[0]
+
+    vt = torch.from_numpy(vt_np.astype(np.float32)).float().to(device)
+    ft = torch.from_numpy(ft_np.astype(np.int64)).int().to(device)
+    torch.save(vt.cpu(), vt_cache)
+    torch.save(ft.cpu(), ft_cache)
+
+# UV texture rendering
+uv_rasterizer = Pytorch3dRasterizer(image_size=512, device=device)
+texture_npy = uv_rasterizer.get_texture(
+    torch.cat([(vt - 0.5) * 2.0, torch.ones_like(vt[:, :1])], dim=1),
+    ft,
+    torch.tensor(v_np).unsqueeze(0).float(),
+    torch.tensor(f_np).unsqueeze(0).long(),
+    torch.tensor(final_colors).unsqueeze(0).float() / 255.0,
+)
+
+Image.fromarray((texture_npy * 255.0).astype(np.uint8)).save(f"{cache_path}/texture.png")
+
+# UV mask for TEXTure (https://readpaper.com/paper/4720151447010820097)
+texture_npy[texture_npy.sum(axis=2) == 0.0] = 1.0
+Image.fromarray((texture_npy * 255.0).astype(np.uint8)).save(f"{cache_path}/mask.png")
+
+# generate da-pose vertices
+new_pose = smpl_out_lst[1].full_pose
 new_pose[:, :3] = 0.
 
 posed_econ_verts, _ = general_lbs(
@@ -191,5 +341,8 @@ posed_econ_verts, _ = general_lbs(
     lbs_weights=econ_lbs_weights
 )
 
-econ_pose = trimesh.Trimesh(posed_econ_verts[0].detach(), econ_da.faces)
-econ_pose.export(f"{prefix}_econ_pose.obj")
+# export mtl file
+mtl_string = f"newmtl mat0 \nKa 1.000000 1.000000 1.000000 \nKd 1.000000 1.000000 1.000000 \nKs 0.000000 0.000000 0.000000 \nTr 1.000000 \nillum 1 \nNs 0.000000\nmap_Kd texture.png"
+with open(f"{cache_path}/material.mtl", 'w') as file:
+    file.write(mtl_string)
+export_obj(posed_econ_verts[0].detach().cpu().numpy(), f_np, vt, ft, f"{cache_path}/mesh.obj")

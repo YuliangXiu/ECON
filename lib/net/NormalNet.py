@@ -14,13 +14,13 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-from lib.net.FBNet import define_G, define_D, VGGLoss, GANLoss, IDMRFLoss
-from lib.net.net_util import init_net
-from lib.net.BasePIFuNet import BasePIFuNet
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from lib.net.BasePIFuNet import BasePIFuNet
+from lib.net.FBNet import GANLoss, IDMRFLoss, VGGLoss, define_D, define_G
+from lib.net.net_util import init_net
 
 
 class NormalNet(BasePIFuNet):
@@ -63,12 +63,12 @@ class NormalNet(BasePIFuNet):
         self.in_nmlB = [
             item[0] for item in self.opt.in_nml if "_B" in item[0] or item[0] == "image"
         ]
-        self.in_nmlF_dim = sum(
-            [item[1] for item in self.opt.in_nml if "_F" in item[0] or item[0] == "image"]
-        )
-        self.in_nmlB_dim = sum(
-            [item[1] for item in self.opt.in_nml if "_B" in item[0] or item[0] == "image"]
-        )
+        self.in_nmlF_dim = sum([
+            item[1] for item in self.opt.in_nml if "_F" in item[0] or item[0] == "image"
+        ])
+        self.in_nmlB_dim = sum([
+            item[1] for item in self.opt.in_nml if "_B" in item[0] or item[0] == "image"
+        ])
 
         self.netF = define_G(self.in_nmlF_dim, 3, 64, "global", 4, 9, 1, 3, "instance")
         self.netB = define_G(self.in_nmlB_dim, 3, 64, "global", 4, 9, 1, 3, "instance")

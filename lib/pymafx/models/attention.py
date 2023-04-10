@@ -4,15 +4,29 @@ Licensed under the MIT license.
 
 """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import (
+    absolute_import,
+    division,
+    print_function,
+    unicode_literals,
+)
 
+import code
 import logging
 import math
 import os
-import code
+
 import torch
 from torch import nn
-from .transformers.bert.modeling_bert import BertPreTrainedModel, BertEmbeddings, BertPooler, BertIntermediate, BertOutput, BertSelfOutput
+
+from .transformers.bert.modeling_bert import (
+    BertEmbeddings,
+    BertIntermediate,
+    BertOutput,
+    BertPooler,
+    BertPreTrainedModel,
+    BertSelfOutput,
+)
 # import src.modeling.data.config as cfg
 # from src.modeling._gcnn import GraphConvolution, GraphResBlock
 from .transformers.bert.modeling_utils import prune_linear_layer

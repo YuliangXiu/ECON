@@ -14,8 +14,9 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-from typing import NewType, Union, Optional
-from dataclasses import dataclass, asdict, fields
+from dataclasses import asdict, dataclass, fields
+from typing import NewType, Optional, Union
+
 import numpy as np
 import torch
 

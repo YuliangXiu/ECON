@@ -19,13 +19,14 @@ DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
 WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING 
 OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 """
-import torch
-import torch.nn as nn
 import functools
+
 import numpy as np
 import pytorch_lightning as pl
-from torchvision import models
+import torch
+import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import models
 
 
 ###############################################################################
@@ -313,34 +314,28 @@ class NLayerDiscriminator(nn.Module):
 
         kw = 4
         padw = int(np.ceil((kw - 1.0) / 2))
-        sequence = [
-            [
-                nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw),
-                nn.LeakyReLU(0.2, True)
-            ]
-        ]
+        sequence = [[
+            nn.Conv2d(input_nc, ndf, kernel_size=kw, stride=2, padding=padw),
+            nn.LeakyReLU(0.2, True)
+        ]]
 
         nf = ndf
         for n in range(1, n_layers):
             nf_prev = nf
             nf = min(nf * 2, 512)
-            sequence += [
-                [
-                    nn.Conv2d(nf_prev, nf, kernel_size=kw, stride=2, padding=padw),
-                    norm_layer(nf),
-                    nn.LeakyReLU(0.2, True)
-                ]
-            ]
+            sequence += [[
+                nn.Conv2d(nf_prev, nf, kernel_size=kw, stride=2, padding=padw),
+                norm_layer(nf),
+                nn.LeakyReLU(0.2, True)
+            ]]
 
         nf_prev = nf
         nf = min(nf * 2, 512)
-        sequence += [
-            [
-                nn.Conv2d(nf_prev, nf, kernel_size=kw, stride=1, padding=padw),
-                norm_layer(nf),
-                nn.LeakyReLU(0.2, True)
-            ]
-        ]
+        sequence += [[
+            nn.Conv2d(nf_prev, nf, kernel_size=kw, stride=1, padding=padw),
+            norm_layer(nf),
+            nn.LeakyReLU(0.2, True)
+        ]]
 
         sequence += [[nn.Conv2d(nf, 1, kernel_size=kw, stride=1, padding=padw)]]
 
@@ -632,18 +627,16 @@ class GANLoss(pl.LightningModule):
     def get_target_tensor(self, input, target_is_real):
         target_tensor = None
         if target_is_real:
-            create_label = (
-                (self.real_label_var is None) or (self.real_label_var.numel() != input.numel())
-            )
+            create_label = ((self.real_label_var is None) or
+                            (self.real_label_var.numel() != input.numel()))
             if create_label:
                 real_tensor = self.tensor(input.size()).fill_(self.real_label)
                 self.real_label_var = real_tensor
                 self.real_label_var.requires_grad = False
             target_tensor = self.real_label_var
         else:
-            create_label = (
-                (self.fake_label_var is None) or (self.fake_label_var.numel() != input.numel())
-            )
+            create_label = ((self.fake_label_var is None) or
+                            (self.fake_label_var.numel() != input.numel()))
             if create_label:
                 fake_tensor = self.tensor(input.size()).fill_(self.fake_label)
                 self.fake_label_var = fake_tensor

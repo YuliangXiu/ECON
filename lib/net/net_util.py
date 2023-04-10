@@ -14,12 +14,13 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
+import functools
+
 import torch
-from torch.nn import init
 import torch.nn as nn
 import torch.nn.functional as F
-import functools
 from torch.autograd import grad
+from torch.nn import init
 
 
 def gradient(inputs, outputs):

@@ -1,11 +1,16 @@
 """ The code is based on https://github.com/apple/ml-gsn/ with adaption. """
 
 import math
+
 import torch
 import torch.nn as nn
-import math
 import torch.nn.functional as F
-from lib.torch_utils.ops.native_ops import FusedLeakyReLU, fused_leaky_relu, upfirdn2d
+
+from lib.torch_utils.ops.native_ops import (
+    FusedLeakyReLU,
+    fused_leaky_relu,
+    upfirdn2d,
+)
 
 
 class DiscriminatorHead(nn.Module):

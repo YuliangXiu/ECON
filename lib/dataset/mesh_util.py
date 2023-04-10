@@ -14,25 +14,25 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
+import json
 import os
+import os.path as osp
+
+import _pickle as cPickle
 import numpy as np
+import open3d as o3d
 import torch
+import torch.nn.functional as F
 import torchvision
 import trimesh
-import json
-import open3d as o3d
-import os.path as osp
-import _pickle as cPickle
-from termcolor import colored
+from PIL import Image, ImageDraw, ImageFont
+from pytorch3d.loss import mesh_laplacian_smoothing, mesh_normal_consistency
+from pytorch3d.renderer.mesh import rasterize_meshes
+from pytorch3d.structures import Meshes
 from scipy.spatial import cKDTree
 
-from pytorch3d.structures import Meshes
-import torch.nn.functional as F
 import lib.smplx as smplx
-from lib.common.render_utils import Pytorch3dRasterizer
-from pytorch3d.renderer.mesh import rasterize_meshes
-from PIL import Image, ImageFont, ImageDraw
-from pytorch3d.loss import mesh_laplacian_smoothing, mesh_normal_consistency
+from lib.common.render_utils import Pytorch3dRasterizer, face_vertices
 
 
 class Format:
@@ -74,19 +74,17 @@ class SMPLX:
         self.smplx_vertex_lmkid = np.load(self.smplx_vertex_lmkid_path)
 
         self.smpl_vert_seg = json.load(open(self.smpl_vert_seg_path))
-        self.smpl_mano_vid = np.concatenate(
-            [
-                self.smpl_vert_seg["rightHand"], self.smpl_vert_seg["rightHandIndex1"],
-                self.smpl_vert_seg["leftHand"], self.smpl_vert_seg["leftHandIndex1"]
-            ]
-        )
+        self.smpl_mano_vid = np.concatenate([
+            self.smpl_vert_seg["rightHand"], self.smpl_vert_seg["rightHandIndex1"],
+            self.smpl_vert_seg["leftHand"], self.smpl_vert_seg["leftHandIndex1"]
+        ])
 
         self.smplx_eyeball_fid_mask = np.load(self.smplx_eyeball_fid_path)
         self.smplx_mouth_fid = np.load(self.smplx_fill_mouth_fid_path)
         self.smplx_mano_vid_dict = np.load(self.smplx_mano_vid_path, allow_pickle=True)
-        self.smplx_mano_vid = np.concatenate(
-            [self.smplx_mano_vid_dict["left_hand"], self.smplx_mano_vid_dict["right_hand"]]
-        )
+        self.smplx_mano_vid = np.concatenate([
+            self.smplx_mano_vid_dict["left_hand"], self.smplx_mano_vid_dict["right_hand"]
+        ])
         self.smplx_flame_vid = np.load(self.smplx_flame_vid_path, allow_pickle=True)
         self.smplx_front_flame_vid = self.smplx_flame_vid[np.load(self.front_flame_path)]
 
@@ -110,26 +108,22 @@ class SMPLX:
 
         self.model_dir = osp.join(self.current_dir, "models")
 
-        self.ghum_smpl_pairs = torch.tensor(
-            [
-                (0, 24), (2, 26), (5, 25), (7, 28), (8, 27), (11, 16), (12, 17), (13, 18), (14, 19),
-                (15, 20), (16, 21), (17, 39), (18, 44), (19, 36), (20, 41), (21, 35), (22, 40),
-                (23, 1), (24, 2), (25, 4), (26, 5), (27, 7), (28, 8), (29, 31), (30, 34), (31, 29),
-                (32, 32)
-            ]
-        ).long()
+        self.ghum_smpl_pairs = torch.tensor([(0, 24), (2, 26), (5, 25), (7, 28), (8, 27), (11, 16),
+                                             (12, 17), (13, 18), (14, 19), (15, 20), (16, 21),
+                                             (17, 39), (18, 44), (19, 36), (20, 41), (21, 35),
+                                             (22, 40), (23, 1), (24, 2), (25, 4), (26, 5), (27, 7),
+                                             (28, 8), (29, 31), (30, 34), (31, 29),
+                                             (32, 32)]).long()
 
         # smpl-smplx correspondence
         self.smpl_joint_ids_24 = np.arange(22).tolist() + [68, 73]
         self.smpl_joint_ids_24_pixie = np.arange(22).tolist() + [61 + 68, 72 + 68]
         self.smpl_joint_ids_45 = np.arange(22).tolist() + [68, 73] + np.arange(55, 76).tolist()
 
-        self.extra_joint_ids = np.array(
-            [
-                61, 72, 66, 69, 58, 68, 57, 56, 64, 59, 67, 75, 70, 65, 60, 61, 63, 62, 76, 71, 72,
-                74, 73
-            ]
-        )
+        self.extra_joint_ids = np.array([
+            61, 72, 66, 69, 58, 68, 57, 56, 64, 59, 67, 75, 70, 65, 60, 61, 63, 62, 76, 71, 72, 74,
+            73
+        ])
 
         self.extra_joint_ids += 68
 
@@ -369,9 +363,9 @@ def mesh_edge_loss(meshes, target_length: float = 0.0):
     return loss_all
 
 
-def remesh_laplacian(mesh, obj_path):
+def remesh_laplacian(mesh, obj_path, face_count=50000):
 
-    mesh = mesh.simplify_quadratic_decimation(50000)
+    mesh = mesh.simplify_quadratic_decimation(face_count)
     mesh = trimesh.smoothing.filter_humphrey(
         mesh, alpha=0.1, beta=0.5, iterations=10, laplacian_operator=None
     )
@@ -380,7 +374,7 @@ def remesh_laplacian(mesh, obj_path):
     return mesh
 
 
-def poisson(mesh, obj_path, depth=10, decimation=True):
+def poisson(mesh, obj_path, depth=10, face_count=50000):
 
     pcd_path = obj_path[:-4] + "_soups.ply"
     assert (mesh.vertex_normals.shape[1] == 3)
@@ -395,12 +389,9 @@ def poisson(mesh, obj_path, depth=10, decimation=True):
     largest_mesh = keep_largest(trimesh.Trimesh(np.array(mesh.vertices), np.array(mesh.triangles)))
     largest_mesh.export(obj_path)
 
-    if decimation:
-        # mesh decimation for faster rendering
-        low_res_mesh = largest_mesh.simplify_quadratic_decimation(50000)
-        return low_res_mesh
-    else:
-        return largest_mesh
+    # mesh decimation for faster rendering
+    low_res_mesh = largest_mesh.simplify_quadratic_decimation(face_count)
+    return low_res_mesh
 
 
 # Losses to smooth / regularize the mesh shape
@@ -437,10 +428,9 @@ def read_smpl_constants(folder):
     smpl_tetras = (np.loadtxt(os.path.join(folder, "tetrahedrons.txt"), dtype=np.int32) - 1)
 
     return_dict = {
-        "smpl_vertex_code": torch.tensor(smpl_vertex_code),
-        "smpl_face_code": torch.tensor(smpl_face_code),
-        "smpl_faces": torch.tensor(smpl_faces),
-        "smpl_tetras": torch.tensor(smpl_tetras)
+        "smpl_vertex_code": torch.tensor(smpl_vertex_code), "smpl_face_code":
+        torch.tensor(smpl_face_code), "smpl_faces": torch.tensor(smpl_faces), "smpl_tetras":
+        torch.tensor(smpl_tetras)
     }
 
     return return_dict
@@ -598,22 +588,6 @@ def compute_normal(vertices, faces):
     return vert_norms, face_norms
 
 
-def face_vertices(vertices, faces):
-    """
-    :param vertices: [batch size, number of vertices, 3]
-    :param faces: [batch size, number of faces, 3]
-    :return: [batch size, number of faces, 3, 3]
-    """
-
-    bs, nv = vertices.shape[:2]
-    bs, nf = faces.shape[:2]
-    device = vertices.device
-    faces = faces + (torch.arange(bs, dtype=torch.int32).to(device) * nv)[:, None, None]
-    vertices = vertices.reshape((bs * nv, vertices.shape[-1]))
-
-    return vertices[faces.long()]
-
-
 def compute_normal_batch(vertices, faces):
 
     if faces.shape[0] != vertices.shape[0]:
@@ -657,20 +631,18 @@ def get_optim_grid_image(per_loop_lst, loss=None, nrow=4, type="smpl"):
             draw.text((10, 5), f"error: {loss:.3f}", (255, 0, 0), font=font)
 
         if type == "smpl":
-            for col_id, col_txt in enumerate(
-                [
-                    "image",
-                    "smpl-norm(render)",
-                    "cloth-norm(pred)",
-                    "diff-norm",
-                    "diff-mask",
-                ]
-            ):
+            for col_id, col_txt in enumerate([
+                "image",
+                "smpl-norm(render)",
+                "cloth-norm(pred)",
+                "diff-norm",
+                "diff-mask",
+            ]):
                 draw.text((10 + (col_id * grid_size), 5), col_txt, (255, 0, 0), font=font)
         elif type == "cloth":
-            for col_id, col_txt in enumerate(
-                ["image", "cloth-norm(recon)", "cloth-norm(pred)", "diff-norm"]
-            ):
+            for col_id, col_txt in enumerate([
+                "image", "cloth-norm(recon)", "cloth-norm(pred)", "diff-norm"
+            ]):
                 draw.text((10 + (col_id * grid_size), 5), col_txt, (255, 0, 0), font=font)
             for col_id, col_txt in enumerate(["0", "90", "180", "270"]):
                 draw.text(
@@ -751,3 +723,61 @@ def get_joint_mesh(joints, radius=2.0):
         else:
             combined = sum([combined, ball_new])
     return combined
+
+
+def preprocess_point_cloud(pcd, voxel_size):
+    pcd_down = pcd
+    pcd_fpfh = o3d.pipelines.registration.compute_fpfh_feature(
+        pcd_down, o3d.geometry.KDTreeSearchParamHybrid(radius=voxel_size * 5.0, max_nn=100)
+    )
+    return (pcd_down, pcd_fpfh)
+
+
+def o3d_ransac(src, dst):
+
+    voxel_size = 0.01
+    distance_threshold = 1.5 * voxel_size
+
+    o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Error)
+
+    # print('Downsampling inputs')
+    src_down, src_fpfh = preprocess_point_cloud(src, voxel_size)
+    dst_down, dst_fpfh = preprocess_point_cloud(dst, voxel_size)
+
+    # print('Running RANSAC')
+    result = o3d.pipelines.registration.registration_ransac_based_on_feature_matching(
+        src_down,
+        dst_down,
+        src_fpfh,
+        dst_fpfh,
+        mutual_filter=False,
+        max_correspondence_distance=distance_threshold,
+        estimation_method=o3d.pipelines.registration.TransformationEstimationPointToPoint(False),
+        ransac_n=3,
+        checkers=[
+            o3d.pipelines.registration.CorrespondenceCheckerBasedOnEdgeLength(0.9),
+            o3d.pipelines.registration.CorrespondenceCheckerBasedOnDistance(distance_threshold)
+        ],
+        criteria=o3d.pipelines.registration.RANSACConvergenceCriteria(1000000, 0.999)
+    )
+
+    return result.transformation
+
+
+def export_obj(v_np, f_np, vt, ft, path):
+
+    # write mtl info into obj
+    new_line = f"mtllib material.mtl \n"
+    vt_lines = "\nusemtl mat0 \n"
+    v_lines = ""
+    f_lines = ""
+
+    for _v in v_np:
+        v_lines += f"v {_v[0]} {_v[1]} {_v[2]}\n"
+    for fid, _f in enumerate(f_np):
+        f_lines += f"f {_f[0]+1}/{ft[fid][0]+1} {_f[1]+1}/{ft[fid][1]+1} {_f[2]+1}/{ft[fid][2]+1}\n"
+    for _vt in vt:
+        vt_lines += f"vt {_vt[0]} {_vt[1]}\n"
+    new_file_data = new_line + v_lines + vt_lines + f_lines
+    with open(path, 'w') as file:
+        file.write(new_file_data)

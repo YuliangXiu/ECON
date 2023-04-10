@@ -1,9 +1,11 @@
-from lib.common.BNI_utils import (
-    verts_inverse_transform, depth_inverse_transform, double_side_bilateral_normal_integration
-)
-
 import torch
 import trimesh
+
+from lib.common.BNI_utils import (
+    depth_inverse_transform,
+    double_side_bilateral_normal_integration,
+    verts_inverse_transform,
+)
 
 
 class BNI:
@@ -84,8 +86,9 @@ class BNI:
 
 if __name__ == "__main__":
 
-    import numpy as np
     import os.path as osp
+
+    import numpy as np
     from tqdm import tqdm
 
     root = "/home/yxiu/Code/ECON/results/examples/BNI"

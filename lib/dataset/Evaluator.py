@@ -14,20 +14,21 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-from lib.dataset.mesh_util import projection
-from lib.common.render import Render
+from typing import Tuple
+
 import numpy as np
 import torch
-from torchvision.utils import make_grid
-from pytorch3d import _C
-from torch.autograd import Function
-from torch.autograd.function import once_differentiable
-from pytorch3d.structures import Pointclouds
 from PIL import Image
-
-from typing import Tuple
+from pytorch3d import _C
 from pytorch3d.ops.mesh_face_areas_normals import mesh_face_areas_normals
 from pytorch3d.ops.packed_to_padded import packed_to_padded
+from pytorch3d.structures import Pointclouds
+from torch.autograd import Function
+from torch.autograd.function import once_differentiable
+from torchvision.utils import make_grid
+
+from lib.common.render import Render
+from lib.dataset.mesh_util import projection
 
 _DEFAULT_MIN_TRIANGLE_AREA: float = 5e-3
 
@@ -278,12 +279,10 @@ class Evaluator:
 
         # error_hf = ((((src_normal_arr - tgt_normal_arr) * sim_mask)**2).sum(dim=0).mean()) * 4.0
 
-        normal_img = Image.fromarray(
-            (
-                torch.cat([src_normal_arr, tgt_normal_arr],
-                          dim=1).permute(1, 2, 0).detach().cpu().numpy() * 255.0
-            ).astype(np.uint8)
-        )
+        normal_img = Image.fromarray((
+            torch.cat([src_normal_arr, tgt_normal_arr],
+                      dim=1).permute(1, 2, 0).detach().cpu().numpy() * 255.0
+        ).astype(np.uint8))
         normal_img.save(normal_path)
 
         return error

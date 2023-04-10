@@ -1,18 +1,18 @@
 # code brought in part from https://github.com/microsoft/human-pose-estimation.pytorch/blob/master/lib/models/pose_resnet.py
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
+import logging
 import os
+from collections import OrderedDict
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from collections import OrderedDict
-from lib.pymafx.core.cfgs import cfg
-# from .transformers.tokenlearner import TokenLearner
 
-import logging
+from lib.pymafx.core.cfgs import cfg
+
+# from .transformers.tokenlearner import TokenLearner
 
 logger = logging.getLogger(__name__)
 
@@ -119,11 +119,8 @@ class Bottleneck(nn.Module):
 
 
 resnet_spec = {
-    18: (BasicBlock, [2, 2, 2, 2]),
-    34: (BasicBlock, [3, 4, 6, 3]),
-    50: (Bottleneck, [3, 4, 6, 3]),
-    101: (Bottleneck, [3, 4, 23, 3]),
-    152: (Bottleneck, [3, 8, 36, 3])
+    18: (BasicBlock, [2, 2, 2, 2]), 34: (BasicBlock, [3, 4, 6, 3]), 50: (Bottleneck, [3, 4, 6, 3]),
+    101: (Bottleneck, [3, 4, 23, 3]), 152: (Bottleneck, [3, 8, 36, 3])
 }
 
 

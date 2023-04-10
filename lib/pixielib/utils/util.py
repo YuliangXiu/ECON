@@ -1,10 +1,11 @@
+import os
+import pickle
+from collections import OrderedDict
+
+import cv2
 import numpy as np
 import torch
 import torch.nn.functional as F
-from collections import OrderedDict
-import os
-import cv2
-import pickle
 
 # ---------------------------- process/generate vertices, normals, faces
 

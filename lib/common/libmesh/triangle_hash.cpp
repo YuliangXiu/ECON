@@ -720,12 +720,12 @@ static CYTHON_INLINE float __PYX_NAN() {
 
     /* NumPy API declarations from "numpy/__init__.pxd" */
     
+#include <math.h>
 #include "ios"
 #include "new"
 #include "stdexcept"
 #include "typeinfo"
 #include <vector>
-#include <math.h>
 #include "pythread.h"
 #include <stdlib.h>
 #include "pystate.h"
@@ -1330,8 +1330,8 @@ typedef npy_clongdouble __pyx_t_5numpy_clongdouble_t;
  */
 typedef npy_cdouble __pyx_t_5numpy_complex_t;
 
-/* "triangle_hash.pyx":9
- * from libc.math cimport floor, ceil
+/* "triangle_hash.pyx":11
+ * 
  * 
  * cdef class TriangleHash:             # <<<<<<<<<<<<<<
  *     cdef vector[vector[int]] spatial_hash
@@ -1423,8 +1423,8 @@ struct __pyx_memoryviewslice_obj {
 
 
 
-/* "triangle_hash.pyx":9
- * from libc.math cimport floor, ceil
+/* "triangle_hash.pyx":11
+ * 
  * 
  * cdef class TriangleHash:             # <<<<<<<<<<<<<<
  *     cdef vector[vector[int]] spatial_hash
@@ -2279,6 +2279,10 @@ static PyObject *__pyx_memoryview_assign_item_from_object(struct __pyx_memoryvie
 static PyObject *__pyx_memoryviewslice_convert_item_to_object(struct __pyx_memoryviewslice_obj *__pyx_v_self, char *__pyx_v_itemp); /* proto*/
 static PyObject *__pyx_memoryviewslice_assign_item_from_object(struct __pyx_memoryviewslice_obj *__pyx_v_self, char *__pyx_v_itemp, PyObject *__pyx_v_value); /* proto*/
 
+/* Module declarations from 'cython.view' */
+
+/* Module declarations from 'cython' */
+
 /* Module declarations from 'cpython.buffer' */
 
 /* Module declarations from 'libc.string' */
@@ -2317,13 +2321,9 @@ static PyTypeObject *__pyx_ptype_5numpy_flexible = 0;
 static PyTypeObject *__pyx_ptype_5numpy_character = 0;
 static PyTypeObject *__pyx_ptype_5numpy_ufunc = 0;
 
-/* Module declarations from 'cython.view' */
-
-/* Module declarations from 'cython' */
+/* Module declarations from 'libc.math' */
 
 /* Module declarations from 'libcpp.vector' */
-
-/* Module declarations from 'libc.math' */
 
 /* Module declarations from 'triangle_hash' */
 static PyTypeObject *__pyx_ptype_13triangle_hash_TriangleHash = 0;
@@ -2667,7 +2667,7 @@ static PyObject *__pyx_tuple__28;
 static PyObject *__pyx_codeobj__29;
 /* Late includes */
 
-/* "triangle_hash.pyx":13
+/* "triangle_hash.pyx":15
  *     cdef int resolution
  * 
  *     def __cinit__(self, double[:, :, :] triangles, int resolution):             # <<<<<<<<<<<<<<
@@ -2709,11 +2709,11 @@ static int __pyx_pw_13triangle_hash_12TriangleHash_1__cinit__(PyObject *__pyx_v_
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_resolution)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 2, 2, 1); __PYX_ERR(0, 13, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 2, 2, 1); __PYX_ERR(0, 15, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(0, 13, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__cinit__") < 0)) __PYX_ERR(0, 15, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 2) {
       goto __pyx_L5_argtuple_error;
@@ -2721,12 +2721,12 @@ static int __pyx_pw_13triangle_hash_12TriangleHash_1__cinit__(PyObject *__pyx_v_
       values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
       values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
     }
-    __pyx_v_triangles = __Pyx_PyObject_to_MemoryviewSlice_dsdsds_double(values[0], PyBUF_WRITABLE); if (unlikely(!__pyx_v_triangles.memview)) __PYX_ERR(0, 13, __pyx_L3_error)
-    __pyx_v_resolution = __Pyx_PyInt_As_int(values[1]); if (unlikely((__pyx_v_resolution == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 13, __pyx_L3_error)
+    __pyx_v_triangles = __Pyx_PyObject_to_MemoryviewSlice_dsdsds_double(values[0], PyBUF_WRITABLE); if (unlikely(!__pyx_v_triangles.memview)) __PYX_ERR(0, 15, __pyx_L3_error)
+    __pyx_v_resolution = __Pyx_PyInt_As_int(values[1]); if (unlikely((__pyx_v_resolution == (int)-1) && PyErr_Occurred())) __PYX_ERR(0, 15, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 13, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__cinit__", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 15, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("triangle_hash.TriangleHash.__cinit__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -2747,7 +2747,7 @@ static int __pyx_pf_13triangle_hash_12TriangleHash___cinit__(struct __pyx_obj_13
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("__cinit__", 0);
 
-  /* "triangle_hash.pyx":14
+  /* "triangle_hash.pyx":16
  * 
  *     def __cinit__(self, double[:, :, :] triangles, int resolution):
  *         self.spatial_hash.resize(resolution * resolution)             # <<<<<<<<<<<<<<
@@ -2758,10 +2758,10 @@ static int __pyx_pf_13triangle_hash_12TriangleHash___cinit__(struct __pyx_obj_13
     __pyx_v_self->spatial_hash.resize((__pyx_v_resolution * __pyx_v_resolution));
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(0, 14, __pyx_L1_error)
+    __PYX_ERR(0, 16, __pyx_L1_error)
   }
 
-  /* "triangle_hash.pyx":15
+  /* "triangle_hash.pyx":17
  *     def __cinit__(self, double[:, :, :] triangles, int resolution):
  *         self.spatial_hash.resize(resolution * resolution)
  *         self.resolution = resolution             # <<<<<<<<<<<<<<
@@ -2770,7 +2770,7 @@ static int __pyx_pf_13triangle_hash_12TriangleHash___cinit__(struct __pyx_obj_13
  */
   __pyx_v_self->resolution = __pyx_v_resolution;
 
-  /* "triangle_hash.pyx":16
+  /* "triangle_hash.pyx":18
  *         self.spatial_hash.resize(resolution * resolution)
  *         self.resolution = resolution
  *         self._build_hash(triangles)             # <<<<<<<<<<<<<<
@@ -2779,7 +2779,7 @@ static int __pyx_pf_13triangle_hash_12TriangleHash___cinit__(struct __pyx_obj_13
  */
   (void)(((struct __pyx_vtabstruct_13triangle_hash_TriangleHash *)__pyx_v_self->__pyx_vtab)->_build_hash(__pyx_v_self, __pyx_v_triangles));
 
-  /* "triangle_hash.pyx":13
+  /* "triangle_hash.pyx":15
  *     cdef int resolution
  * 
  *     def __cinit__(self, double[:, :, :] triangles, int resolution):             # <<<<<<<<<<<<<<
@@ -2799,7 +2799,7 @@ static int __pyx_pf_13triangle_hash_12TriangleHash___cinit__(struct __pyx_obj_13
   return __pyx_r;
 }
 
-/* "triangle_hash.pyx":20
+/* "triangle_hash.pyx":22
  *     @cython.boundscheck(False)  # Deactivate bounds checking
  *     @cython.wraparound(False)   # Deactivate negative indexing.
  *     cdef int _build_hash(self, double[:, :, :] triangles):             # <<<<<<<<<<<<<<
@@ -2839,7 +2839,7 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("_build_hash", 0);
 
-  /* "triangle_hash.pyx":21
+  /* "triangle_hash.pyx":23
  *     @cython.wraparound(False)   # Deactivate negative indexing.
  *     cdef int _build_hash(self, double[:, :, :] triangles):
  *         assert(triangles.shape[1] == 3)             # <<<<<<<<<<<<<<
@@ -2850,12 +2850,12 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
   if (unlikely(!Py_OptimizeFlag)) {
     if (unlikely(!(((__pyx_v_triangles.shape[1]) == 3) != 0))) {
       PyErr_SetNone(PyExc_AssertionError);
-      __PYX_ERR(0, 21, __pyx_L1_error)
+      __PYX_ERR(0, 23, __pyx_L1_error)
     }
   }
   #endif
 
-  /* "triangle_hash.pyx":22
+  /* "triangle_hash.pyx":24
  *     cdef int _build_hash(self, double[:, :, :] triangles):
  *         assert(triangles.shape[1] == 3)
  *         assert(triangles.shape[2] == 2)             # <<<<<<<<<<<<<<
@@ -2866,12 +2866,12 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
   if (unlikely(!Py_OptimizeFlag)) {
     if (unlikely(!(((__pyx_v_triangles.shape[2]) == 2) != 0))) {
       PyErr_SetNone(PyExc_AssertionError);
-      __PYX_ERR(0, 22, __pyx_L1_error)
+      __PYX_ERR(0, 24, __pyx_L1_error)
     }
   }
   #endif
 
-  /* "triangle_hash.pyx":24
+  /* "triangle_hash.pyx":26
  *         assert(triangles.shape[2] == 2)
  * 
  *         cdef int n_tri = triangles.shape[0]             # <<<<<<<<<<<<<<
@@ -2880,7 +2880,7 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
  */
   __pyx_v_n_tri = (__pyx_v_triangles.shape[0]);
 
-  /* "triangle_hash.pyx":31
+  /* "triangle_hash.pyx":33
  *         cdef int spatial_idx
  * 
  *         for i_tri in range(n_tri):             # <<<<<<<<<<<<<<
@@ -2892,7 +2892,7 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
   for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
     __pyx_v_i_tri = __pyx_t_3;
 
-    /* "triangle_hash.pyx":33
+    /* "triangle_hash.pyx":35
  *         for i_tri in range(n_tri):
  *             # Compute bounding box
  *             for j in range(2):             # <<<<<<<<<<<<<<
@@ -2902,7 +2902,7 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
     for (__pyx_t_4 = 0; __pyx_t_4 < 2; __pyx_t_4+=1) {
       __pyx_v_j = __pyx_t_4;
 
-      /* "triangle_hash.pyx":35
+      /* "triangle_hash.pyx":37
  *             for j in range(2):
  *                 bbox_min[j] = <int> min(
  *                     triangles[i_tri, 0, j], triangles[i_tri, 1, j], triangles[i_tri, 2, j]             # <<<<<<<<<<<<<<
@@ -2933,7 +2933,7 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
         __pyx_t_11 = __pyx_t_10;
       }
 
-      /* "triangle_hash.pyx":34
+      /* "triangle_hash.pyx":36
  *             # Compute bounding box
  *             for j in range(2):
  *                 bbox_min[j] = <int> min(             # <<<<<<<<<<<<<<
@@ -2942,7 +2942,7 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
  */
       (__pyx_v_bbox_min[__pyx_v_j]) = ((int)__pyx_t_11);
 
-      /* "triangle_hash.pyx":38
+      /* "triangle_hash.pyx":40
  *                 )
  *                 bbox_max[j] = <int> max(
  *                     triangles[i_tri, 0, j], triangles[i_tri, 1, j], triangles[i_tri, 2, j]             # <<<<<<<<<<<<<<
@@ -2973,7 +2973,7 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
         __pyx_t_10 = __pyx_t_9;
       }
 
-      /* "triangle_hash.pyx":37
+      /* "triangle_hash.pyx":39
  *                     triangles[i_tri, 0, j], triangles[i_tri, 1, j], triangles[i_tri, 2, j]
  *                 )
  *                 bbox_max[j] = <int> max(             # <<<<<<<<<<<<<<
@@ -2982,7 +2982,7 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
  */
       (__pyx_v_bbox_max[__pyx_v_j]) = ((int)__pyx_t_10);
 
-      /* "triangle_hash.pyx":40
+      /* "triangle_hash.pyx":42
  *                     triangles[i_tri, 0, j], triangles[i_tri, 1, j], triangles[i_tri, 2, j]
  *                 )
  *                 bbox_min[j] = min(max(bbox_min[j], 0), self.resolution - 1)             # <<<<<<<<<<<<<<
@@ -3005,7 +3005,7 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
       }
       (__pyx_v_bbox_min[__pyx_v_j]) = __pyx_t_15;
 
-      /* "triangle_hash.pyx":41
+      /* "triangle_hash.pyx":43
  *                 )
  *                 bbox_min[j] = min(max(bbox_min[j], 0), self.resolution - 1)
  *                 bbox_max[j] = min(max(bbox_max[j], 0), self.resolution - 1)             # <<<<<<<<<<<<<<
@@ -3029,7 +3029,7 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
       (__pyx_v_bbox_max[__pyx_v_j]) = __pyx_t_13;
     }
 
-    /* "triangle_hash.pyx":44
+    /* "triangle_hash.pyx":46
  * 
  *             # Find all voxels where bounding box intersects
  *             for x in range(bbox_min[0], bbox_max[0] + 1):             # <<<<<<<<<<<<<<
@@ -3041,7 +3041,7 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
     for (__pyx_t_4 = (__pyx_v_bbox_min[0]); __pyx_t_4 < __pyx_t_15; __pyx_t_4+=1) {
       __pyx_v_x = __pyx_t_4;
 
-      /* "triangle_hash.pyx":45
+      /* "triangle_hash.pyx":47
  *             # Find all voxels where bounding box intersects
  *             for x in range(bbox_min[0], bbox_max[0] + 1):
  *                 for y in range(bbox_min[1], bbox_max[1] + 1):             # <<<<<<<<<<<<<<
@@ -3053,7 +3053,7 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
       for (__pyx_t_14 = (__pyx_v_bbox_min[1]); __pyx_t_14 < __pyx_t_16; __pyx_t_14+=1) {
         __pyx_v_y = __pyx_t_14;
 
-        /* "triangle_hash.pyx":46
+        /* "triangle_hash.pyx":48
  *             for x in range(bbox_min[0], bbox_max[0] + 1):
  *                 for y in range(bbox_min[1], bbox_max[1] + 1):
  *                     spatial_idx = self.resolution * x + y             # <<<<<<<<<<<<<<
@@ -3062,7 +3062,7 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
  */
         __pyx_v_spatial_idx = ((__pyx_v_self->resolution * __pyx_v_x) + __pyx_v_y);
 
-        /* "triangle_hash.pyx":47
+        /* "triangle_hash.pyx":49
  *                 for y in range(bbox_min[1], bbox_max[1] + 1):
  *                     spatial_idx = self.resolution * x + y
  *                     self.spatial_hash[spatial_idx].push_back(i_tri)             # <<<<<<<<<<<<<<
@@ -3073,13 +3073,13 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
           (__pyx_v_self->spatial_hash[__pyx_v_spatial_idx]).push_back(__pyx_v_i_tri);
         } catch(...) {
           __Pyx_CppExn2PyErr();
-          __PYX_ERR(0, 47, __pyx_L1_error)
+          __PYX_ERR(0, 49, __pyx_L1_error)
         }
       }
     }
   }
 
-  /* "triangle_hash.pyx":20
+  /* "triangle_hash.pyx":22
  *     @cython.boundscheck(False)  # Deactivate bounds checking
  *     @cython.wraparound(False)   # Deactivate negative indexing.
  *     cdef int _build_hash(self, double[:, :, :] triangles):             # <<<<<<<<<<<<<<
@@ -3098,7 +3098,7 @@ static int __pyx_f_13triangle_hash_12TriangleHash__build_hash(struct __pyx_obj_1
   return __pyx_r;
 }
 
-/* "triangle_hash.pyx":51
+/* "triangle_hash.pyx":53
  *     @cython.boundscheck(False)  # Deactivate bounds checking
  *     @cython.wraparound(False)   # Deactivate negative indexing.
  *     cpdef query(self, double[:, :] points):             # <<<<<<<<<<<<<<
@@ -3155,12 +3155,12 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
     if (unlikely(!__Pyx_object_dict_version_matches(((PyObject *)__pyx_v_self), __pyx_tp_dict_version, __pyx_obj_dict_version))) {
       PY_UINT64_T __pyx_type_dict_guard = __Pyx_get_tp_dict_version(((PyObject *)__pyx_v_self));
       #endif
-      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_query); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 51, __pyx_L1_error)
+      __pyx_t_1 = __Pyx_PyObject_GetAttrStr(((PyObject *)__pyx_v_self), __pyx_n_s_query); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 53, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
       if (!PyCFunction_Check(__pyx_t_1) || (PyCFunction_GET_FUNCTION(__pyx_t_1) != (PyCFunction)(void*)__pyx_pw_13triangle_hash_12TriangleHash_3query)) {
         __Pyx_XDECREF(__pyx_r);
-        if (unlikely(!__pyx_v_points.memview)) { __Pyx_RaiseUnboundLocalError("points"); __PYX_ERR(0, 51, __pyx_L1_error) }
-        __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_v_points, 2, (PyObject *(*)(char *)) __pyx_memview_get_double, (int (*)(char *, PyObject *)) __pyx_memview_set_double, 0);; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 51, __pyx_L1_error)
+        if (unlikely(!__pyx_v_points.memview)) { __Pyx_RaiseUnboundLocalError("points"); __PYX_ERR(0, 53, __pyx_L1_error) }
+        __pyx_t_3 = __pyx_memoryview_fromslice(__pyx_v_points, 2, (PyObject *(*)(char *)) __pyx_memview_get_double, (int (*)(char *, PyObject *)) __pyx_memview_set_double, 0);; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 53, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_3);
         __Pyx_INCREF(__pyx_t_1);
         __pyx_t_4 = __pyx_t_1; __pyx_t_5 = NULL;
@@ -3176,7 +3176,7 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
         __pyx_t_2 = (__pyx_t_5) ? __Pyx_PyObject_Call2Args(__pyx_t_4, __pyx_t_5, __pyx_t_3) : __Pyx_PyObject_CallOneArg(__pyx_t_4, __pyx_t_3);
         __Pyx_XDECREF(__pyx_t_5); __pyx_t_5 = 0;
         __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 51, __pyx_L1_error)
+        if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 53, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
         __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
         __pyx_r = __pyx_t_2;
@@ -3197,7 +3197,7 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
     #endif
   }
 
-  /* "triangle_hash.pyx":52
+  /* "triangle_hash.pyx":54
  *     @cython.wraparound(False)   # Deactivate negative indexing.
  *     cpdef query(self, double[:, :] points):
  *         assert(points.shape[1] == 2)             # <<<<<<<<<<<<<<
@@ -3208,12 +3208,12 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
   if (unlikely(!Py_OptimizeFlag)) {
     if (unlikely(!(((__pyx_v_points.shape[1]) == 2) != 0))) {
       PyErr_SetNone(PyExc_AssertionError);
-      __PYX_ERR(0, 52, __pyx_L1_error)
+      __PYX_ERR(0, 54, __pyx_L1_error)
     }
   }
   #endif
 
-  /* "triangle_hash.pyx":53
+  /* "triangle_hash.pyx":55
  *     cpdef query(self, double[:, :] points):
  *         assert(points.shape[1] == 2)
  *         cdef int n_points = points.shape[0]             # <<<<<<<<<<<<<<
@@ -3222,7 +3222,7 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
  */
   __pyx_v_n_points = (__pyx_v_points.shape[0]);
 
-  /* "triangle_hash.pyx":63
+  /* "triangle_hash.pyx":65
  *         cdef int spatial_idx
  * 
  *         for i_point in range(n_points):             # <<<<<<<<<<<<<<
@@ -3234,7 +3234,7 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
   for (__pyx_t_8 = 0; __pyx_t_8 < __pyx_t_7; __pyx_t_8+=1) {
     __pyx_v_i_point = __pyx_t_8;
 
-    /* "triangle_hash.pyx":64
+    /* "triangle_hash.pyx":66
  * 
  *         for i_point in range(n_points):
  *             x = int(points[i_point, 0])             # <<<<<<<<<<<<<<
@@ -3245,7 +3245,7 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
     __pyx_t_10 = 0;
     __pyx_v_x = ((int)(*((double *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_points.data + __pyx_t_9 * __pyx_v_points.strides[0]) ) + __pyx_t_10 * __pyx_v_points.strides[1]) ))));
 
-    /* "triangle_hash.pyx":65
+    /* "triangle_hash.pyx":67
  *         for i_point in range(n_points):
  *             x = int(points[i_point, 0])
  *             y = int(points[i_point, 1])             # <<<<<<<<<<<<<<
@@ -3256,7 +3256,7 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
     __pyx_t_9 = 1;
     __pyx_v_y = ((int)(*((double *) ( /* dim=1 */ (( /* dim=0 */ (__pyx_v_points.data + __pyx_t_10 * __pyx_v_points.strides[0]) ) + __pyx_t_9 * __pyx_v_points.strides[1]) ))));
 
-    /* "triangle_hash.pyx":66
+    /* "triangle_hash.pyx":68
  *             x = int(points[i_point, 0])
  *             y = int(points[i_point, 1])
  *             if not (0 <= x < self.resolution and 0 <= y < self.resolution):             # <<<<<<<<<<<<<<
@@ -3283,7 +3283,7 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
     __pyx_t_12 = ((!__pyx_t_11) != 0);
     if (__pyx_t_12) {
 
-      /* "triangle_hash.pyx":67
+      /* "triangle_hash.pyx":69
  *             y = int(points[i_point, 1])
  *             if not (0 <= x < self.resolution and 0 <= y < self.resolution):
  *                 continue             # <<<<<<<<<<<<<<
@@ -3292,7 +3292,7 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
  */
       goto __pyx_L3_continue;
 
-      /* "triangle_hash.pyx":66
+      /* "triangle_hash.pyx":68
  *             x = int(points[i_point, 0])
  *             y = int(points[i_point, 1])
  *             if not (0 <= x < self.resolution and 0 <= y < self.resolution):             # <<<<<<<<<<<<<<
@@ -3301,7 +3301,7 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
  */
     }
 
-    /* "triangle_hash.pyx":69
+    /* "triangle_hash.pyx":71
  *                 continue
  * 
  *             spatial_idx = self.resolution * x +  y             # <<<<<<<<<<<<<<
@@ -3310,7 +3310,7 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
  */
     __pyx_v_spatial_idx = ((__pyx_v_self->resolution * __pyx_v_x) + __pyx_v_y);
 
-    /* "triangle_hash.pyx":70
+    /* "triangle_hash.pyx":72
  * 
  *             spatial_idx = self.resolution * x +  y
  *             for i_tri in self.spatial_hash[spatial_idx]:             # <<<<<<<<<<<<<<
@@ -3325,7 +3325,7 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
       ++__pyx_t_14;
       __pyx_v_i_tri = __pyx_t_16;
 
-      /* "triangle_hash.pyx":71
+      /* "triangle_hash.pyx":73
  *             spatial_idx = self.resolution * x +  y
  *             for i_tri in self.spatial_hash[spatial_idx]:
  *                 points_indices.push_back(i_point)             # <<<<<<<<<<<<<<
@@ -3336,10 +3336,10 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
         __pyx_v_points_indices.push_back(__pyx_v_i_point);
       } catch(...) {
         __Pyx_CppExn2PyErr();
-        __PYX_ERR(0, 71, __pyx_L1_error)
+        __PYX_ERR(0, 73, __pyx_L1_error)
       }
 
-      /* "triangle_hash.pyx":72
+      /* "triangle_hash.pyx":74
  *             for i_tri in self.spatial_hash[spatial_idx]:
  *                 points_indices.push_back(i_point)
  *                 tri_indices.push_back(i_tri)             # <<<<<<<<<<<<<<
@@ -3350,10 +3350,10 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
         __pyx_v_tri_indices.push_back(__pyx_v_i_tri);
       } catch(...) {
         __Pyx_CppExn2PyErr();
-        __PYX_ERR(0, 72, __pyx_L1_error)
+        __PYX_ERR(0, 74, __pyx_L1_error)
       }
 
-      /* "triangle_hash.pyx":70
+      /* "triangle_hash.pyx":72
  * 
  *             spatial_idx = self.resolution * x +  y
  *             for i_tri in self.spatial_hash[spatial_idx]:             # <<<<<<<<<<<<<<
@@ -3364,35 +3364,35 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
     __pyx_L3_continue:;
   }
 
-  /* "triangle_hash.pyx":74
+  /* "triangle_hash.pyx":76
  *                 tri_indices.push_back(i_tri)
  * 
  *         points_indices_np = np.zeros(points_indices.size(), dtype=np.int32)             # <<<<<<<<<<<<<<
  *         tri_indices_np = np.zeros(tri_indices.size(), dtype=np.int32)
  * 
  */
-  __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_n_s_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 74, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_n_s_np); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 76, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_zeros); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 74, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_zeros); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 76, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyInt_FromSize_t(__pyx_v_points_indices.size()); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 74, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_FromSize_t(__pyx_v_points_indices.size()); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 76, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 74, __pyx_L1_error)
+  __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 76, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_GIVEREF(__pyx_t_1);
   PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_1);
   __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 74, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 76, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_np); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 74, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_n_s_np); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 76, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
-  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_int32); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 74, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_int32); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 76, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_5) < 0) __PYX_ERR(0, 74, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_5) < 0) __PYX_ERR(0, 76, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_4, __pyx_t_1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 74, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_4, __pyx_t_1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 76, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
@@ -3400,35 +3400,35 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
   __pyx_v_points_indices_np = __pyx_t_5;
   __pyx_t_5 = 0;
 
-  /* "triangle_hash.pyx":75
+  /* "triangle_hash.pyx":77
  * 
  *         points_indices_np = np.zeros(points_indices.size(), dtype=np.int32)
  *         tri_indices_np = np.zeros(tri_indices.size(), dtype=np.int32)             # <<<<<<<<<<<<<<
  * 
  *         cdef int[:] points_indices_view = points_indices_np
  */
-  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_n_s_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 75, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_n_s_np); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_n_s_zeros); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 75, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_5, __pyx_n_s_zeros); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_PyInt_FromSize_t(__pyx_v_tri_indices.size()); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 75, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyInt_FromSize_t(__pyx_v_tri_indices.size()); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 75, __pyx_L1_error)
+  __pyx_t_4 = PyTuple_New(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_GIVEREF(__pyx_t_5);
   PyTuple_SET_ITEM(__pyx_t_4, 0, __pyx_t_5);
   __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 75, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_np); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 75, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_np); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_int32); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 75, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_int32); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_dtype, __pyx_t_3) < 0) __PYX_ERR(0, 75, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_5, __pyx_n_s_dtype, __pyx_t_3) < 0) __PYX_ERR(0, 77, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_4, __pyx_t_5); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 75, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_Call(__pyx_t_1, __pyx_t_4, __pyx_t_5); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 77, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
@@ -3436,31 +3436,31 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
   __pyx_v_tri_indices_np = __pyx_t_3;
   __pyx_t_3 = 0;
 
-  /* "triangle_hash.pyx":77
+  /* "triangle_hash.pyx":79
  *         tri_indices_np = np.zeros(tri_indices.size(), dtype=np.int32)
  * 
  *         cdef int[:] points_indices_view = points_indices_np             # <<<<<<<<<<<<<<
  *         cdef int[:] tri_indices_view = tri_indices_np
  * 
  */
-  __pyx_t_17 = __Pyx_PyObject_to_MemoryviewSlice_ds_int(__pyx_v_points_indices_np, PyBUF_WRITABLE); if (unlikely(!__pyx_t_17.memview)) __PYX_ERR(0, 77, __pyx_L1_error)
+  __pyx_t_17 = __Pyx_PyObject_to_MemoryviewSlice_ds_int(__pyx_v_points_indices_np, PyBUF_WRITABLE); if (unlikely(!__pyx_t_17.memview)) __PYX_ERR(0, 79, __pyx_L1_error)
   __pyx_v_points_indices_view = __pyx_t_17;
   __pyx_t_17.memview = NULL;
   __pyx_t_17.data = NULL;
 
-  /* "triangle_hash.pyx":78
+  /* "triangle_hash.pyx":80
  * 
  *         cdef int[:] points_indices_view = points_indices_np
  *         cdef int[:] tri_indices_view = tri_indices_np             # <<<<<<<<<<<<<<
  * 
  *         for k in range(points_indices.size()):
  */
-  __pyx_t_17 = __Pyx_PyObject_to_MemoryviewSlice_ds_int(__pyx_v_tri_indices_np, PyBUF_WRITABLE); if (unlikely(!__pyx_t_17.memview)) __PYX_ERR(0, 78, __pyx_L1_error)
+  __pyx_t_17 = __Pyx_PyObject_to_MemoryviewSlice_ds_int(__pyx_v_tri_indices_np, PyBUF_WRITABLE); if (unlikely(!__pyx_t_17.memview)) __PYX_ERR(0, 80, __pyx_L1_error)
   __pyx_v_tri_indices_view = __pyx_t_17;
   __pyx_t_17.memview = NULL;
   __pyx_t_17.data = NULL;
 
-  /* "triangle_hash.pyx":80
+  /* "triangle_hash.pyx":82
  *         cdef int[:] tri_indices_view = tri_indices_np
  * 
  *         for k in range(points_indices.size()):             # <<<<<<<<<<<<<<
@@ -3472,7 +3472,7 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
   for (__pyx_t_6 = 0; __pyx_t_6 < __pyx_t_19; __pyx_t_6+=1) {
     __pyx_v_k = __pyx_t_6;
 
-    /* "triangle_hash.pyx":81
+    /* "triangle_hash.pyx":83
  * 
  *         for k in range(points_indices.size()):
  *             points_indices_view[k] = points_indices[k]             # <<<<<<<<<<<<<<
@@ -3483,7 +3483,7 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
     *((int *) ( /* dim=0 */ (__pyx_v_points_indices_view.data + __pyx_t_9 * __pyx_v_points_indices_view.strides[0]) )) = (__pyx_v_points_indices[__pyx_v_k]);
   }
 
-  /* "triangle_hash.pyx":83
+  /* "triangle_hash.pyx":85
  *             points_indices_view[k] = points_indices[k]
  * 
  *         for k in range(tri_indices.size()):             # <<<<<<<<<<<<<<
@@ -3495,7 +3495,7 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
   for (__pyx_t_6 = 0; __pyx_t_6 < __pyx_t_19; __pyx_t_6+=1) {
     __pyx_v_k = __pyx_t_6;
 
-    /* "triangle_hash.pyx":84
+    /* "triangle_hash.pyx":86
  * 
  *         for k in range(tri_indices.size()):
  *             tri_indices_view[k] = tri_indices[k]             # <<<<<<<<<<<<<<
@@ -3506,13 +3506,13 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
     *((int *) ( /* dim=0 */ (__pyx_v_tri_indices_view.data + __pyx_t_9 * __pyx_v_tri_indices_view.strides[0]) )) = (__pyx_v_tri_indices[__pyx_v_k]);
   }
 
-  /* "triangle_hash.pyx":86
+  /* "triangle_hash.pyx":88
  *             tri_indices_view[k] = tri_indices[k]
  * 
  *         return points_indices_np, tri_indices_np             # <<<<<<<<<<<<<<
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_3 = PyTuple_New(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 86, __pyx_L1_error)
+  __pyx_t_3 = PyTuple_New(2); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 88, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_INCREF(__pyx_v_points_indices_np);
   __Pyx_GIVEREF(__pyx_v_points_indices_np);
@@ -3524,7 +3524,7 @@ static PyObject *__pyx_f_13triangle_hash_12TriangleHash_query(struct __pyx_obj_1
   __pyx_t_3 = 0;
   goto __pyx_L0;
 
-  /* "triangle_hash.pyx":51
+  /* "triangle_hash.pyx":53
  *     @cython.boundscheck(False)  # Deactivate bounds checking
  *     @cython.wraparound(False)   # Deactivate negative indexing.
  *     cpdef query(self, double[:, :] points):             # <<<<<<<<<<<<<<
@@ -3563,7 +3563,7 @@ static PyObject *__pyx_pw_13triangle_hash_12TriangleHash_3query(PyObject *__pyx_
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("query (wrapper)", 0);
   assert(__pyx_arg_points); {
-    __pyx_v_points = __Pyx_PyObject_to_MemoryviewSlice_dsds_double(__pyx_arg_points, PyBUF_WRITABLE); if (unlikely(!__pyx_v_points.memview)) __PYX_ERR(0, 51, __pyx_L3_error)
+    __pyx_v_points = __Pyx_PyObject_to_MemoryviewSlice_dsds_double(__pyx_arg_points, PyBUF_WRITABLE); if (unlikely(!__pyx_v_points.memview)) __PYX_ERR(0, 53, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L3_error:;
@@ -3587,8 +3587,8 @@ static PyObject *__pyx_pf_13triangle_hash_12TriangleHash_2query(struct __pyx_obj
   int __pyx_clineno = 0;
   __Pyx_RefNannySetupContext("query", 0);
   __Pyx_XDECREF(__pyx_r);
-  if (unlikely(!__pyx_v_points.memview)) { __Pyx_RaiseUnboundLocalError("points"); __PYX_ERR(0, 51, __pyx_L1_error) }
-  __pyx_t_1 = __pyx_f_13triangle_hash_12TriangleHash_query(__pyx_v_self, __pyx_v_points, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 51, __pyx_L1_error)
+  if (unlikely(!__pyx_v_points.memview)) { __Pyx_RaiseUnboundLocalError("points"); __PYX_ERR(0, 53, __pyx_L1_error) }
+  __pyx_t_1 = __pyx_f_13triangle_hash_12TriangleHash_query(__pyx_v_self, __pyx_v_points, 1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 53, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
@@ -18738,7 +18738,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {0, 0, 0, 0, 0, 0, 0}
 };
 static CYTHON_SMALL_CODE int __Pyx_InitCachedBuiltins(void) {
-  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 31, __pyx_L1_error)
+  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 33, __pyx_L1_error)
   __pyx_builtin_TypeError = __Pyx_GetBuiltinName(__pyx_n_s_TypeError); if (!__pyx_builtin_TypeError) __PYX_ERR(1, 2, __pyx_L1_error)
   __pyx_builtin_ImportError = __Pyx_GetBuiltinName(__pyx_n_s_ImportError); if (!__pyx_builtin_ImportError) __PYX_ERR(2, 945, __pyx_L1_error)
   __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) __PYX_ERR(1, 133, __pyx_L1_error)
@@ -19118,16 +19118,16 @@ static int __Pyx_modinit_type_init_code(void) {
   __pyx_vtabptr_13triangle_hash_TriangleHash = &__pyx_vtable_13triangle_hash_TriangleHash;
   __pyx_vtable_13triangle_hash_TriangleHash._build_hash = (int (*)(struct __pyx_obj_13triangle_hash_TriangleHash *, __Pyx_memviewslice))__pyx_f_13triangle_hash_12TriangleHash__build_hash;
   __pyx_vtable_13triangle_hash_TriangleHash.query = (PyObject *(*)(struct __pyx_obj_13triangle_hash_TriangleHash *, __Pyx_memviewslice, int __pyx_skip_dispatch))__pyx_f_13triangle_hash_12TriangleHash_query;
-  if (PyType_Ready(&__pyx_type_13triangle_hash_TriangleHash) < 0) __PYX_ERR(0, 9, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_13triangle_hash_TriangleHash) < 0) __PYX_ERR(0, 11, __pyx_L1_error)
   #if PY_VERSION_HEX < 0x030800B1
   __pyx_type_13triangle_hash_TriangleHash.tp_print = 0;
   #endif
   if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_type_13triangle_hash_TriangleHash.tp_dictoffset && __pyx_type_13triangle_hash_TriangleHash.tp_getattro == PyObject_GenericGetAttr)) {
     __pyx_type_13triangle_hash_TriangleHash.tp_getattro = __Pyx_PyObject_GenericGetAttr;
   }
-  if (__Pyx_SetVtable(__pyx_type_13triangle_hash_TriangleHash.tp_dict, __pyx_vtabptr_13triangle_hash_TriangleHash) < 0) __PYX_ERR(0, 9, __pyx_L1_error)
-  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_TriangleHash, (PyObject *)&__pyx_type_13triangle_hash_TriangleHash) < 0) __PYX_ERR(0, 9, __pyx_L1_error)
-  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_13triangle_hash_TriangleHash) < 0) __PYX_ERR(0, 9, __pyx_L1_error)
+  if (__Pyx_SetVtable(__pyx_type_13triangle_hash_TriangleHash.tp_dict, __pyx_vtabptr_13triangle_hash_TriangleHash) < 0) __PYX_ERR(0, 11, __pyx_L1_error)
+  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_TriangleHash, (PyObject *)&__pyx_type_13triangle_hash_TriangleHash) < 0) __PYX_ERR(0, 11, __pyx_L1_error)
+  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_13triangle_hash_TriangleHash) < 0) __PYX_ERR(0, 11, __pyx_L1_error)
   __pyx_ptype_13triangle_hash_TriangleHash = &__pyx_type_13triangle_hash_TriangleHash;
   __pyx_vtabptr_array = &__pyx_vtable_array;
   __pyx_vtable_array.get_memview = (PyObject *(*)(struct __pyx_array_obj *))__pyx_array_get_memview;
@@ -19468,7 +19468,7 @@ if (!__Pyx_RefNanny) {
  * 
  * # distutils: language=c++
  * import numpy as np             # <<<<<<<<<<<<<<
- * cimport numpy as np
+ * 
  * cimport cython
  */
   __pyx_t_1 = __Pyx_Import(__pyx_n_s_numpy, 0, -1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 3, __pyx_L1_error)
@@ -19480,7 +19480,7 @@ if (!__Pyx_RefNanny) {
  * 
  * # distutils: language=c++             # <<<<<<<<<<<<<<
  * import numpy as np
- * cimport numpy as np
+ * 
  */
   __pyx_t_1 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 2, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);

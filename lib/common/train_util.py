@@ -14,11 +14,12 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
+import pytorch_lightning as pl
 import torch
+from termcolor import colored
+
 from ..dataset.mesh_util import *
 from ..net.geometry import orthogonal
-from termcolor import colored
-import pytorch_lightning as pl
 
 
 class Format:
@@ -30,50 +31,23 @@ def init_loss():
 
     losses = {
     # Cloth: chamfer distance
-        "cloth": {
-            "weight": 1e3,
-            "value": 0.0
-        },
+        "cloth": {"weight": 1e3, "value": 0.0},
     # Stiffness: [RT]_v1 - [RT]_v2 (v1-edge-v2)
-        "stiff": {
-            "weight": 1e5,
-            "value": 0.0
-        },
+        "stiff": {"weight": 1e5, "value": 0.0},
     # Cloth: det(R) = 1
-        "rigid": {
-            "weight": 1e5,
-            "value": 0.0
-        },
+        "rigid": {"weight": 1e5, "value": 0.0},
     # Cloth: edge length
-        "edge": {
-            "weight": 0,
-            "value": 0.0
-        },
+        "edge": {"weight": 0, "value": 0.0},
     # Cloth: normal consistency
-        "nc": {
-            "weight": 0,
-            "value": 0.0
-        },
+        "nc": {"weight": 0, "value": 0.0},
     # Cloth: laplacian smoonth
-        "lapla": {
-            "weight": 1e2,
-            "value": 0.0
-        },
+        "lapla": {"weight": 1e2, "value": 0.0},
     # Body: Normal_pred - Normal_smpl
-        "normal": {
-            "weight": 1e0,
-            "value": 0.0
-        },
+        "normal": {"weight": 1e0, "value": 0.0},
     # Body: Silhouette_pred - Silhouette_smpl
-        "silhouette": {
-            "weight": 1e0,
-            "value": 0.0
-        },
+        "silhouette": {"weight": 1e0, "value": 0.0},
     # Joint: reprojected joints difference
-        "joint": {
-            "weight": 5e0,
-            "value": 0.0
-        },
+        "joint": {"weight": 5e0, "value": 0.0},
     }
 
     return losses
@@ -143,9 +117,9 @@ def query_func_IF(batch, netG, points):
 
 
 def batch_mean(res, key):
-    return torch.stack(
-        [x[key] if torch.is_tensor(x[key]) else torch.as_tensor(x[key]) for x in res]
-    ).mean()
+    return torch.stack([
+        x[key] if torch.is_tensor(x[key]) else torch.as_tensor(x[key]) for x in res
+    ]).mean()
 
 
 def accumulate(outputs, rot_num, split):

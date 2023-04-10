@@ -14,36 +14,34 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-from typing import Optional, Dict, Union
+import logging
 import os
 import os.path as osp
 import pickle
+from collections import namedtuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 import torch
 import torch.nn as nn
-from collections import namedtuple
-
-import logging
 
 logging.getLogger("smplx").setLevel(logging.ERROR)
 
-from .lbs import lbs, vertices2landmarks, find_dynamic_lmk_idx_and_bcoords
-
-from .vertex_ids import vertex_ids as VERTEX_IDS
+from .lbs import find_dynamic_lmk_idx_and_bcoords, lbs, vertices2landmarks
 from .utils import (
+    Array,
+    FLAMEOutput,
+    MANOOutput,
+    SMPLHOutput,
+    SMPLOutput,
+    SMPLXOutput,
     Struct,
+    Tensor,
+    find_joint_kin_chain,
     to_np,
     to_tensor,
-    Tensor,
-    Array,
-    SMPLOutput,
-    SMPLHOutput,
-    SMPLXOutput,
-    MANOOutput,
-    FLAMEOutput,
-    find_joint_kin_chain,
 )
+from .vertex_ids import vertex_ids as VERTEX_IDS
 from .vertex_joint_selector import VertexJointSelector
 
 ModelOutput = namedtuple(
@@ -1110,9 +1108,8 @@ class SMPLX(SMPLH):
 
         if create_expression:
             if expression is None:
-                default_expression = torch.zeros(
-                    [batch_size, self.num_expression_coeffs], dtype=dtype
-                )
+                default_expression = torch.zeros([batch_size, self.num_expression_coeffs],
+                                                 dtype=dtype)
             else:
                 default_expression = torch.tensor(expression, dtype=dtype)
             expression_param = nn.Parameter(default_expression, requires_grad=True)
@@ -1337,9 +1334,9 @@ class SMPLX(SMPLH):
             dyn_lmk_faces_idx, dyn_lmk_bary_coords = lmk_idx_and_bcoords
 
             lmk_faces_idx = torch.cat([lmk_faces_idx, dyn_lmk_faces_idx], 1)
-            lmk_bary_coords = torch.cat(
-                [lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords], 1
-            )
+            lmk_bary_coords = torch.cat([
+                lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords
+            ], 1)
 
         landmarks = vertices2landmarks(vertices, self.faces_tensor, lmk_faces_idx, lmk_bary_coords)
 
@@ -1513,9 +1510,9 @@ class SMPLXLayer(SMPLX):
                           dtype=dtype).view(1, 1, 3, 3).expand(batch_size, -1, -1, -1).contiguous()
             )
         if expression is None:
-            expression = torch.zeros(
-                [batch_size, self.num_expression_coeffs], dtype=dtype, device=device
-            )
+            expression = torch.zeros([batch_size, self.num_expression_coeffs],
+                                     dtype=dtype,
+                                     device=device)
         if betas is None:
             betas = torch.zeros([batch_size, self.num_betas], dtype=dtype, device=device)
         if transl is None:
@@ -1564,9 +1561,9 @@ class SMPLXLayer(SMPLX):
             dyn_lmk_faces_idx, dyn_lmk_bary_coords = lmk_idx_and_bcoords
 
             lmk_faces_idx = torch.cat([lmk_faces_idx, dyn_lmk_faces_idx], 1)
-            lmk_bary_coords = torch.cat(
-                [lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords], 1
-            )
+            lmk_bary_coords = torch.cat([
+                lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords
+            ], 1)
 
         landmarks = vertices2landmarks(vertices, self.faces_tensor, lmk_faces_idx, lmk_bary_coords)
 
@@ -2044,9 +2041,8 @@ class FLAME(SMPL):
 
         if create_expression:
             if expression is None:
-                default_expression = torch.zeros(
-                    [batch_size, self.num_expression_coeffs], dtype=dtype
-                )
+                default_expression = torch.zeros([batch_size, self.num_expression_coeffs],
+                                                 dtype=dtype)
             else:
                 default_expression = torch.tensor(expression, dtype=dtype)
             expression_param = nn.Parameter(default_expression, requires_grad=True)
@@ -2202,9 +2198,9 @@ class FLAME(SMPL):
             )
             dyn_lmk_faces_idx, dyn_lmk_bary_coords = lmk_idx_and_bcoords
             lmk_faces_idx = torch.cat([lmk_faces_idx, dyn_lmk_faces_idx], 1)
-            lmk_bary_coords = torch.cat(
-                [lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords], 1
-            )
+            lmk_bary_coords = torch.cat([
+                lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords
+            ], 1)
 
         landmarks = vertices2landmarks(vertices, self.faces_tensor, lmk_faces_idx, lmk_bary_coords)
 
@@ -2331,9 +2327,9 @@ class FLAMELayer(FLAME):
         if betas is None:
             betas = torch.zeros([batch_size, self.num_betas], dtype=dtype, device=device)
         if expression is None:
-            expression = torch.zeros(
-                [batch_size, self.num_expression_coeffs], dtype=dtype, device=device
-            )
+            expression = torch.zeros([batch_size, self.num_expression_coeffs],
+                                     dtype=dtype,
+                                     device=device)
         if transl is None:
             transl = torch.zeros([batch_size, 3], dtype=dtype, device=device)
 
@@ -2367,9 +2363,9 @@ class FLAMELayer(FLAME):
             )
             dyn_lmk_faces_idx, dyn_lmk_bary_coords = lmk_idx_and_bcoords
             lmk_faces_idx = torch.cat([lmk_faces_idx, dyn_lmk_faces_idx], 1)
-            lmk_bary_coords = torch.cat(
-                [lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords], 1
-            )
+            lmk_bary_coords = torch.cat([
+                lmk_bary_coords.expand(batch_size, -1, -1), dyn_lmk_bary_coords
+            ], 1)
 
         landmarks = vertices2landmarks(vertices, self.faces_tensor, lmk_faces_idx, lmk_bary_coords)
 

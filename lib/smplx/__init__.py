@@ -15,16 +15,16 @@
 # Contact: ps-license@tuebingen.mpg.de
 
 from .body_models import (
-    create,
+    FLAME,
+    MANO,
     SMPL,
     SMPLH,
     SMPLX,
-    MANO,
-    FLAME,
-    build_layer,
-    SMPLLayer,
-    SMPLHLayer,
-    SMPLXLayer,
-    MANOLayer,
     FLAMELayer,
+    MANOLayer,
+    SMPLHLayer,
+    SMPLLayer,
+    SMPLXLayer,
+    build_layer,
+    create,
 )

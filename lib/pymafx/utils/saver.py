@@ -1,8 +1,10 @@
 from __future__ import division
-import os
-import torch
+
 import datetime
 import logging
+import os
+
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -102,10 +104,8 @@ class CheckpointSaver():
             if optimizer in checkpoint:
                 optimizers[optimizer].load_state_dict(checkpoint[optimizer])
         return {
-            'epoch': checkpoint['epoch'],
-            'batch_idx': checkpoint['batch_idx'],
-            'batch_size': checkpoint['batch_size'],
-            'total_step_count': checkpoint['total_step_count']
+            'epoch': checkpoint['epoch'], 'batch_idx': checkpoint['batch_idx'], 'batch_size':
+            checkpoint['batch_size'], 'total_step_count': checkpoint['total_step_count']
         }
 
     def get_latest_checkpoint(self):

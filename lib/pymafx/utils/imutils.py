@@ -1,10 +1,10 @@
 """
 This file contains functions that are used to perform data augmentation.
 """
-import torch
-import numpy as np
 import cv2
+import numpy as np
 import skimage.transform
+import torch
 from PIL import Image
 
 from lib.pymafx.core import constants
@@ -129,12 +129,8 @@ def uncrop(img, center, scale, orig_shape, rot=0, is_rgb=True):
 def rot_aa(aa, rot):
     """Rotate axis angle parameters."""
     # pose parameters
-    R = np.array(
-        [
-            [np.cos(np.deg2rad(-rot)), -np.sin(np.deg2rad(-rot)), 0],
-            [np.sin(np.deg2rad(-rot)), np.cos(np.deg2rad(-rot)), 0], [0, 0, 1]
-        ]
-    )
+    R = np.array([[np.cos(np.deg2rad(-rot)), -np.sin(np.deg2rad(-rot)), 0],
+                  [np.sin(np.deg2rad(-rot)), np.cos(np.deg2rad(-rot)), 0], [0, 0, 1]])
     # find the rotation of the body in camera frame
     per_rdg, _ = cv2.Rodrigues(aa)
     # apply the global rotation to the global orientation
@@ -246,9 +242,9 @@ def generate_heatmap(joints, heatmap_size, sigma=1, joints_vis=None):
     target_weight = np.ones((num_joints, 1), dtype=np.float32)
     if joints_vis is not None:
         target_weight[:, 0] = joints_vis[:, 0]
-    target = torch.zeros(
-        (num_joints, heatmap_size[1], heatmap_size[0]), dtype=torch.float32, device=cur_device
-    )
+    target = torch.zeros((num_joints, heatmap_size[1], heatmap_size[0]),
+                         dtype=torch.float32,
+                         device=cur_device)
 
     tmp_size = sigma * 3
 

@@ -15,7 +15,12 @@
 # limitations under the License.
 """PyTorch BERT model. """
 
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import (
+    absolute_import,
+    division,
+    print_function,
+    unicode_literals,
+)
 
 import json
 import logging
@@ -29,68 +34,72 @@ from torch import nn
 from torch.nn import CrossEntropyLoss, MSELoss
 
 from .modeling_utils import (
-    WEIGHTS_NAME, CONFIG_NAME, PretrainedConfig, PreTrainedModel, prune_linear_layer,
-    add_start_docstrings
+    CONFIG_NAME,
+    WEIGHTS_NAME,
+    PretrainedConfig,
+    PreTrainedModel,
+    add_start_docstrings,
+    prune_linear_layer,
 )
 
 logger = logging.getLogger(__name__)
 
 BERT_PRETRAINED_MODEL_ARCHIVE_MAP = {
     'bert-base-uncased':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-pytorch_model.bin",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-pytorch_model.bin",
     'bert-large-uncased':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-pytorch_model.bin",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-pytorch_model.bin",
     'bert-base-cased':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-pytorch_model.bin",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-pytorch_model.bin",
     'bert-large-cased':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-pytorch_model.bin",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-pytorch_model.bin",
     'bert-base-multilingual-uncased':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-uncased-pytorch_model.bin",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-uncased-pytorch_model.bin",
     'bert-base-multilingual-cased':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-cased-pytorch_model.bin",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-cased-pytorch_model.bin",
     'bert-base-chinese':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-chinese-pytorch_model.bin",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-chinese-pytorch_model.bin",
     'bert-base-german-cased':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-german-cased-pytorch_model.bin",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-german-cased-pytorch_model.bin",
     'bert-large-uncased-whole-word-masking':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-whole-word-masking-pytorch_model.bin",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-whole-word-masking-pytorch_model.bin",
     'bert-large-cased-whole-word-masking':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-whole-word-masking-pytorch_model.bin",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-whole-word-masking-pytorch_model.bin",
     'bert-large-uncased-whole-word-masking-finetuned-squad':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-whole-word-masking-finetuned-squad-pytorch_model.bin",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-whole-word-masking-finetuned-squad-pytorch_model.bin",
     'bert-large-cased-whole-word-masking-finetuned-squad':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-whole-word-masking-finetuned-squad-pytorch_model.bin",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-whole-word-masking-finetuned-squad-pytorch_model.bin",
     'bert-base-cased-finetuned-mrpc':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-finetuned-mrpc-pytorch_model.bin",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-finetuned-mrpc-pytorch_model.bin",
 }
 
 BERT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
     'bert-base-uncased':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-config.json",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-config.json",
     'bert-large-uncased':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-config.json",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-config.json",
     'bert-base-cased':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-config.json",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-config.json",
     'bert-large-cased':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-config.json",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-config.json",
     'bert-base-multilingual-uncased':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-uncased-config.json",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-uncased-config.json",
     'bert-base-multilingual-cased':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-cased-config.json",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-cased-config.json",
     'bert-base-chinese':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-chinese-config.json",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-chinese-config.json",
     'bert-base-german-cased':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-german-cased-config.json",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-german-cased-config.json",
     'bert-large-uncased-whole-word-masking':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-whole-word-masking-config.json",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-whole-word-masking-config.json",
     'bert-large-cased-whole-word-masking':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-whole-word-masking-config.json",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-whole-word-masking-config.json",
     'bert-large-uncased-whole-word-masking-finetuned-squad':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-whole-word-masking-finetuned-squad-config.json",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-whole-word-masking-finetuned-squad-config.json",
     'bert-large-cased-whole-word-masking-finetuned-squad':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-whole-word-masking-finetuned-squad-config.json",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-whole-word-masking-finetuned-squad-config.json",
     'bert-base-cased-finetuned-mrpc':
-        "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-finetuned-mrpc-config.json",
+    "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-finetuned-mrpc-config.json",
 }
 
 
@@ -99,6 +108,7 @@ def load_tf_weights_in_bert(model, config, tf_checkpoint_path):
     """
     try:
         import re
+
         import numpy as np
         import tensorflow as tf
     except ImportError:

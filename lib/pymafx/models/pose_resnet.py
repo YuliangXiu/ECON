@@ -4,12 +4,10 @@
 # Written by Bin Xiao (Bin.Xiao@microsoft.com)
 # ------------------------------------------------------------------------------
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
-import os
 import logging
+import os
 
 import torch
 import torch.nn as nn
@@ -277,11 +275,8 @@ class PoseResNet(nn.Module):
 
 
 resnet_spec = {
-    18: (BasicBlock, [2, 2, 2, 2]),
-    34: (BasicBlock, [3, 4, 6, 3]),
-    50: (Bottleneck, [3, 4, 6, 3]),
-    101: (Bottleneck, [3, 4, 23, 3]),
-    152: (Bottleneck, [3, 8, 36, 3])
+    18: (BasicBlock, [2, 2, 2, 2]), 34: (BasicBlock, [3, 4, 6, 3]), 50: (Bottleneck, [3, 4, 6, 3]),
+    101: (Bottleneck, [3, 4, 23, 3]), 152: (Bottleneck, [3, 8, 36, 3])
 }
 
 

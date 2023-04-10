@@ -14,11 +14,12 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-from lib.common.seg3d_lossless import Seg3dLossless
-from lib.common.train_util import *
-import torch
 import numpy as np
 import pytorch_lightning as pl
+import torch
+
+from lib.common.seg3d_lossless import Seg3dLossless
+from lib.common.train_util import *
 
 torch.backends.cudnn.benchmark = True
 

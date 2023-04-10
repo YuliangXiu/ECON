@@ -4,8 +4,8 @@ Licensed under the MIT license.
 
 """
 
-import torch
 import src.modeling.data.config as cfg
+import torch
 
 
 class Graphormer_Body_Network(torch.nn.Module):

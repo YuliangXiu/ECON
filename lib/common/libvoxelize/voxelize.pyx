@@ -1,6 +1,7 @@
 cimport cython
-from libc.math cimport floor, ceil
 from cython.view cimport array as cvarray
+from libc.math cimport ceil, floor
+
 
 cdef extern from "tribox2.h":
     int triBoxOverlap(float boxcenter[3], float boxhalfsize[3],

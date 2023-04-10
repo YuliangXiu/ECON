@@ -14,22 +14,24 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-import torch.nn.functional as F
-from lib.common.render import Render
-from lib.dataset.mesh_util import (SMPLX, projection, rescale_smpl, HoppeMesh)
-import os.path as osp
-import numpy as np
-from PIL import Image
 import os
+import os.path as osp
+
 import cv2
-import trimesh
+import numpy as np
 import torch
+import torch.nn.functional as F
 import torchvision.transforms as transforms
+import trimesh
+from PIL import Image
+
+from lib.common.render import Render
+from lib.dataset.mesh_util import SMPLX, HoppeMesh, projection, rescale_smpl
 
 cape_gender = {
     "male":
-        ['00032', '00096', '00122', '00127', '00145', '00215', '02474', '03284', '03375', '03394'],
-    "female": ['00134', '00159', '03223', '03331', '03383']
+    ['00032', '00096', '00122', '00127', '00145', '00215', '02474', '03284', '03375',
+     '03394'], "female": ['00134', '00159', '03223', '03331', '03383']
 }
 
 
@@ -74,30 +76,27 @@ class EvalDataset:
                 "scale": self.scales[dataset_id],
             }
 
-            self.datasets_dict[dataset].update(
-                {"subjects": np.loadtxt(osp.join(dataset_dir, "all.txt"), dtype=str)}
-            )
+            self.datasets_dict[dataset].update({
+                "subjects":
+                np.loadtxt(osp.join(dataset_dir, "all.txt"), dtype=str)
+            })
 
         self.subject_list = self.get_subject_list()
         self.smplx = SMPLX()
 
         # PIL to tensor
-        self.image_to_tensor = transforms.Compose(
-            [
-                transforms.Resize(self.input_size),
-                transforms.ToTensor(),
-                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-            ]
-        )
+        self.image_to_tensor = transforms.Compose([
+            transforms.Resize(self.input_size),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ])
 
         # PIL to tensor
-        self.mask_to_tensor = transforms.Compose(
-            [
-                transforms.Resize(self.input_size),
-                transforms.ToTensor(),
-                transforms.Normalize((0.0, ), (1.0, )),
-            ]
-        )
+        self.mask_to_tensor = transforms.Compose([
+            transforms.Resize(self.input_size),
+            transforms.ToTensor(),
+            transforms.Normalize((0.0, ), (1.0, )),
+        ])
 
         self.device = device
         self.render = Render(size=512, device=self.device)
@@ -154,27 +153,23 @@ class EvalDataset:
         }
 
         if dataset == "cape":
-            data_dict.update(
-                {
-                    "mesh_path":
-                        osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}.obj"),
-                    "smpl_path":
-                        osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.obj"),
-                }
-            )
+            data_dict.update({
+                "mesh_path":
+                osp.join(self.datasets_dict[dataset]["mesh_dir"], f"{subject}.obj"),
+                "smpl_path":
+                osp.join(self.datasets_dict[dataset]["smpl_dir"], f"{subject}.obj"),
+            })
         else:
 
-            data_dict.update(
-                {
-                    "mesh_path":
-                        osp.join(
-                            self.datasets_dict[dataset]["mesh_dir"],
-                            f"{subject}.obj",
-                        ),
-                    "smplx_path":
-                        osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}.obj"),
-                }
-            )
+            data_dict.update({
+                "mesh_path":
+                osp.join(
+                    self.datasets_dict[dataset]["mesh_dir"],
+                    f"{subject}.obj",
+                ),
+                "smplx_path":
+                osp.join(self.datasets_dict[dataset]["smplx_dir"], f"{subject}.obj"),
+            })
 
         # load training data
         data_dict.update(self.load_calib(data_dict))
@@ -183,18 +178,17 @@ class EvalDataset:
         for name, channel in zip(self.in_total, self.in_total_dim):
 
             if f"{name}_path" not in data_dict.keys():
-                data_dict.update(
-                    {
-                        f"{name}_path":
-                            osp.join(self.root, render_folder, name, f"{rotation:03d}.png")
-                    }
-                )
+                data_dict.update({
+                    f"{name}_path":
+                    osp.join(self.root, render_folder, name, f"{rotation:03d}.png")
+                })
 
             # tensor update
             if os.path.exists(data_dict[f"{name}_path"]):
-                data_dict.update(
-                    {name: self.imagepath2tensor(data_dict[f"{name}_path"], channel, inv=False)}
-                )
+                data_dict.update({
+                    name:
+                    self.imagepath2tensor(data_dict[f"{name}_path"], channel, inv=False)
+                })
 
         data_dict.update(self.load_mesh(data_dict))
         data_dict.update(self.load_smpl(data_dict))

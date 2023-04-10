@@ -14,28 +14,29 @@
 #
 # Contact: ps-license@tuebingen.mpg.de
 
-import warnings
 import logging
+import warnings
 
 warnings.filterwarnings("ignore")
 logging.getLogger("lightning").setLevel(logging.ERROR)
 logging.getLogger("trimesh").setLevel(logging.ERROR)
 
-import torch
 import argparse
 import os
 
+import torch
 from termcolor import colored
 from tqdm.auto import tqdm
-from apps.Normal import Normal
+
 from apps.IFGeo import IFGeo
-from lib.common.config import cfg
+from apps.Normal import Normal
 from lib.common.BNI import BNI
 from lib.common.BNI_utils import save_normal_tensor
+from lib.common.config import cfg
+from lib.common.voxelize import VoxelGrid
 from lib.dataset.EvalDataset import EvalDataset
 from lib.dataset.Evaluator import Evaluator
 from lib.dataset.mesh_util import *
-from lib.common.voxelize import VoxelGrid
 
 torch.backends.cudnn.benchmark = True
 speed_analysis = False
@@ -62,8 +63,14 @@ if __name__ == "__main__":
     device = torch.device("cuda:0")
 
     cfg_test_list = [
-        "dataset.rotation_num", 3, "bni.use_smpl", ["hand"], "bni.use_ifnet", args.ifnet,
-        "bni.cut_intersection", True,
+        "dataset.rotation_num",
+        3,
+        "bni.use_smpl",
+        ["hand"],
+        "bni.use_ifnet",
+        args.ifnet,
+        "bni.cut_intersection",
+        True,
     ]
 
     # # if w/ RenderPeople+CAPE
@@ -176,12 +183,10 @@ if __name__ == "__main__":
 
                 # mesh completion via IF-net
                 in_tensor.update(
-                    dataset.depth_to_voxel(
-                        {
-                            "depth_F": BNI_object.F_depth.unsqueeze(0).to(device),
-                            "depth_B": BNI_object.B_depth.unsqueeze(0).to(device)
-                        }
-                    )
+                    dataset.depth_to_voxel({
+                        "depth_F": BNI_object.F_depth.unsqueeze(0).to(device), "depth_B":
+                        BNI_object.B_depth.unsqueeze(0).to(device)
+                    })
                 )
 
                 occupancies = VoxelGrid.from_mesh(side_mesh, cfg.vol_res, loc=[

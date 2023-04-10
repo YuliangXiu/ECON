@@ -1,10 +1,11 @@
 import os
-import torch
-import numpy as np
-import torch.nn.functional as F
-from skimage.transform import resize
+
 # Use a non-interactive backend
 import matplotlib
+import numpy as np
+import torch
+import torch.nn.functional as F
+from skimage.transform import resize
 
 matplotlib.use('Agg')
 
@@ -100,9 +101,8 @@ def vis_smpl_iuv(
     for draw_i in range(len(cam_pred)):
         err_val = '{:06d}_'.format(int(10 * vert_errors_batch[draw_i]))
         draw_name = err_val + image_name[draw_i]
-        K = np.array(
-            [[focal_length, 0., orig_size / 2.], [0., focal_length, orig_size / 2.], [0., 0., 1.]]
-        )
+        K = np.array([[focal_length, 0., orig_size / 2.], [0., focal_length, orig_size / 2.],
+                      [0., 0., 1.]])
 
         # img_orig, img_resized, img_smpl, render_smpl_rgba = dr_render(
         #     image[draw_i],
