@@ -1,0 +1,13 @@
+libgl1
+freeglut3-dev
+unzip
+ffmpeg 
+libsm6 
+libxext6
+libgl1-mesa-dri
+libegl1-mesa
+libgbm1
+build-essential
+python-wheel
+libturbojpeg
+libeigen3-dev

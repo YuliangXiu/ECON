@@ -49,8 +49,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 class TestDataset:
     def __init__(self, cfg, device):
 
-        self.image_dir = cfg["image_dir"]
-        self.seg_dir = cfg["seg_dir"]
+        self.image_path = cfg["image_path"]
         self.use_seg = cfg["use_seg"]
         self.hps_type = cfg["hps_type"]
         self.smpl_type = "smplx"
@@ -60,11 +59,7 @@ class TestDataset:
 
         self.device = device
 
-        keep_lst = sorted(glob.glob(f"{self.image_dir}/*"))
-        img_fmts = ["jpg", "png", "jpeg", "JPG", "bmp", "exr"]
-
-        self.subject_list = sorted([item for item in keep_lst if item.split(".")[-1] in img_fmts],
-                                   reverse=False)
+        self.subject_list = [self.image_path]
 
         # smpl related
         self.smpl_data = SMPLX()
