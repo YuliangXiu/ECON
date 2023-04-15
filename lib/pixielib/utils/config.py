@@ -6,6 +6,7 @@ import os
 
 import yaml
 from yacs.config import CfgNode as CN
+from huggingface_hub import hf_hub_download
 
 cfg = CN()
 
@@ -13,7 +14,9 @@ abs_pixie_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 cfg.pixie_dir = abs_pixie_dir
 cfg.device = "cuda"
 cfg.device_id = "0"
-cfg.pretrained_modelpath = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data", "pixie_model.tar")
+cfg.pretrained_modelpath = hf_hub_download(
+    repo_id="Yuliang/PIXIE", filename="pixie_model.tar", use_auth_token=os.environ["ICON"]
+)
 # smplx parameter settings
 cfg.params = CN()
 cfg.params.body_list = ["body_cam", "global_pose", "partbody_pose", "neck_pose"]
@@ -29,38 +32,47 @@ cfg.params.hand_share_list = [
 # Options for Body model
 # ---------------------------------------------------------------------------- #
 cfg.model = CN()
-cfg.model.topology_path = os.path.join(
-    cfg.pixie_dir, "data/HPS/pixie_data", "SMPL_X_template_FLAME_uv.obj"
+cfg.model.topology_path = hf_hub_download(
+    repo_id="Yuliang/PIXIE",
+    use_auth_token=os.environ["ICON"],
+    filename="SMPL_X_template_FLAME_uv.obj"
 )
-cfg.model.topology_smplxtex_path = os.path.join(
-    cfg.pixie_dir, "data/HPS/pixie_data", "smplx_tex.obj"
+cfg.model.topology_smplxtex_path = hf_hub_download(
+    repo_id="Yuliang/PIXIE", use_auth_token=os.environ["ICON"], filename="smplx_tex.obj"
 )
-cfg.model.topology_smplx_hand_path = os.path.join(
-    cfg.pixie_dir, "data/HPS/pixie_data", "smplx_hand.obj"
+cfg.model.topology_smplx_hand_path = hf_hub_download(
+    repo_id="Yuliang/PIXIE", use_auth_token=os.environ["ICON"], filename="smplx_hand.obj"
 )
-cfg.model.smplx_model_path = os.path.join(
-    cfg.pixie_dir, "data/HPS/pixie_data", "SMPLX_NEUTRAL_2020.npz"
+cfg.model.smplx_model_path = hf_hub_download(
+    repo_id="Yuliang/PIXIE", use_auth_token=os.environ["ICON"], filename="SMPLX_NEUTRAL_2020.npz"
 )
-cfg.model.face_mask_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data", "uv_face_mask.png")
-cfg.model.face_eye_mask_path = os.path.join(
-    cfg.pixie_dir, "data/HPS/pixie_data", "uv_face_eye_mask.png"
+cfg.model.face_mask_path = hf_hub_download(
+    repo_id="Yuliang/PIXIE", use_auth_token=os.environ["ICON"], filename="uv_face_mask.png"
 )
-cfg.model.tex_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data", "FLAME_albedo_from_BFM.npz")
-cfg.model.extra_joint_path = os.path.join(
-    cfg.pixie_dir, "data/HPS/pixie_data", "smplx_extra_joints.yaml"
+cfg.model.face_eye_mask_path = hf_hub_download(
+    repo_id="Yuliang/PIXIE", use_auth_token=os.environ["ICON"], filename="uv_face_eye_mask.png"
 )
-cfg.model.j14_regressor_path = os.path.join(
-    cfg.pixie_dir, "data/HPS/pixie_data", "SMPLX_to_J14.pkl"
+cfg.model.extra_joint_path = hf_hub_download(
+    repo_id="Yuliang/PIXIE", use_auth_token=os.environ["ICON"], filename="smplx_extra_joints.yaml"
 )
-cfg.model.flame2smplx_cached_path = os.path.join(
-    cfg.pixie_dir, "data/HPS/pixie_data", "flame2smplx_tex_1024.npy"
+cfg.model.j14_regressor_path = hf_hub_download(
+    repo_id="Yuliang/PIXIE", use_auth_token=os.environ["ICON"], filename="SMPLX_to_J14.pkl"
 )
-cfg.model.smplx_tex_path = os.path.join(cfg.pixie_dir, "data/HPS/pixie_data", "smplx_tex.png")
-cfg.model.mano_ids_path = os.path.join(
-    cfg.pixie_dir, "data/HPS/pixie_data", "MANO_SMPLX_vertex_ids.pkl"
+cfg.model.flame2smplx_cached_path = hf_hub_download(
+    repo_id="Yuliang/PIXIE", use_auth_token=os.environ["ICON"], filename="flame2smplx_tex_1024.npy"
 )
-cfg.model.flame_ids_path = os.path.join(
-    cfg.pixie_dir, "data/HPS/pixie_data", "SMPL-X__FLAME_vertex_ids.npy"
+cfg.model.smplx_tex_path = hf_hub_download(
+    repo_id="Yuliang/PIXIE", use_auth_token=os.environ["ICON"], filename="smplx_tex.png"
+)
+cfg.model.mano_ids_path = hf_hub_download(
+    repo_id="Yuliang/PIXIE",
+    use_auth_token=os.environ["ICON"],
+    filename="MANO_SMPLX_vertex_ids.pkl"
+)
+cfg.model.flame_ids_path = hf_hub_download(
+    repo_id="Yuliang/PIXIE",
+    use_auth_token=os.environ["ICON"],
+    filename="SMPL-X__FLAME_vertex_ids.npy"
 )
 cfg.model.uv_size = 256
 cfg.model.n_shape = 200

@@ -1015,12 +1015,12 @@ class SMPLX(SMPLH):
         """
 
         # Load the model
-        if osp.isdir(model_path):
-            model_fn = "SMPLX_{}.{ext}".format(gender.upper(), ext=ext)
-            smplx_path = os.path.join(model_path, model_fn)
-        else:
-            smplx_path = model_path
-        assert osp.exists(smplx_path), "Path {} does not exist!".format(smplx_path)
+        from huggingface_hub import hf_hub_download
+
+        model_fn = "SMPLX_{}.{ext}".format(gender.upper(), ext=ext)
+        smplx_path = hf_hub_download(
+            repo_id=model_path, use_auth_token=os.environ["ICON"], filename=f"models/{model_fn}"
+        )
 
         if ext == "pkl":
             with open(smplx_path, "rb") as smplx_file:

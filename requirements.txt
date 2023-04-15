@@ -1,3 +1,11 @@
+--extra-index-url https://download.pytorch.org/whl/cu116
+torch==1.13.1+cu116
+torchvision==0.14.1+cu116
+fvcore
+iopath
+pyembree
+cupy
+cython
 matplotlib
 scikit-image
 trimesh
@@ -15,4 +23,10 @@ einops
 boto3
 open3d
 xatlas
+transformers
+controlnet_aux
+xformers==0.0.16
+triton
 git+https://github.com/YuliangXiu/rembg.git
+git+https://github.com/huggingface/diffusers.git
+git+https://github.com/huggingface/accelerate.git

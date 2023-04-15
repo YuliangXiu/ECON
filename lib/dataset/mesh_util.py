@@ -30,6 +30,7 @@ from pytorch3d.loss import mesh_laplacian_smoothing, mesh_normal_consistency
 from pytorch3d.renderer.mesh import rasterize_meshes
 from pytorch3d.structures import Meshes
 from scipy.spatial import cKDTree
+from huggingface_hub import hf_hub_download
 
 import lib.smplx as smplx
 from lib.common.render_utils import Pytorch3dRasterizer, face_vertices
@@ -43,28 +44,70 @@ class Format:
 class SMPLX:
     def __init__(self):
 
-        self.current_dir = osp.join(osp.dirname(__file__), "../../data/smpl_related")
-
-        self.smpl_verts_path = osp.join(self.current_dir, "smpl_data/smpl_verts.npy")
-        self.smpl_faces_path = osp.join(self.current_dir, "smpl_data/smpl_faces.npy")
-        self.smplx_verts_path = osp.join(self.current_dir, "smpl_data/smplx_verts.npy")
-        self.smplx_faces_path = osp.join(self.current_dir, "smpl_data/smplx_faces.npy")
-        self.cmap_vert_path = osp.join(self.current_dir, "smpl_data/smplx_cmap.npy")
-
-        self.smplx_to_smplx_path = osp.join(self.current_dir, "smpl_data/smplx_to_smpl.pkl")
-
-        self.smplx_eyeball_fid_path = osp.join(self.current_dir, "smpl_data/eyeball_fid.npy")
-        self.smplx_fill_mouth_fid_path = osp.join(self.current_dir, "smpl_data/fill_mouth_fid.npy")
-        self.smplx_flame_vid_path = osp.join(
-            self.current_dir, "smpl_data/FLAME_SMPLX_vertex_ids.npy"
+        self.smpl_verts_path = hf_hub_download(
+            repo_id="Yuliang/SMPLX",
+            use_auth_token=os.environ["ICON"],
+            filename="smpl_data/smpl_verts.npy"
         )
-        self.smplx_mano_vid_path = osp.join(self.current_dir, "smpl_data/MANO_SMPLX_vertex_ids.pkl")
+        self.smpl_faces_path = hf_hub_download(
+            repo_id="Yuliang/SMPLX",
+            use_auth_token=os.environ["ICON"],
+            filename="smpl_data/smpl_faces.npy"
+        )
+        self.smplx_verts_path = hf_hub_download(
+            repo_id="Yuliang/SMPLX",
+            use_auth_token=os.environ["ICON"],
+            filename="smpl_data/smplx_verts.npy"
+        )
+        self.smplx_faces_path = hf_hub_download(
+            repo_id="Yuliang/SMPLX",
+            use_auth_token=os.environ["ICON"],
+            filename="smpl_data/smplx_faces.npy"
+        )
+        self.cmap_vert_path = hf_hub_download(
+            repo_id="Yuliang/SMPLX",
+            use_auth_token=os.environ["ICON"],
+            filename="smpl_data/smplx_cmap.npy"
+        )
+
+        self.smplx_to_smplx_path = hf_hub_download(
+            repo_id="Yuliang/SMPLX",
+            use_auth_token=os.environ["ICON"],
+            filename="smpl_data/smplx_to_smpl.pkl"
+        )
+
+        self.smplx_eyeball_fid_path = hf_hub_download(
+            repo_id="Yuliang/SMPLX",
+            use_auth_token=os.environ["ICON"],
+            filename="smpl_data/eyeball_fid.npy"
+        )
+        self.smplx_fill_mouth_fid_path = hf_hub_download(
+            repo_id="Yuliang/SMPLX",
+            use_auth_token=os.environ["ICON"],
+            filename="smpl_data/fill_mouth_fid.npy"
+        )
+        self.smplx_flame_vid_path = hf_hub_download(
+            repo_id="Yuliang/SMPLX",
+            use_auth_token=os.environ["ICON"],
+            filename="smpl_data/FLAME_SMPLX_vertex_ids.npy"
+        )
+        self.smplx_mano_vid_path = hf_hub_download(
+            repo_id="Yuliang/SMPLX",
+            use_auth_token=os.environ["ICON"],
+            filename="smpl_data/MANO_SMPLX_vertex_ids.pkl"
+        )
         self.smpl_vert_seg_path = osp.join(
             osp.dirname(__file__), "../../lib/common/smpl_vert_segmentation.json"
         )
-        self.front_flame_path = osp.join(self.current_dir, "smpl_data/FLAME_face_mask_ids.npy")
-        self.smplx_vertex_lmkid_path = osp.join(
-            self.current_dir, "smpl_data/smplx_vertex_lmkid.npy"
+        self.front_flame_path = hf_hub_download(
+            repo_id="Yuliang/SMPLX",
+            use_auth_token=os.environ["ICON"],
+            filename="smpl_data/FLAME_face_mask_ids.npy"
+        )
+        self.smplx_vertex_lmkid_path = hf_hub_download(
+            repo_id="Yuliang/SMPLX",
+            use_auth_token=os.environ["ICON"],
+            filename="smpl_data/smplx_vertex_lmkid.npy"
         )
 
         self.smplx_faces = np.load(self.smplx_faces_path)
@@ -105,8 +148,6 @@ class SMPLX:
         )
 
         self.smplx_to_smpl = cPickle.load(open(self.smplx_to_smplx_path, "rb"))
-
-        self.model_dir = osp.join(self.current_dir, "models")
 
         self.ghum_smpl_pairs = torch.tensor([(0, 24), (2, 26), (5, 25), (7, 28), (8, 27), (11, 16),
                                              (12, 17), (13, 18), (14, 19), (15, 20), (16, 21),
@@ -151,7 +192,7 @@ class SMPLX:
 model_init_params = dict(
     gender="male",
     model_type="smplx",
-    model_path=SMPLX().model_dir,
+    model_path="Yuliang/SMPLX",
     create_global_orient=False,
     create_body_pose=False,
     create_betas=False,
