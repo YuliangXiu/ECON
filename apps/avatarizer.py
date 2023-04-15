@@ -64,7 +64,7 @@ smpl_model = smplx.create(
 smpl_out_lst = []
 
 # obtain the pose params of T-pose, DA-pose, and the original pose
-for pose_type in ["t-pose", "da-pose", "pose"]:
+for pose_type in ["a-pose", "t-pose", "da-pose", "pose"]:
     smpl_out_lst.append(
         smpl_model(
             body_pose=smplx_param["body_pose"],
@@ -88,7 +88,7 @@ for pose_type in ["t-pose", "da-pose", "pose"]:
 # 3. ECON (w/o hands & over-streched faces) + SMPL-X (w/ hands & registered inpainting parts)
 # ------------------------------------------------------------------------------------------- #
 
-smpl_verts = smpl_out_lst[2].vertices.detach()[0]
+smpl_verts = smpl_out_lst[3].vertices.detach()[0]
 smpl_tree = cKDTree(smpl_verts.cpu().numpy())
 dist, idx = smpl_tree.query(econ_obj.vertices, k=5)
 
@@ -96,7 +96,7 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
 
     # t-pose for ECON
     econ_verts = torch.tensor(econ_obj.vertices).float()
-    rot_mat_t = smpl_out_lst[2].vertex_transformation.detach()[0][idx[:, 0]]
+    rot_mat_t = smpl_out_lst[3].vertex_transformation.detach()[0][idx[:, 0]]
     homo_coord = torch.ones_like(econ_verts)[..., :1]
     econ_cano_verts = torch.inverse(rot_mat_t) @ torch.cat([econ_verts, homo_coord],
                                                            dim=1).unsqueeze(-1)
@@ -104,13 +104,13 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
     econ_cano = trimesh.Trimesh(econ_cano_verts, econ_obj.faces)
 
     # da-pose for ECON
-    rot_mat_da = smpl_out_lst[1].vertex_transformation.detach()[0][idx[:, 0]]
+    rot_mat_da = smpl_out_lst[2].vertex_transformation.detach()[0][idx[:, 0]]
     econ_da_verts = rot_mat_da @ torch.cat([econ_cano_verts, homo_coord], dim=1).unsqueeze(-1)
     econ_da = trimesh.Trimesh(econ_da_verts[:, :3, 0].cpu(), econ_obj.faces)
 
     # da-pose for SMPL-X
     smpl_da = trimesh.Trimesh(
-        smpl_out_lst[1].vertices.detach()[0], smpl_model.faces, maintain_orders=True, process=False
+        smpl_out_lst[2].vertices.detach()[0], smpl_model.faces, maintain_orders=True, process=False
     )
     smpl_da.export(f"{prefix}_smpl_da.obj")
 
@@ -199,7 +199,7 @@ econ_posedirs = (
 econ_J_regressor /= econ_J_regressor.sum(dim=1, keepdims=True).clip(min=1e-10)
 econ_lbs_weights /= econ_lbs_weights.sum(dim=1, keepdims=True)
 
-rot_mat_da = smpl_out_lst[1].vertex_transformation.detach()[0][idx[:, 0]]
+rot_mat_da = smpl_out_lst[2].vertex_transformation.detach()[0][idx[:, 0]]
 econ_da_verts = torch.tensor(econ_da.vertices).float()
 econ_cano_verts = torch.inverse(rot_mat_da) @ torch.cat([
     econ_da_verts, torch.ones_like(econ_da_verts)[..., :1]
@@ -211,7 +211,7 @@ econ_cano_verts = econ_cano_verts[:, :3, 0].double()
 # use original pose to animate ECON reconstruction
 # ----------------------------------------------------
 
-new_pose = smpl_out_lst[2].full_pose
+new_pose = smpl_out_lst[3].full_pose
 # new_pose[:, :3] = 0.
 
 posed_econ_verts, _ = general_lbs(
@@ -222,7 +222,6 @@ posed_econ_verts, _ = general_lbs(
     parents=smpl_model.parents,
     lbs_weights=econ_lbs_weights
 )
-
 aligned_econ_verts = posed_econ_verts[0].detach().cpu().numpy()
 aligned_econ_verts += smplx_param["transl"].cpu().numpy()
 aligned_econ_verts *= smplx_param["scale"].cpu().numpy() * np.array([1.0, -1.0, -1.0])
@@ -322,14 +321,17 @@ texture_npy = uv_rasterizer.get_texture(
     torch.tensor(final_colors).unsqueeze(0).float() / 255.0,
 )
 
-Image.fromarray((texture_npy * 255.0).astype(np.uint8)).save(f"{cache_path}/texture.png")
+gray_texture = texture_npy.copy()
+gray_texture[texture_npy.sum(axis=2) == 0.0] = 0.5
+Image.fromarray((gray_texture * 255.0).astype(np.uint8)).save(f"{cache_path}/texture.png")
 
 # UV mask for TEXTure (https://readpaper.com/paper/4720151447010820097)
-texture_npy[texture_npy.sum(axis=2) == 0.0] = 1.0
-Image.fromarray((texture_npy * 255.0).astype(np.uint8)).save(f"{cache_path}/mask.png")
+white_texture = texture_npy.copy()
+white_texture[texture_npy.sum(axis=2) == 0.0] = 1.0
+Image.fromarray((white_texture * 255.0).astype(np.uint8)).save(f"{cache_path}/mask.png")
 
-# generate da-pose vertices
-new_pose = smpl_out_lst[1].full_pose
+# generate a-pose vertices
+new_pose = smpl_out_lst[0].full_pose
 new_pose[:, :3] = 0.
 
 posed_econ_verts, _ = general_lbs(
@@ -342,7 +344,14 @@ posed_econ_verts, _ = general_lbs(
 )
 
 # export mtl file
-mtl_string = f"newmtl mat0 \nKa 1.000000 1.000000 1.000000 \nKd 1.000000 1.000000 1.000000 \nKs 0.000000 0.000000 0.000000 \nTr 1.000000 \nillum 1 \nNs 0.000000\nmap_Kd texture.png"
-with open(f"{cache_path}/material.mtl", 'w') as file:
-    file.write(mtl_string)
+with open(f"{cache_path}/material.mtl", 'w') as fp:
+    fp.write(f'newmtl mat0 \n')
+    fp.write(f'Ka 1.000000 1.000000 1.000000 \n')
+    fp.write(f'Kd 1.000000 1.000000 1.000000 \n')
+    fp.write(f'Ks 0.000000 0.000000 0.000000 \n')
+    fp.write(f'Tr 1.000000 \n')
+    fp.write(f'illum 1 \n')
+    fp.write(f'Ns 0.000000 \n')
+    fp.write(f'map_Kd texture.png \n')
+
 export_obj(posed_econ_verts[0].detach().cpu().numpy(), f_np, vt, ft, f"{cache_path}/mesh.obj")
