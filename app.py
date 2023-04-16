@@ -3,29 +3,26 @@
 import glob
 import gradio as gr
 import os
-import numpy as np
-
-os.environ["ICON"] = "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"
 
 import subprocess
 
-# if os.getenv('SYSTEM') == 'spaces':
-#     subprocess.run('pip install pyembree'.split())
-#     subprocess.run(
-#         'pip install torch==1.11.0+cu113 torchvision==0.12.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html'.split())
-#     subprocess.run(
-#         'pip install https://download.is.tue.mpg.de/icon/HF/pytorch3d-0.7.0-cp38-cp38-linux_x86_64.whl'.split())
+if os.getenv('SYSTEM') == 'spaces':
+    # subprocess.run('pip install pyembree'.split())
+    subprocess.run(
+        'pip install --no-index --no-cache-dir pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py38_cu116_pyt1130/download.html'
+        .split()
+    )
 
-from apps.infer import generate_model
+from apps.infer import generate_model, generate_video
 
 # running
 
 description = '''
-# Fully-textured Clothed Human Digitization (ECON + TEXTure) 
-### ECON: Explicit Clothed humans Optimized via Normal integration (CVPR 2022, Highlight)
+# Fully-textured Clothed Human Digitization (ECON + ControlNet) 
+### ECON: Explicit Clothed humans Optimized via Normal integration (CVPR 2023, Highlight)
 
 <table>
-<th>
+<th width="20%">
 <ul>
 <li><strong>Homepage</strong> <a href="https://econ.is.tue.mpg.de/">econ.is.tue.mpg.de</a></li>
 <li><strong>Code</strong> <a href="https://github.com/YuliangXiu/ECON">YuliangXiu/ECON</a></li>
@@ -34,26 +31,24 @@ description = '''
 </ul>
 <br>
 <ul>
-<li><strong>Colab Notebook</strong> <a href="https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing">Google Colab</a></li>
-<li><strong>Blender Plugin</strong> <a href="https://carlosedubarreto.gumroad.com/l/CEB_ECON">Blender</a></li>
-<li><strong>Docker Image</strong> <a href="https://github.com/YuliangXiu/ECON/blob/master/docs/installation-docker.md">Docker</a></li>
-<li><strong>Windows Setup</strong> <a href="https://github.com/YuliangXiu/ECON/blob/master/docs/installation-windows.md">Windows</a></li>
+<li><strong>Colab Notebook</strong> <a href='https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing'><img style="display: inline-block;" src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a></li>
+<li><strong>Blender Plugin</strong> <a href='https://carlosedubarreto.gumroad.com/l/CEB_ECON'><img style="display: inline-block;" src='https://img.shields.io/badge/Blender-F6DDCC.svg?logo=Blender' alt='Blender'></a></li>
+<li><strong>Docker Image</strong> <a href='https://github.com/YuliangXiu/ECON/blob/master/docs/installation-docker.md'><img style="display: inline-block;" src='https://img.shields.io/badge/Docker-9cf.svg?logo=Docker' alt='Docker'></a></li>
+<li><strong>Windows Setup</strong> <a href="https://github.com/YuliangXiu/ECON/blob/master/docs/installation-windows.md"><img style="display: inline-block;" src='https://img.shields.io/badge/Windows-00a2ed.svg?logo=Windows' akt='Windows'></a></li>
 </ul>
 
-<a href="https://twitter.com/yuliangxiu"><img alt="Twitter Follow" src="https://img.shields.io/twitter/follow/yuliangxiu?style=social"></a>
+<br>
+<a href="https://twitter.com/yuliangxiu"><img alt="Twitter Follow" src="https://img.shields.io/twitter/follow/yuliangxiu?style=social"></a><br>
 <iframe src="https://ghbtns.com/github-btn.html?user=yuliangxiu&repo=ECON&type=star&count=true&v=2&size=small" frameborder="0" scrolling="0" width="100" height="20"></iframe>
-<a href="https://youtu.be/j5hw4tsWpoY"><img alt="YouTube Video Views" src="https://img.shields.io/youtube/views/j5hw4tsWpoY?style=social"></a>
 </th>
-<th>
+<th width="40%">
 <iframe width="560" height="315" src="https://www.youtube.com/embed/j5hw4tsWpoY" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+</th>
+<th width="40%">
+<iframe width="560" height="315" src="https://www.youtube.com/embed/sbWZbTf6ZYk" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 </th>
 </table>
 
-<h4> The reconstruction takes ~2min for single image. <span style="color:red"> If ERROR, try "Submit Image" again.</span></h4>
-
-<details>
-
-<summary>More</summary>
 
 #### Citation
 ```
@@ -66,6 +61,11 @@ description = '''
 } 
 ```
 
+
+<details>
+
+<summary>More</summary>
+
 #### Acknowledgments:
 - [controlnet-openpose](https://huggingface.co/spaces/diffusers/controlnet-openpose)
 - [TEXTure](https://huggingface.co/spaces/TEXTurePaper/TEXTure)
@@ -77,13 +77,17 @@ description = '''
 
 #### Related works
 
-* [ICON @ MPI](https://icon.is.tue.mpg.de/)
+* [ICON @ MPI-IS](https://icon.is.tue.mpg.de/)
 * [MonoPort @ USC](https://xiuyuliang.cn/monoport)
 * [Phorhum @ Google](https://phorhum.github.io/)
 * [PIFuHD @ Meta](https://shunsukesaito.github.io/PIFuHD/)
 * [PaMIR @ Tsinghua](http://www.liuyebin.com/pamir/pamir.html)
 
 </details>
+
+<center>
+<h2> Generate pose & prompt-guided images / Upload photos /  Use examples &rarr; Submit Image (~2min) &rarr; Generate Video (~2min) </h2>
+</center>
 '''
 
 from controlnet_aux import OpenposeDetector
@@ -146,10 +150,24 @@ pipe.enable_xformers_memory_efficient_attention()
 generator = torch.manual_seed(0)
 
 
+hint_prompts = '''
+<strong>Hints</strong>: <br>
+best quality, extremely detailed, solid color background, 
+super detail, high detail, edge lighting, soft focus, 
+light and dark contrast, 8k, high detail, edge lighting, 
+3d, c4d, blender, oc renderer, ultra high definition, 3d rendering
+'''
+
 def get_pose(image):
     return pose_model(image)
 
 
+# def generate_texture(input_shape, text, seed, guidance_scale):
+#     iface = gr.Interface.load("spaces/TEXTurePaper/TEXTure")
+#     output_shape = iface(input_shape, text, seed, guidance_scale)
+#     return output_shape    
+    
+    
 def generate_images(image, prompt, image_file_live_opt='file', live_conditioning=None):
     if image is None and 'image' not in live_conditioning:
         raise gr.Error("Please provide an image")
@@ -195,7 +213,7 @@ with gr.Blocks() as demo:
     with gr.Row():
         with gr.Column():
             with gr.Row():
-                
+
                 live_conditioning = gr.JSON(value={}, visible=False)
 
                 with gr.Column():
@@ -204,7 +222,7 @@ with gr.Blocks() as demo:
                                                    label="How would you like to upload your image?")
 
                     with gr.Row():
-                        image_in_img = gr.Image(source="upload", visible=True, type="pil")
+                        image_in_img = gr.Image(source="upload", visible=True, type="pil", label="Image for Pose")
                         canvas = gr.HTML(None, elem_id="canvas_html", visible=False)
 
                     image_file_live_opt.change(
@@ -214,21 +232,25 @@ with gr.Blocks() as demo:
                         queue=False
                     )
                     prompt = gr.Textbox(
-                        label="Enter your prompt",
-                        max_lines=1,
-                        placeholder="best quality, extremely detailed",
+                        label="Enter your prompt to synthesise the image",
+                        max_lines=10,
+                        placeholder=
+                        "best quality, extremely detailed",
                     )
+                    
+                    gr.Markdown(hint_prompts)
+                    
                 with gr.Column():
                     gallery = gr.Gallery().style(grid=[2], height="auto")
                     gallery_cache = gr.State()
-                    inp = gr.Image(type="filepath", label="Input Image")
+                    inp = gr.Image(type="filepath", label="Input Image for ECON")
                     fitting_step = gr.inputs.Slider(
                         10, 100, step=10, label='Fitting steps', default=default_step
                     )
 
             with gr.Row():
                 btn_sample = gr.Button("Generate Image")
-                btn_submit = gr.Button("Submit Image")
+                btn_submit = gr.Button("Submit Image (~2min)")
 
             btn_sample.click(
                 fn=generate_images,
@@ -236,11 +258,10 @@ with gr.Blocks() as demo:
                 outputs=[gallery, gallery_cache],
                 _js=get_js_image
             )
-            
+
             def get_select_index(cache, evt: gr.SelectData):
                 return cache[evt.index]
 
-            
             gallery.select(
                 fn=get_select_index,
                 inputs=[gallery_cache],
@@ -254,33 +275,71 @@ with gr.Blocks() as demo:
                     inputs=[inp],
                     cache_examples=False,
                     fn=generate_model,
-                    outputs=out_lst
+                    outputs=out_lst,
+                    label="Hard Pose Exampels"
                 )
                 gr.Examples(
                     examples=list(examples_cloth),
                     inputs=[inp],
                     cache_examples=False,
                     fn=generate_model,
-                    outputs=out_lst
+                    outputs=out_lst,
+                    label="Loose Cloth Exampels"
                 )
-
-            out_vid = gr.Video(label="Image + SMPL Body + Clothed Human")
-            out_vid_download = gr.File(label="Download Video, welcome share on Twitter with #ECON")
 
         with gr.Column():
             overlap_inp = gr.Image(type="filepath", label="Image Normal Overlap")
-            out_final = gr.Model3D(clear_color=[0.0, 0.0, 0.0, 0.0], label="Clothed human")
-            out_final_download = gr.File(label="Download clothed human mesh")
-            out_smpl = gr.Model3D(clear_color=[0.0, 0.0, 0.0, 0.0], label="SMPL body")
-            out_smpl_download = gr.File(label="Download SMPL body mesh")
-            out_smpl_npy_download = gr.File(label="Download SMPL params")
+            with gr.Row():
+                out_final = gr.Model3D(clear_color=[0.0, 0.0, 0.0, 0.0], label="Clothed human")
+                out_smpl = gr.Model3D(clear_color=[0.0, 0.0, 0.0, 0.0], label="SMPL-X body")
 
-    out_lst = [
-        out_smpl, out_smpl_download, out_smpl_npy_download, out_final, out_final_download,
-        overlap_inp
-    ]
+            out_final_obj = gr.State()
+            vis_tensor_path = gr.State()
+
+            with gr.Row():
+                btn_video = gr.Button("Generate Video (~2min)")
+            with gr.Row():
+                out_vid = gr.Video(label="Shared on Twitter with #ECON")
+
+    # with gr.Row():
+    #     btn_texture = gr.Button("Generate Full-texture")
+
+    #     with gr.Row():
+    #         prompt = gr.Textbox(
+    #             label="Enter your prompt to texture the mesh",
+    #             max_lines=10,
+    #             placeholder=
+    #             "best quality, extremely detailed, solid color background, super detail, high detail, edge lighting, soft focus, light and dark contrast, 8k, high detail, edge lighting, 3d, c4d, blender, oc renderer, ultra high definition, 3d rendering",
+    #         )
+    #         seed = gr.Slider(label='Seed', minimum=0, maximum=100000, value=3, step=1)
+    #         guidance_scale = gr.Slider(
+    #             label='Guidance scale', minimum=0, maximum=50, value=7.5, step=0.1
+    #         )
+
+    #     progress_text = gr.Text(label='Progress')
+
+    #     with gr.Tabs():
+    #         with gr.TabItem(label='Images from each viewpoint'):
+    #             viewpoint_images = gr.Gallery(show_label=False)
+    #         with gr.TabItem(label='Result video'):
+    #             result_video = gr.Video(show_label=False)
+    #         with gr.TabItem(label='Output mesh file'):
+    #             output_file = gr.File(show_label=False)
+
+    out_lst = [out_smpl, out_final, out_final_obj, overlap_inp, vis_tensor_path]
+
+    btn_video.click(
+        fn=generate_video,
+        inputs=[vis_tensor_path],
+        outputs=[out_vid],
+    )
 
     btn_submit.click(fn=generate_model, inputs=[inp, fitting_step], outputs=out_lst)
+    # btn_texture.click(
+    #     fn=generate_texture,
+    #     inputs=[out_final_obj, prompt, seed, guidance_scale],
+    #     outputs=[viewpoint_images, result_video, output_file, progress_text]
+    # )
 
     demo.load(None, None, None, _js=load_js)
 

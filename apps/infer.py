@@ -21,7 +21,6 @@ warnings.filterwarnings("ignore")
 logging.getLogger("lightning").setLevel(logging.ERROR)
 logging.getLogger("trimesh").setLevel(logging.ERROR)
 
-import argparse
 import os
 
 import numpy as np
@@ -39,7 +38,7 @@ from lib.common.BNI_utils import save_normal_tensor
 from lib.common.config import cfg
 from lib.common.imutils import blend_rgb_norm
 from lib.common.local_affine import register
-from lib.common.render import query_color
+from lib.common.render import query_color, Render
 from lib.common.train_util import Format, init_loss
 from lib.common.voxelize import VoxelGrid
 from lib.dataset.mesh_util import *
@@ -48,6 +47,26 @@ from lib.net.geometry import rot6d_to_rotmat, rotation_matrix_to_angle_axis
 
 torch.backends.cudnn.benchmark = True
 
+def generate_video(vis_tensor_path):
+
+    in_tensor = torch.load(vis_tensor_path)
+
+    render = Render(size=512, device=torch.device("cuda:0"))
+
+    # visualize the final results in self-rotation mode
+    verts_lst = in_tensor["body_verts"] + in_tensor["BNI_verts"]
+    faces_lst = in_tensor["body_faces"] + in_tensor["BNI_faces"]
+
+    # self-rotated video
+    tmp_path = vis_tensor_path.replace("_in_tensor.pt", "_tmp.mp4")
+    out_path = vis_tensor_path.replace("_in_tensor.pt", ".mp4")
+    
+    render.load_meshes(verts_lst, faces_lst)
+    render.get_rendered_video_multi(in_tensor, tmp_path)
+    
+    os.system(f'ffmpeg -y -loglevel quiet -stats -i {tmp_path} -c:v libx264 {out_path}')
+    
+    return out_path, out_path
 
 def generate_model(in_path, fitting_step=50):
 
@@ -619,11 +638,11 @@ def generate_model(in_path, fitting_step=50):
         torch.save(in_tensor, osp.join(out_dir, cfg.name, f"vid/{data['name']}_in_tensor.pt"))
 
     smpl_glb_path = smpl_obj_path.replace(".obj", ".glb")
-    smpl_npy_path = smpl_obj_path.replace(".obj", ".npy")
+    # smpl_npy_path = smpl_obj_path.replace(".obj", ".npy")
     refine_obj_path = final_path
     refine_glb_path = final_path.replace(".obj", ".glb")
-
     overlap_path = img_overlap_path
+    vis_tensor_path = osp.join(out_dir, cfg.name, f"vid/{data['name']}_in_tensor.pt")
 
     # clean all the variables
     for element in dir():
@@ -635,5 +654,5 @@ def generate_model(in_path, fitting_step=50):
     torch.cuda.empty_cache()
 
     return [
-        smpl_glb_path, smpl_obj_path, smpl_npy_path, refine_glb_path, refine_obj_path, overlap_path
+        smpl_glb_path, refine_glb_path, refine_obj_path, overlap_path, vis_tensor_path
     ]
