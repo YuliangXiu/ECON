@@ -28,6 +28,7 @@
     <a href="https://discord.gg/Vqa7KBGRyk"><img alt="discord invitation link" src="https://dcbadge.vercel.app/api/server/Vqa7KBGRyk?style=flat"></a>
     <br></br>
     <a href='https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a>
+    <a href="https://huggingface.co/spaces/Yuliang/ECON"  style='padding-left: 0.5rem;'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-ECON-orange'></a>
     <a href='https://github.com/YuliangXiu/ECON/blob/master/docs/installation-docker.md'><img src='https://img.shields.io/badge/Docker-9cf.svg?logo=Docker' alt='Docker'></a>
     <a href='https://carlosedubarreto.gumroad.com/l/CEB_ECON'><img src='https://img.shields.io/badge/Blender-F6DDCC.svg?logo=Blender' alt='Blender'></a>
     <br></br>
@@ -48,6 +49,7 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 ## News :triangular_flag_on_post:
 
+- [2023/04/16] <a href="https://huggingface.co/spaces/Yuliang/ECON"  style='padding-left: 0.5rem;'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-orange'></a> is ready to use!
 - [2023/02/27] ECON got accepted by CVPR 2023 as Highlight (top 10%)!
 - [2023/01/12] [Carlos Barreto](https://twitter.com/carlosedubarret/status/1613252471035494403) creates a Blender Addon ([Download](https://carlosedubarreto.gumroad.com/l/CEB_ECON), [Tutorial](https://youtu.be/sbWZbTf6ZYk)).
 - [2023/01/08] [Teddy Huang](https://github.com/Teddy12155555) creates [install-with-docker](docs/installation-docker.md) for ECON .
@@ -64,9 +66,9 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 d-BiNI jointly optimizes front-back 2.5D surfaces such that: (1) high-frequency surface details agree with normal maps, (2) low-frequency surface variations, including discontinuities, align with SMPL-X surfaces, and (3) front-back 2.5D surface silhouettes are coherent with each other.
 
-|Front-view|Back-view|Side-view|
-|:--:|:--:|:---:|
-|![](assets/front-45.gif)|![](assets/back-45.gif)|![](assets/double-90.gif)||
+|        Front-view        |        Back-view        |         Side-view         |
+| :----------------------: | :---------------------: | :-----------------------: |
+| ![](assets/front-45.gif) | ![](assets/back-45.gif) | ![](assets/double-90.gif) |
 
 <details><summary>Please consider cite <strong>BiNI</strong> if it also helps on your project</summary>
 
@@ -80,6 +82,7 @@ d-BiNI jointly optimizes front-back 2.5D surfaces such that: (1) high-frequency 
   organization={Springer}
 }
 ```
+
 </details>
 
 <br>
@@ -114,6 +117,9 @@ d-BiNI jointly optimizes front-back 2.5D surfaces such that: (1) high-frequency 
 - See [testing](docs/testing.md) to prepare the testing data and evaluate ECON
 
 ## Demo
+ 
+ 
+- Terminal
 
 ```bash
 # For single-person image-based reconstruction (w/ l visualization steps, 1.8min)
@@ -128,6 +134,17 @@ python -m apps.multi_render -n <filename>
 # To animate the reconstruction with SMPL-X pose parameters
 python -m apps.avatarizer -n <filename>
 ```
+
+- Gradio demo
+
+We also provide a UI for testing our method that is built with gradio. This demo also supports pose&prompt guided human image generation! Running the following command in a terminal will launch the demo:
+
+```bash
+git checkout main
+python app.py
+```
+
+This demo is also hosted on HuggingFace Space <a href="https://huggingface.co/spaces/Yuliang/ECON"  style='padding-left: 0.5rem;'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-ECON-orange'></a>
 
 <br/>
 
