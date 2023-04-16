@@ -1,6 +1,6 @@
 ---
 title:  Unconstrained & Detailed Clothed Human Digitization (ECON + ControlNet)
-metaTitle: Avatarify from Photo
+metaTitle: ECON-Avatarify from Photo
 emoji: 🤼
 colorFrom: green
 colorTo: pink

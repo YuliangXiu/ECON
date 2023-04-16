@@ -1,5 +1,4 @@
 import numpy as np
-
 from .triangle_hash import TriangleHash as _TriangleHash
 
 

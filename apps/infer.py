@@ -28,6 +28,7 @@ import torch
 import torchvision
 import trimesh
 from pytorch3d.ops import SubdivideMeshes
+from huggingface_hub import hf_hub_download
 from termcolor import colored
 from tqdm.auto import tqdm
 
@@ -47,6 +48,7 @@ from lib.net.geometry import rot6d_to_rotmat, rotation_matrix_to_angle_axis
 
 torch.backends.cudnn.benchmark = True
 
+
 def generate_video(vis_tensor_path):
 
     in_tensor = torch.load(vis_tensor_path)
@@ -60,13 +62,14 @@ def generate_video(vis_tensor_path):
     # self-rotated video
     tmp_path = vis_tensor_path.replace("_in_tensor.pt", "_tmp.mp4")
     out_path = vis_tensor_path.replace("_in_tensor.pt", ".mp4")
-    
+
     render.load_meshes(verts_lst, faces_lst)
     render.get_rendered_video_multi(in_tensor, tmp_path)
-    
-    os.system(f'ffmpeg -y -loglevel quiet -stats -i {tmp_path} -c:v libx264 {out_path}')
-    
-    return out_path, out_path
+
+    os.system(f"ffmpeg -y -loglevel quiet -stats -i {tmp_path} -vcodec libx264 {out_path}")
+
+    return out_path
+
 
 def generate_model(in_path, fitting_step=50):
 
@@ -87,7 +90,12 @@ def generate_model(in_path, fitting_step=50):
 
     # load normal model
     normal_net = Normal.load_from_checkpoint(
-        cfg=cfg, checkpoint_path=cfg.normal_path, map_location=device, strict=False
+        cfg=cfg,
+        checkpoint_path=hf_hub_download(
+            repo_id="Yuliang/ICON", use_auth_token=os.environ["ICON"], filename=cfg.normal_path
+        ),
+        map_location=device,
+        strict=False
     )
     normal_net = normal_net.to(device)
     normal_net.netG.eval()
@@ -111,7 +119,12 @@ def generate_model(in_path, fitting_step=50):
     if cfg.bni.use_ifnet:
         # load IFGeo model
         ifnet = IFGeo.load_from_checkpoint(
-            cfg=cfg, checkpoint_path=cfg.ifnet_path, map_location=device, strict=False
+            cfg=cfg,
+            checkpoint_path=hf_hub_download(
+                repo_id="Yuliang/ICON", use_auth_token=os.environ["ICON"], filename=cfg.ifnet_path
+            ),
+            map_location=device,
+            strict=False
         )
         ifnet = ifnet.to(device)
         ifnet.netG.eval()
@@ -644,15 +657,13 @@ def generate_model(in_path, fitting_step=50):
     overlap_path = img_overlap_path
     vis_tensor_path = osp.join(out_dir, cfg.name, f"vid/{data['name']}_in_tensor.pt")
 
-    # clean all the variables
-    for element in dir():
-        if 'path' not in element:
-            del locals()[element]
+    # # clean all the variables
+    # for element in dir():
+    #     if 'path' not in element:
+    #         del locals()[element]
 
-    import gc
-    gc.collect()
-    torch.cuda.empty_cache()
+    # import gc
+    # gc.collect()
+    # torch.cuda.empty_cache()
 
-    return [
-        smpl_glb_path, refine_glb_path, refine_obj_path, overlap_path, vis_tensor_path
-    ]
+    return [smpl_glb_path, refine_glb_path, refine_obj_path, overlap_path, vis_tensor_path]

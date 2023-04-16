@@ -18,4 +18,3 @@ dist
 *.so
 run.sh
 *.log
-gradio_cached_examples/

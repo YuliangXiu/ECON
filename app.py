@@ -6,21 +6,14 @@ import os
 
 import subprocess
 
-curr_dir = os.path.dirname(__file__)
-
 if os.getenv('SYSTEM') == 'spaces':
     # subprocess.run('pip install pyembree'.split())
     subprocess.run(
         'pip install --no-index --no-cache-dir pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py38_cu116_pyt1130/download.html'
         .split()
     )
-    subprocess.run(
-        f"cd {curr_dir}/lib/common/libmesh && python setup.py build_ext --inplace".split()
-    )
-    subprocess.run(
-        f"cd {curr_dir}/lib/common/libvoxelize && python setup.py build_ext --inplace".split()
-    )
-    subprocess.run(f"cd {curr_dir}".split())
+    subprocess.run("python setup.py build_ext --inplace".split(), cwd="./lib/common/libmesh/")
+    subprocess.run("python setup.py build_ext --inplace".split(), cwd="./lib/common/libvoxelize/")
 
 from apps.infer import generate_model, generate_video
 
@@ -134,6 +127,8 @@ async (image_in_img, prompt, image_file_live_opt, live_conditioning) => {
 # Constants
 low_threshold = 100
 high_threshold = 200
+default_step = 50
+cached = False
 
 # Models
 pose_model = OpenposeDetector.from_pretrained("lllyasviel/ControlNet")
@@ -162,8 +157,8 @@ hint_prompts = '''
 <strong>Hints</strong>: <br>
 best quality, extremely detailed, solid color background, 
 super detail, high detail, edge lighting, soft focus, 
-light and dark contrast, 8k, high detail, edge lighting, 
-3d, c4d, blender, oc renderer, ultra high definition, 3d rendering
+light and dark contrast, 8k, edge lighting, 3d, c4d, 
+blender, oc renderer, ultra high definition, 3d rendering
 '''
 
 
@@ -213,8 +208,6 @@ def toggle(choice):
 examples_pose = glob.glob('examples/pose/*')
 examples_cloth = glob.glob('examples/cloth/*')
 
-default_step = 50
-
 with gr.Blocks() as demo:
     gr.Markdown(description)
 
@@ -255,7 +248,7 @@ with gr.Blocks() as demo:
                     gallery_cache = gr.State()
                     inp = gr.Image(type="filepath", label="Input Image for ECON")
                     fitting_step = gr.inputs.Slider(
-                        10, 100, step=10, label='Fitting steps', default=default_step
+                        10, 100, step=10, label='Fitting steps (Slower yet Better-aligned SMPL-X)', default=default_step
                     )
 
             with gr.Row():
@@ -283,34 +276,34 @@ with gr.Blocks() as demo:
                 gr.Examples(
                     examples=list(examples_pose),
                     inputs=[inp],
-                    cache_examples=False,
+                    cache_examples=cached,
                     fn=generate_model,
                     outputs=out_lst,
-                    label="Hard Pose Exampels"
+                    label="Hard Pose Examples"
                 )
+                
                 gr.Examples(
                     examples=list(examples_cloth),
                     inputs=[inp],
-                    cache_examples=False,
+                    cache_examples=cached,
                     fn=generate_model,
                     outputs=out_lst,
-                    label="Loose Cloth Exampels"
+                    label="Loose Cloth Examples"
                 )
+                
+            out_vid = gr.Video(label="Shared on Twitter with #ECON")
 
         with gr.Column():
-            overlap_inp = gr.Image(type="filepath", label="Image Normal Overlap")
-            with gr.Row():
-                out_final = gr.Model3D(clear_color=[0.0, 0.0, 0.0, 0.0], label="Clothed human")
-                out_smpl = gr.Model3D(clear_color=[0.0, 0.0, 0.0, 0.0], label="SMPL-X body")
+            overlap_inp = gr.Image(type="filepath", label="Image Normal Overlap").style(height=400)
+            out_final = gr.Model3D(clear_color=[0.0, 0.0, 0.0, 0.0], label="Clothed human", elem_id="avatar")
+            out_smpl = gr.Model3D(clear_color=[0.0, 0.0, 0.0, 0.0], label="SMPL-X body", elem_id="avatar")
 
             out_final_obj = gr.State()
             vis_tensor_path = gr.State()
 
             with gr.Row():
                 btn_video = gr.Button("Generate Video (~2min)")
-            with gr.Row():
-                out_vid = gr.Video(label="Shared on Twitter with #ECON")
-
+    
     # with gr.Row():
     #     btn_texture = gr.Button("Generate Full-texture")
 
@@ -345,12 +338,13 @@ with gr.Blocks() as demo:
     )
 
     btn_submit.click(fn=generate_model, inputs=[inp, fitting_step], outputs=out_lst)
+    
     # btn_texture.click(
     #     fn=generate_texture,
     #     inputs=[out_final_obj, prompt, seed, guidance_scale],
     #     outputs=[viewpoint_images, result_video, output_file, progress_text]
     # )
-
+    
     demo.load(None, None, None, _js=load_js)
 
 if __name__ == "__main__":
@@ -359,4 +353,5 @@ if __name__ == "__main__":
     #             auth=(os.environ['USER'], os.environ['PASSWORD']),
     #             auth_message="Register at icon.is.tue.mpg.de to get HuggingFace username and password.")
 
+    demo.queue(concurrency_count=1)
     demo.launch(debug=True, enable_queue=True)
