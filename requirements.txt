@@ -4,7 +4,7 @@ torchvision==0.14.1+cu116
 fvcore
 iopath
 pyembree
-cupy
+cupy-cuda11x
 cython
 matplotlib
 scikit-image

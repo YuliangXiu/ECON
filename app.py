@@ -6,19 +6,28 @@ import os
 
 import subprocess
 
+curr_dir = os.path.dirname(__file__)
+
 if os.getenv('SYSTEM') == 'spaces':
     # subprocess.run('pip install pyembree'.split())
     subprocess.run(
         'pip install --no-index --no-cache-dir pytorch3d -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py38_cu116_pyt1130/download.html'
         .split()
     )
+    subprocess.run(
+        f"cd {curr_dir}/lib/common/libmesh && python setup.py build_ext --inplace".split()
+    )
+    subprocess.run(
+        f"cd {curr_dir}/lib/common/libvoxelize && python setup.py build_ext --inplace".split()
+    )
+    subprocess.run(f"cd {curr_dir}".split())
 
 from apps.infer import generate_model, generate_video
 
 # running
 
 description = '''
-# Fully-textured Clothed Human Digitization (ECON + ControlNet) 
+# Unconstrained & Detailed Clothed Human Digitization (ECON + ControlNet) 
 ### ECON: Explicit Clothed humans Optimized via Normal integration (CVPR 2023, Highlight)
 
 <table>
@@ -149,7 +158,6 @@ pipe.enable_xformers_memory_efficient_attention()
 # Generator seed,
 generator = torch.manual_seed(0)
 
-
 hint_prompts = '''
 <strong>Hints</strong>: <br>
 best quality, extremely detailed, solid color background, 
@@ -158,6 +166,7 @@ light and dark contrast, 8k, high detail, edge lighting,
 3d, c4d, blender, oc renderer, ultra high definition, 3d rendering
 '''
 
+
 def get_pose(image):
     return pose_model(image)
 
@@ -165,9 +174,9 @@ def get_pose(image):
 # def generate_texture(input_shape, text, seed, guidance_scale):
 #     iface = gr.Interface.load("spaces/TEXTurePaper/TEXTure")
 #     output_shape = iface(input_shape, text, seed, guidance_scale)
-#     return output_shape    
-    
-    
+#     return output_shape
+
+
 def generate_images(image, prompt, image_file_live_opt='file', live_conditioning=None):
     if image is None and 'image' not in live_conditioning:
         raise gr.Error("Please provide an image")
@@ -222,7 +231,9 @@ with gr.Blocks() as demo:
                                                    label="How would you like to upload your image?")
 
                     with gr.Row():
-                        image_in_img = gr.Image(source="upload", visible=True, type="pil", label="Image for Pose")
+                        image_in_img = gr.Image(
+                            source="upload", visible=True, type="pil", label="Image for Pose"
+                        )
                         canvas = gr.HTML(None, elem_id="canvas_html", visible=False)
 
                     image_file_live_opt.change(
@@ -234,12 +245,11 @@ with gr.Blocks() as demo:
                     prompt = gr.Textbox(
                         label="Enter your prompt to synthesise the image",
                         max_lines=10,
-                        placeholder=
-                        "best quality, extremely detailed",
+                        placeholder="best quality, extremely detailed",
                     )
-                    
+
                     gr.Markdown(hint_prompts)
-                    
+
                 with gr.Column():
                     gallery = gr.Gallery().style(grid=[2], height="auto")
                     gallery_cache = gr.State()

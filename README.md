@@ -1,5 +1,6 @@
-title: Fully-textured Clothed Human Digitization (ECON + TEXTure)
-metaTitle: Avatarify yourself from single image, by Yuliang Xiu
+---
+title:  Unconstrained & Detailed Clothed Human Digitization (ECON + ControlNet)
+metaTitle: Avatarify from Photo
 emoji: 🤼
 colorFrom: green
 colorTo: pink
@@ -8,3 +9,4 @@ sdk_version: 3.27.0
 app_file: app.py
 pinned: true
 python_version: 3.8.15
+---

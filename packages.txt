@@ -8,6 +8,4 @@ libgl1-mesa-dri
 libegl1-mesa
 libgbm1
 build-essential
-python-wheel
-libturbojpeg
 libeigen3-dev
