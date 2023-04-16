@@ -307,14 +307,14 @@ class Render:
         height, width = data["img_raw"].shape[2:]
 
         width = int(width / (height / 256.0))
-        height = 256
+        height = int(256)
 
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         video = cv2.VideoWriter(
             save_path,
             fourcc,
             self.fps,
-            (width * 3, int(height)),
+            (width * 3, height),
         )
 
         pbar = tqdm(range(len(self.meshes)))
@@ -355,10 +355,10 @@ class Render:
                                       data)
             img_cloth = blend_rgb_norm((torch.stack(mesh_renders)[num_obj:, cam_id] - 0.5) * 2.0,
                                        data)
-            final_img = torch.cat([img_raw, img_smpl, img_cloth], dim=-1).squeeze(0)
+            final_img = torch.cat([img_raw, img_smpl, img_cloth], dim=-1)
 
             final_img_rescale = F.interpolate(
-                final_img, size=(height, width), mode="bilinear", align_corners=False
+                final_img, size=(height, width*3), mode="bilinear", align_corners=False
             ).squeeze(0).permute(1, 2, 0).numpy().astype(np.uint8)
 
             video.write(final_img_rescale[:, :, ::-1])

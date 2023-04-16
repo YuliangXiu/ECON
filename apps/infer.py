@@ -652,7 +652,7 @@ def generate_model(in_path, fitting_step=50):
 
     smpl_glb_path = smpl_obj_path.replace(".obj", ".glb")
     # smpl_npy_path = smpl_obj_path.replace(".obj", ".npy")
-    refine_obj_path = final_path
+    # refine_obj_path = final_path
     refine_glb_path = final_path.replace(".obj", ".glb")
     overlap_path = img_overlap_path
     vis_tensor_path = osp.join(out_dir, cfg.name, f"vid/{data['name']}_in_tensor.pt")
@@ -666,4 +666,4 @@ def generate_model(in_path, fitting_step=50):
     # gc.collect()
     # torch.cuda.empty_cache()
 
-    return [smpl_glb_path, refine_glb_path, refine_obj_path, overlap_path, vis_tensor_path]
+    return [smpl_glb_path, refine_glb_path, overlap_path, vis_tensor_path]

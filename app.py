@@ -88,7 +88,8 @@ description = '''
 </details>
 
 <center>
-<h2> Generate pose & prompt-guided images / Upload photos /  Use examples &rarr; Submit Image (~2min) &rarr; Generate Video (~2min) </h2>
+<a href="https://huggingface.co/spaces/Yuliang/ECON?duplicate=true"><img src="https://huggingface.co/datasets/huggingface/badges/raw/main/duplicate-this-space-lg-dark.svg"/></a>
+<h2> Generate pose & prompt-guided images / Upload photos /  Use examples &rarr; Submit Image (~3min) &rarr; Generate Video (~3min) </h2>
 </center>
 '''
 
@@ -244,16 +245,30 @@ with gr.Blocks() as demo:
                     gr.Markdown(hint_prompts)
 
                 with gr.Column():
-                    gallery = gr.Gallery().style(grid=[2], height="auto")
+                    gallery = gr.Gallery(label="Generated Images").style(grid=[2], height="auto")
                     gallery_cache = gr.State()
-                    inp = gr.Image(type="filepath", label="Input Image for ECON")
+
+                    gr.Markdown(
+                        '''
+                                <center>
+                                <strong>Click the target generated image for Reconstruction.</strong> <br>
+                                &darr;
+                                </center>
+                                '''
+                    )
+
+                    inp = gr.Image(type="filepath", label="Input Image for Reconstruction")
                     fitting_step = gr.inputs.Slider(
-                        10, 100, step=10, label='Fitting steps (Slower yet Better-aligned SMPL-X)', default=default_step
+                        10,
+                        100,
+                        step=10,
+                        label='Fitting steps (Slower yet Better-aligned SMPL-X)',
+                        default=default_step
                     )
 
             with gr.Row():
                 btn_sample = gr.Button("Generate Image")
-                btn_submit = gr.Button("Submit Image (~2min)")
+                btn_submit = gr.Button("Submit Image (~3min)")
 
             btn_sample.click(
                 fn=generate_images,
@@ -277,59 +292,37 @@ with gr.Blocks() as demo:
                     examples=list(examples_pose),
                     inputs=[inp],
                     cache_examples=cached,
-                    fn=generate_model,
-                    outputs=out_lst,
+                    fn=None,
+                    outputs=None,
                     label="Hard Pose Examples"
                 )
-                
+
                 gr.Examples(
                     examples=list(examples_cloth),
                     inputs=[inp],
                     cache_examples=cached,
-                    fn=generate_model,
-                    outputs=out_lst,
+                    fn=None,
+                    outputs=None,
                     label="Loose Cloth Examples"
                 )
-                
+
             out_vid = gr.Video(label="Shared on Twitter with #ECON")
 
         with gr.Column():
             overlap_inp = gr.Image(type="filepath", label="Image Normal Overlap").style(height=400)
-            out_final = gr.Model3D(clear_color=[0.0, 0.0, 0.0, 0.0], label="Clothed human", elem_id="avatar")
-            out_smpl = gr.Model3D(clear_color=[0.0, 0.0, 0.0, 0.0], label="SMPL-X body", elem_id="avatar")
+            out_final = gr.Model3D(
+                clear_color=[0.0, 0.0, 0.0, 0.0], label="Clothed human", elem_id="avatar"
+            )
+            out_smpl = gr.Model3D(
+                clear_color=[0.0, 0.0, 0.0, 0.0], label="SMPL-X body", elem_id="avatar"
+            )
 
-            out_final_obj = gr.State()
             vis_tensor_path = gr.State()
 
             with gr.Row():
-                btn_video = gr.Button("Generate Video (~2min)")
-    
-    # with gr.Row():
-    #     btn_texture = gr.Button("Generate Full-texture")
+                btn_video = gr.Button("Generate Video (~3min)")
 
-    #     with gr.Row():
-    #         prompt = gr.Textbox(
-    #             label="Enter your prompt to texture the mesh",
-    #             max_lines=10,
-    #             placeholder=
-    #             "best quality, extremely detailed, solid color background, super detail, high detail, edge lighting, soft focus, light and dark contrast, 8k, high detail, edge lighting, 3d, c4d, blender, oc renderer, ultra high definition, 3d rendering",
-    #         )
-    #         seed = gr.Slider(label='Seed', minimum=0, maximum=100000, value=3, step=1)
-    #         guidance_scale = gr.Slider(
-    #             label='Guidance scale', minimum=0, maximum=50, value=7.5, step=0.1
-    #         )
-
-    #     progress_text = gr.Text(label='Progress')
-
-    #     with gr.Tabs():
-    #         with gr.TabItem(label='Images from each viewpoint'):
-    #             viewpoint_images = gr.Gallery(show_label=False)
-    #         with gr.TabItem(label='Result video'):
-    #             result_video = gr.Video(show_label=False)
-    #         with gr.TabItem(label='Output mesh file'):
-    #             output_file = gr.File(show_label=False)
-
-    out_lst = [out_smpl, out_final, out_final_obj, overlap_inp, vis_tensor_path]
+    out_lst = [out_smpl, out_final, overlap_inp, vis_tensor_path]
 
     btn_video.click(
         fn=generate_video,
@@ -338,20 +331,10 @@ with gr.Blocks() as demo:
     )
 
     btn_submit.click(fn=generate_model, inputs=[inp, fitting_step], outputs=out_lst)
-    
-    # btn_texture.click(
-    #     fn=generate_texture,
-    #     inputs=[out_final_obj, prompt, seed, guidance_scale],
-    #     outputs=[viewpoint_images, result_video, output_file, progress_text]
-    # )
-    
+
     demo.load(None, None, None, _js=load_js)
 
 if __name__ == "__main__":
-
-    # demo.launch(debug=False, enable_queue=False,
-    #             auth=(os.environ['USER'], os.environ['PASSWORD']),
-    #             auth_message="Register at icon.is.tue.mpg.de to get HuggingFace username and password.")
 
     demo.queue(concurrency_count=1)
     demo.launch(debug=True, enable_queue=True)
