@@ -57,7 +57,6 @@ ECON is designed for "Human digitization from a color image", which combines the
 - [2022/12/22] <a href='https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing' style='padding-left: 0.5rem;'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a> is now available, created by [Aron Arzoomand](https://github.com/AroArz).
 - [2022/12/15] Both <a href="#demo">demo</a> and <a href="https://arxiv.org/abs/2212.07422">arXiv</a> are available.
 
-
 ## Key idea: d-BiNI
 
 d-BiNI jointly optimizes front-back 2.5D surfaces such that: (1) high-frequency surface details agree with normal maps, (2) low-frequency surface variations, including discontinuities, align with SMPL-X surfaces, and (3) front-back 2.5D surface silhouettes are coherent with each other.
@@ -94,6 +93,9 @@ d-BiNI jointly optimizes front-back 2.5D surfaces such that: (1) high-frequency 
       <a href="#demo">Demo</a>
     </li>
     <li>
+      <a href="#texture">Texture</a>
+    </li>
+    <li>
       <a href="#applications">Applications</a>
     </li>
     <li>
@@ -113,8 +115,7 @@ d-BiNI jointly optimizes front-back 2.5D surfaces such that: (1) high-frequency 
 - See [testing](docs/testing.md) to prepare the testing data and evaluate ECON
 
 ## Demo
- 
- 
+
 - Terminal
 
 ```bash
@@ -142,11 +143,15 @@ python app.py
 
 This demo is also hosted on HuggingFace Space <a href="https://huggingface.co/spaces/Yuliang/ECON"  style='padding-left: 0.5rem;'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-ECON-orange'></a>
 
-- Full Texture Generation 
+## Texture
 
 Please firstly follow the [TEXTure's installation](https://github.com/YuliangXiu/TEXTure#installation-floppy_disk) to setup the env of TEXTure.
 
 ```bash
+# To animate the reconstruction with SMPL-X pose parameters
+python -m apps.avatarizer -n <filename>
+
+# use TEXTure to paint the full textures
 git clone https://github.com/YuliangXiu/TEXTure
 cd TEXTure
 ln -s ../ECON/results/econ/cache
@@ -154,6 +159,19 @@ python -m scripts.run_texture --config_path=configs/text_guided/avatar.yaml
 ```
 
 Then check `./experiments/<filename>/mesh` for the results.
+
+<details><summary>Please consider cite <strong>TEXTure</strong> if it also helps on your project</summary>
+
+```bibtex
+@article{richardson2023texture,
+  title={Texture: Text-guided texturing of 3d shapes},
+  author={Richardson, Elad and Metzer, Gal and Alaluf, Yuval and Giryes, Raja and Cohen-Or, Daniel},
+  journal={arXiv preprint arXiv:2302.01721},
+  year={2023}
+}
+```
+
+</details>
 
 <br/>
 
@@ -169,7 +187,7 @@ Then check `./experiments/<filename>/mesh` for the results.
 
 |                                        ![SHHQ](assets/SHHQ.gif)                                        |         ![crowd](assets/crowd.gif)          |
 | :----------------------------------------------------------------------------------------------------: | :-----------------------------------------: |
-| _ECON could provide pseudo 3D GT for [SHHQ Dataset](https://github.com/stylegan-human/StyleGAN-Human)_ | _ECON supports multi-person reconstruction_ |
+| _ECON as "3D Guidance" in [SHHQ Dataset](https://github.com/stylegan-human/StyleGAN-Human)_ | _Multi-person w/ Occlusion_ |
 
 <br/>
 <br/>

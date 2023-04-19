@@ -211,47 +211,18 @@ econ_cano_verts = econ_cano_verts[:, :3, 0].double()
 # use original pose to animate ECON reconstruction
 # ----------------------------------------------------
 
-new_pose = smpl_out_lst[3].full_pose
-# new_pose[:, :3] = 0.
+rot_mat_pose = smpl_out_lst[3].vertex_transformation.detach()[0][idx[:, 0]]
+posed_econ_verts = rot_mat_pose @ torch.cat(
+    [econ_cano_verts.float(), torch.ones_like(econ_cano_verts.float())[..., :1]], dim=1
+).unsqueeze(-1)
+posed_econ_verts = posed_econ_verts[:, :3, 0].double()
 
-posed_econ_verts, _ = general_lbs(
-    pose=new_pose,
-    v_template=econ_cano_verts.unsqueeze(0),
-    posedirs=econ_posedirs,
-    J_regressor=econ_J_regressor,
-    parents=smpl_model.parents,
-    lbs_weights=econ_lbs_weights
-)
-aligned_econ_verts = posed_econ_verts[0].detach().cpu().numpy()
+aligned_econ_verts = posed_econ_verts.detach().cpu().numpy()
 aligned_econ_verts += smplx_param["transl"].cpu().numpy()
 aligned_econ_verts *= smplx_param["scale"].cpu().numpy() * np.array([1.0, -1.0, -1.0])
 econ_pose = trimesh.Trimesh(aligned_econ_verts, econ_da.faces)
 assert (econ_pose.vertex_normals.shape[1] == 3)
 econ_pose.export(f"{prefix}_econ_pose.ply")
-
-# -------------------------------------------------------------------------
-# Align posed ECON with original ECON, for pixel-aligned texture extraction
-# -------------------------------------------------------------------------
-
-print("Start ICP registration between posed & original ECON...")
-import open3d as o3d
-
-source = o3d.io.read_point_cloud(f"{prefix}_econ_pose.ply")
-target = o3d.io.read_point_cloud(f"{prefix}_econ_raw.ply")
-trans_init = o3d_ransac(source, target)
-icp_criteria = o3d.pipelines.registration.ICPConvergenceCriteria(
-    relative_fitness=0.000001, relative_rmse=0.000001, max_iteration=100
-)
-
-reg_p2l = o3d.pipelines.registration.registration_icp(
-    source,
-    target,
-    0.1,
-    trans_init,
-    o3d.pipelines.registration.TransformationEstimationPointToPlane(),
-    criteria=icp_criteria
-)
-econ_pose.apply_transform(reg_p2l.transformation)
 
 cache_path = f"{prefix.replace('obj','cache')}"
 os.makedirs(cache_path, exist_ok=True)
