@@ -57,10 +57,6 @@ ECON is designed for "Human digitization from a color image", which combines the
 - [2022/12/22] <a href='https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing' style='padding-left: 0.5rem;'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a> is now available, created by [Aron Arzoomand](https://github.com/AroArz).
 - [2022/12/15] Both <a href="#demo">demo</a> and <a href="https://arxiv.org/abs/2212.07422">arXiv</a> are available.
 
-## TODO
-
-- [ ] Blender add-on for FBX export
-- [ ] Full RGB texture generation
 
 ## Key idea: d-BiNI
 
@@ -135,7 +131,7 @@ python -m apps.multi_render -n <filename>
 python -m apps.avatarizer -n <filename>
 ```
 
-- Gradio demo
+- Gradio Demo
 
 We also provide a UI for testing our method that is built with gradio. This demo also supports pose&prompt guided human image generation! Running the following command in a terminal will launch the demo:
 
@@ -145,6 +141,19 @@ python app.py
 ```
 
 This demo is also hosted on HuggingFace Space <a href="https://huggingface.co/spaces/Yuliang/ECON"  style='padding-left: 0.5rem;'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-ECON-orange'></a>
+
+- Full Texture Generation 
+
+Please firstly follow the [TEXTure's installation](https://github.com/YuliangXiu/TEXTure#installation-floppy_disk) to setup the env of TEXTure.
+
+```bash
+git clone https://github.com/YuliangXiu/TEXTure
+cd TEXTure
+ln -s ../ECON/results/econ/cache
+python -m scripts.run_texture --config_path=configs/text_guided/avatar.yaml
+```
+
+Then check `./experiments/<filename>/mesh` for the results.
 
 <br/>
 
