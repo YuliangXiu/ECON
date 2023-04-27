@@ -37,7 +37,7 @@ OP_JOINT_NAMES = [
     'OP LHeel',
     'OP RBigToe',
     'OP RSmallToe',
-    'OP RHeel',
+    'OP RHeel'
 ]
 SPIN_JOINT_NAMES = [
     # 24 Ground Truth joints (superset of joints from different datasets)
@@ -151,27 +151,9 @@ SMPL_PART_ID = {
 # ]
 
 HAND_NAMES = [
-    'wrist',
-    'thumb1',
-    'thumb2',
-    'thumb3',
-    'thumb',
-    'index1',
-    'index2',
-    'index3',
-    'index',
-    'middle1',
-    'middle2',
-    'middle3',
-    'middle',
-    'ring1',
-    'ring2',
-    'ring3',
-    'ring',
-    'pinky1',
-    'pinky2',
-    'pinky3',
-    'pinky',
+    'wrist', 'thumb1', 'thumb2', 'thumb3', 'thumb', 'index1', 'index2', 'index3', 'index',
+    'middle1', 'middle2', 'middle3', 'middle', 'ring1', 'ring2', 'ring3', 'ring', 'pinky1',
+    'pinky2', 'pinky3', 'pinky'
 ]
 
 import lib.smplx.joint_names as smplx_joint_name
@@ -249,7 +231,7 @@ FACIAL_LANDMARKS = [
     'left_contour_4',
     'left_contour_3',
     'left_contour_2',
-    'left_contour_1',
+    'left_contour_1'
 ]
 
 # LRHAND_FLIP_PERM = [i for i in range(16, 32)] + [i for i in range(16)]
