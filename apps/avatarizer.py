@@ -56,8 +56,8 @@ smpl_model = smplx.create(
     age="adult",
     use_face_contour=False,
     use_pca=False,
-    num_betas=200,
-    num_expression_coeffs=50,
+    num_betas=smplx_param['betas'].shape[1],
+    num_expression_coeffs=smplx_param["expression"].shape[1],
     ext='pkl'
 )
 

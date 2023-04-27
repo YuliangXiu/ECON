@@ -164,8 +164,8 @@ class TestDataset:
 
         if self.hps_type == "pymafx":
             output = preds_dict["mesh_out"][-1]
-            scale, tranX, tranY = output["theta"][:, :3].split(1, dim=1)
-            arr_dict["betas"] = output["pred_shape"]
+            scale, tranX, tranY = output["pred_cam"].split(1, dim=1)
+            arr_dict["betas"] = output["pred_shape"]    #10
             arr_dict["body_pose"] = output["rotmat"][:, 1:22]
             arr_dict["global_orient"] = output["rotmat"][:, 0:1]
             arr_dict["smpl_verts"] = output["smplx_verts"]
@@ -192,9 +192,10 @@ class TestDataset:
         # data_dict info (key-shape):
         # scale, tranX, tranY - tensor.float
         # betas - [1,10] / [1, 200]
-        # body_pose - [1, 23, 3, 3] / [1, 21, 3, 3]
+        # body_pose - [1, 21, 3, 3]
+        # jaw_pose - [1, 1, 3, 3]
         # global_orient - [1, 1, 3, 3]
-        # smpl_verts - [1, 6890, 3] / [1, 10475, 3]
+        # smpl_verts - [1, 10475, 3]
 
         # from rot_mat to rot_6d for better optimization
         N_body, N_pose = arr_dict["body_pose"].shape[:2]
