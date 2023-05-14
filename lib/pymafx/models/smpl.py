@@ -139,11 +139,11 @@ class SMPL(_SMPL):
             ).contiguous()
 
         # Concatenate all pose vectors
-        full_pose = torch.cat([
-            global_orient.reshape(-1, 1, 3, 3),
-            body_pose.reshape(-1, self.NUM_BODY_JOINTS, 3, 3)
-        ],
-                              dim=1)
+        full_pose = torch.cat(
+            [global_orient.reshape(-1, 1, 3, 3),
+             body_pose.reshape(-1, self.NUM_BODY_JOINTS, 3, 3)],
+            dim=1
+        )
 
         rot_mats = full_pose.view(batch_size, -1, 3, 3)
 
@@ -284,16 +284,18 @@ class SMPLX(SMPLXLayer):
                                                                        -1).contiguous()
 
         # Concatenate all pose vectors
-        full_pose = torch.cat([
-            global_orient.reshape(-1, 1, 3, 3),
-            body_pose.reshape(-1, self.NUM_BODY_JOINTS, 3, 3),
-            jaw_pose.reshape(-1, 1, 3, 3),
-            leye_pose.reshape(-1, 1, 3, 3),
-            reye_pose.reshape(-1, 1, 3, 3),
-            left_hand_pose.reshape(-1, self.NUM_HAND_JOINTS, 3, 3),
-            right_hand_pose.reshape(-1, self.NUM_HAND_JOINTS, 3, 3)
-        ],
-                              dim=1)
+        full_pose = torch.cat(
+            [
+                global_orient.reshape(-1, 1, 3, 3),
+                body_pose.reshape(-1, self.NUM_BODY_JOINTS, 3, 3),
+                jaw_pose.reshape(-1, 1, 3, 3),
+                leye_pose.reshape(-1, 1, 3, 3),
+                reye_pose.reshape(-1, 1, 3, 3),
+                left_hand_pose.reshape(-1, self.NUM_HAND_JOINTS, 3, 3),
+                right_hand_pose.reshape(-1, self.NUM_HAND_JOINTS, 3, 3)
+            ],
+            dim=1
+        )
 
         rot_mats = full_pose.view(batch_size, -1, 3, 3)
 
@@ -342,20 +344,22 @@ class SMPLX_ALL(nn.Module):
             self.genders = ['neutral']
         for gender in self.genders:
             assert gender in ['male', 'female', 'neutral']
-        self.model_dict = nn.ModuleDict({
-            gender: SMPLX(
-                path_config.SMPL_MODEL_DIR,
-                gender=gender,
-                ext='npz',
-                num_betas=numBetas,
-                use_pca=False,
-                batch_size=batch_size,
-                use_face_contour=use_face_contour,
-                num_pca_comps=45,
-                **kwargs
-            )
-            for gender in self.genders
-        })
+        self.model_dict = nn.ModuleDict(
+            {
+                gender: SMPLX(
+                    path_config.SMPL_MODEL_DIR,
+                    gender=gender,
+                    ext='npz',
+                    num_betas=numBetas,
+                    use_pca=False,
+                    batch_size=batch_size,
+                    use_face_contour=use_face_contour,
+                    num_pca_comps=45,
+                    **kwargs
+                )
+                for gender in self.genders
+            }
+        )
         self.model_neutral = self.model_dict['neutral']
         joints = [constants.JOINT_MAP[i] for i in constants.JOINT_NAMES]
         J_regressor_extra = np.load(path_config.JOINT_REGRESSOR_TRAIN_EXTRA)
@@ -427,9 +431,9 @@ class SMPLX_ALL(nn.Module):
                     #     kwargs[key] += self.model_neutral.left_hand_mean
                     # elif key == 'right_hand_pose':
                     #     kwargs[key] += self.model_neutral.right_hand_mean
-                    kwargs[key] = batch_rodrigues(kwargs[key].contiguous().view(-1, 3)).view([
-                        batch_size, -1, 3, 3
-                    ])
+                    kwargs[key] = batch_rodrigues(kwargs[key].contiguous().view(-1, 3)).view(
+                        [batch_size, -1, 3, 3]
+                    )
         if kwargs['body_pose'].shape[1] == 23:
             # remove hand pose in the body_pose
             kwargs['body_pose'] = kwargs['body_pose'][:, :21]
@@ -571,9 +575,9 @@ class MANO(MANOLayer):
         if kwargs['pose2rot']:
             for key in pose_keys:
                 if key in kwargs:
-                    kwargs[key] = batch_rodrigues(kwargs[key].contiguous().view(-1, 3)).view([
-                        batch_size, -1, 3, 3
-                    ])
+                    kwargs[key] = batch_rodrigues(kwargs[key].contiguous().view(-1, 3)).view(
+                        [batch_size, -1, 3, 3]
+                    )
         kwargs['hand_pose'] = kwargs.pop('right_hand_pose')
         mano_output = super().forward(*args, **kwargs)
         th_verts = mano_output.vertices
@@ -606,9 +610,9 @@ class FLAME(FLAMELayer):
         if kwargs['pose2rot']:
             for key in pose_keys:
                 if key in kwargs:
-                    kwargs[key] = batch_rodrigues(kwargs[key].contiguous().view(-1, 3)).view([
-                        batch_size, -1, 3, 3
-                    ])
+                    kwargs[key] = batch_rodrigues(kwargs[key].contiguous().view(-1, 3)).view(
+                        [batch_size, -1, 3, 3]
+                    )
         flame_output = super().forward(*args, **kwargs)
         output = ModelOutput(
             flame_vertices=flame_output.vertices,
@@ -746,8 +750,9 @@ def get_part_joints(smpl_joints):
 
     # part_joints = torch.zeros().to(smpl_joints.device)
 
-    one_seg_pairs = [(0, 1), (0, 2), (0, 3), (3, 6), (9, 12), (9, 13), (9, 14), (12, 15), (13, 16),
-                     (14, 17)]
+    one_seg_pairs = [
+        (0, 1), (0, 2), (0, 3), (3, 6), (9, 12), (9, 13), (9, 14), (12, 15), (13, 16), (14, 17)
+    ]
     two_seg_pairs = [(1, 4), (2, 5), (4, 7), (5, 8), (16, 18), (17, 19), (18, 20), (19, 21)]
 
     one_seg_pairs.extend(two_seg_pairs)

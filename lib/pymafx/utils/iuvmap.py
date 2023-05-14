@@ -115,8 +115,10 @@ def iuv_img2map(uvimages, uv_rois=None, new_size=None, n_part=24):
     batch_size = uvimages.size(0)
     uvimg_size = uvimages.size(-1)
 
-    Index2mask = [[0], [1, 2], [3], [4], [5], [6], [7, 9], [8, 10], [11, 13], [12, 14], [15, 17],
-                  [16, 18], [19, 21], [20, 22], [23, 24]]
+    Index2mask = [
+        [0], [1, 2], [3], [4], [5], [6], [7, 9], [8, 10], [11, 13], [12, 14], [15, 17], [16, 18],
+        [19, 21], [20, 22], [23, 24]
+    ]
 
     part_ind = torch.round(uvimages[:, 0, :, :] * n_part)
     part_u = uvimages[:, 1, :, :]

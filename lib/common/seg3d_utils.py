@@ -140,8 +140,9 @@ class SmoothConv2D(nn.Module):
         assert kernel_size % 2 == 1, "kernel_size for smooth_conv must be odd: {3, 5, ...}"
         self.padding = (kernel_size - 1) // 2
 
-        weight = torch.ones((in_channels, out_channels, kernel_size, kernel_size),
-                            dtype=torch.float32) / (kernel_size**2)
+        weight = torch.ones(
+            (in_channels, out_channels, kernel_size, kernel_size), dtype=torch.float32
+        ) / (kernel_size**2)
         self.register_buffer('weight', weight)
 
     def forward(self, input):
@@ -154,8 +155,9 @@ class SmoothConv3D(nn.Module):
         assert kernel_size % 2 == 1, "kernel_size for smooth_conv must be odd: {3, 5, ...}"
         self.padding = (kernel_size - 1) // 2
 
-        weight = torch.ones((in_channels, out_channels, kernel_size, kernel_size, kernel_size),
-                            dtype=torch.float32) / (kernel_size**3)
+        weight = torch.ones(
+            (in_channels, out_channels, kernel_size, kernel_size, kernel_size), dtype=torch.float32
+        ) / (kernel_size**3)
         self.register_buffer('weight', weight)
 
     def forward(self, input):
@@ -183,8 +185,9 @@ def build_smooth_conv2D(in_channels=1, out_channels=1, kernel_size=3, padding=1)
         kernel_size=kernel_size,
         padding=padding
     )
-    smooth_conv.weight.data = torch.ones((in_channels, out_channels, kernel_size, kernel_size),
-                                         dtype=torch.float32) / (kernel_size**2)
+    smooth_conv.weight.data = torch.ones(
+        (in_channels, out_channels, kernel_size, kernel_size), dtype=torch.float32
+    ) / (kernel_size**2)
     smooth_conv.bias.data = torch.zeros(out_channels)
     return smooth_conv
 

@@ -556,10 +556,9 @@ class PIXIE(object):
         }
 
         # change the order of face keypoints, to be the same as "standard" 68 keypoints
-        prediction["face_kpt"] = torch.cat([
-            prediction["face_kpt"][:, -17:], prediction["face_kpt"][:, :-17]
-        ],
-                                           dim=1)
+        prediction["face_kpt"] = torch.cat(
+            [prediction["face_kpt"][:, -17:], prediction["face_kpt"][:, :-17]], dim=1
+        )
 
         prediction.update(param_dict)
 

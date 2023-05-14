@@ -93,10 +93,12 @@ def get_all_bbox_params(kps, vis_thresh=2):
             # Linearly interpolate each param.
             previous = bbox_params[-1]
             # This will be 3x(n+2)
-            interpolated = np.array([
-                np.linspace(prev, curr, num_to_interpolate + 2)
-                for prev, curr in zip(previous, bbox_param)
-            ])
+            interpolated = np.array(
+                [
+                    np.linspace(prev, curr, num_to_interpolate + 2)
+                    for prev, curr in zip(previous, bbox_param)
+                ]
+            )
             bbox_params = np.vstack((bbox_params, interpolated.T[1:-1]))
             num_to_interpolate = 0
         bbox_params = np.vstack((bbox_params, bbox_param))

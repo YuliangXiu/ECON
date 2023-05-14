@@ -172,12 +172,14 @@ def check_ray_intersection_with_unit_cube(ray0, ray_direction, padding=0.1, eps=
         ray_direction.unsqueeze(-2)
 
     # Calculate mask where points intersect unit cube
-    p_mask_inside_cube = ((p_intersect[:, :, :, 0] <= p_distance + eps) &
-                          (p_intersect[:, :, :, 1] <= p_distance + eps) &
-                          (p_intersect[:, :, :, 2] <= p_distance + eps) &
-                          (p_intersect[:, :, :, 0] >= -(p_distance + eps)) &
-                          (p_intersect[:, :, :, 1] >= -(p_distance + eps)) &
-                          (p_intersect[:, :, :, 2] >= -(p_distance + eps))).cpu()
+    p_mask_inside_cube = (
+        (p_intersect[:, :, :, 0] <= p_distance + eps) &
+        (p_intersect[:, :, :, 1] <= p_distance + eps) &
+        (p_intersect[:, :, :, 2] <= p_distance + eps) &
+        (p_intersect[:, :, :, 0] >= -(p_distance + eps)) &
+        (p_intersect[:, :, :, 1] >= -(p_distance + eps)) &
+        (p_intersect[:, :, :, 2] >= -(p_distance + eps))
+    ).cpu()
 
     # Correct rays are these which intersect exactly 2 times
     mask_inside_cube = p_mask_inside_cube.sum(-1) == 2
@@ -190,11 +192,13 @@ def check_ray_intersection_with_unit_cube(ray0, ray_direction, padding=0.1, eps=
     # Calculate ray lengths for the interval points
     d_intervals_batch = torch.zeros(batch_size, n_pts, 2).to(device)
     norm_ray = torch.norm(ray_direction[mask_inside_cube], dim=-1)
-    d_intervals_batch[mask_inside_cube] = torch.stack([
-        torch.norm(p_intervals[:, 0] - ray0[mask_inside_cube], dim=-1) / norm_ray,
-        torch.norm(p_intervals[:, 1] - ray0[mask_inside_cube], dim=-1) / norm_ray,
-    ],
-                                                      dim=-1)
+    d_intervals_batch[mask_inside_cube] = torch.stack(
+        [
+            torch.norm(p_intervals[:, 0] - ray0[mask_inside_cube], dim=-1) / norm_ray,
+            torch.norm(p_intervals[:, 1] - ray0[mask_inside_cube], dim=-1) / norm_ray,
+        ],
+        dim=-1
+    )
 
     # Sort the ray lengths
     d_intervals_batch, indices_sort = d_intervals_batch.sort()

@@ -78,11 +78,13 @@ def mean_value_cordinates(inner_pts, contour_pts):
     body_edges_c = np.roll(body_edges_a, shift=-1, axis=1)
     body_edges_b = np.sqrt(((contour_pts - np.roll(contour_pts, shift=-1, axis=0))**2).sum(axis=1))
 
-    body_edges = np.concatenate([
-        body_edges_a[..., None], body_edges_c[..., None],
-        np.repeat(body_edges_b[None, :, None], axis=0, repeats=len(inner_pts))
-    ],
-                                axis=-1)
+    body_edges = np.concatenate(
+        [
+            body_edges_a[..., None], body_edges_c[..., None],
+            np.repeat(body_edges_b[None, :, None], axis=0, repeats=len(inner_pts))
+        ],
+        axis=-1
+    )
 
     body_cos = (body_edges[:, :, 0]**2 + body_edges[:, :, 1]**2 -
                 body_edges[:, :, 2]**2) / (2 * body_edges[:, :, 0] * body_edges[:, :, 1])
@@ -175,9 +177,9 @@ def verts_transform(t, depth_scale):
     t_copy = t.clone()
     t_copy *= depth_scale * 0.5
     t_copy += depth_scale * 0.5
-    t_copy = t_copy[:, [1, 0, 2]] * torch.Tensor([2.0, 2.0, -2.0]) + torch.Tensor([
-        0.0, 0.0, depth_scale
-    ])
+    t_copy = t_copy[:, [1, 0, 2]] * torch.Tensor([2.0, 2.0, -2.0]) + torch.Tensor(
+        [0.0, 0.0, depth_scale]
+    )
 
     return t_copy
 
@@ -350,13 +352,15 @@ def construct_facets_from(mask):
     facet_bottom_left_mask = move_bottom(facet_top_left_mask)
     facet_bottom_right_mask = move_bottom_right(facet_top_left_mask)
 
-    return cp.hstack((
-        4 * cp.ones((cp.sum(facet_top_left_mask).item(), 1)),
-        idx[facet_top_left_mask][:, None],
-        idx[facet_bottom_left_mask][:, None],
-        idx[facet_bottom_right_mask][:, None],
-        idx[facet_top_right_mask][:, None],
-    )).astype(int)
+    return cp.hstack(
+        (
+            4 * cp.ones((cp.sum(facet_top_left_mask).item(), 1)),
+            idx[facet_top_left_mask][:, None],
+            idx[facet_bottom_left_mask][:, None],
+            idx[facet_bottom_right_mask][:, None],
+            idx[facet_top_right_mask][:, None],
+        )
+    ).astype(int)
 
 
 def map_depth_map_to_point_clouds(depth_map, mask, K=None, step_size=1):
@@ -646,11 +650,13 @@ def double_side_bilateral_normal_integration(
             B_verts = verts_inverse_transform(torch.as_tensor(vertices_back).float(), 256.0)
 
             F_B_verts = torch.cat((F_verts, B_verts), dim=0)
-            F_B_faces = torch.cat((
-                torch.as_tensor(faces_front_).long(),
-                torch.as_tensor(faces_back_).long() + faces_front_.max() + 1
-            ),
-                                  dim=0)
+            F_B_faces = torch.cat(
+                (
+                    torch.as_tensor(faces_front_).long(),
+                    torch.as_tensor(faces_back_).long() + faces_front_.max() + 1
+                ),
+                dim=0
+            )
 
             front_surf = trimesh.Trimesh(F_verts, faces_front_)
             back_surf = trimesh.Trimesh(B_verts, faces_back_)
@@ -694,12 +700,12 @@ def double_side_bilateral_normal_integration(
     back_mesh = clean_floats(trimesh.Trimesh(vertices_back, faces_back))
 
     result = {
-        "F_verts": torch.as_tensor(front_mesh.vertices).float(), "F_faces": torch.as_tensor(
-            front_mesh.faces
-        ).long(), "B_verts": torch.as_tensor(back_mesh.vertices).float(), "B_faces":
-        torch.as_tensor(back_mesh.faces).long(), "F_depth":
-        torch.as_tensor(depth_map_front_est).float(), "B_depth":
-        torch.as_tensor(depth_map_back_est).float()
+        "F_verts": torch.as_tensor(front_mesh.vertices).float(), "F_faces":
+            torch.as_tensor(front_mesh.faces).long(), "B_verts":
+                torch.as_tensor(back_mesh.vertices).float(), "B_faces":
+                    torch.as_tensor(back_mesh.faces).long(), "F_depth":
+                        torch.as_tensor(depth_map_front_est).float(), "B_depth":
+                            torch.as_tensor(depth_map_back_est).float()
     }
 
     return result

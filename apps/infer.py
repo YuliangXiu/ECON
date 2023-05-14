@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
         in_tensor = {
             "smpl_faces": data["smpl_faces"], "image": data["img_icon"].to(device), "mask":
-            data["img_mask"].to(device)
+                data["img_mask"].to(device)
         }
 
         # The optimizer and variables
@@ -158,11 +158,9 @@ if __name__ == "__main__":
         optimed_betas = data["betas"].requires_grad_(True)
         optimed_orient = data["global_orient"].requires_grad_(True)
 
-        optimizer_smpl = torch.optim.Adam([
-            optimed_pose, optimed_trans, optimed_betas, optimed_orient
-        ],
-                                          lr=1e-2,
-                                          amsgrad=True)
+        optimizer_smpl = torch.optim.Adam(
+            [optimed_pose, optimed_trans, optimed_betas, optimed_orient], lr=1e-2, amsgrad=True
+        )
         scheduler_smpl = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer_smpl,
             mode="min",
@@ -237,9 +235,9 @@ if __name__ == "__main__":
                 )
 
                 smpl_verts = (smpl_verts + optimed_trans) * data["scale"]
-                smpl_joints = (smpl_joints + optimed_trans) * data["scale"] * torch.tensor([
-                    1.0, 1.0, -1.0
-                ]).to(device)
+                smpl_joints = (smpl_joints + optimed_trans) * data["scale"] * torch.tensor(
+                    [1.0, 1.0, -1.0]
+                ).to(device)
 
                 # landmark errors
                 smpl_joints_3d = (
@@ -283,11 +281,13 @@ if __name__ == "__main__":
 
                 # BUG: PyTorch3D silhouette renderer generates dilated mask
                 bg_value = in_tensor["T_normal_F"][0, 0, 0, 0]
-                smpl_arr_fake = torch.cat([
-                    in_tensor["T_normal_F"][:, 0].ne(bg_value).float(),
-                    in_tensor["T_normal_B"][:, 0].ne(bg_value).float()
-                ],
-                                          dim=-1)
+                smpl_arr_fake = torch.cat(
+                    [
+                        in_tensor["T_normal_F"][:, 0].ne(bg_value).float(),
+                        in_tensor["T_normal_B"][:, 0].ne(bg_value).float()
+                    ],
+                    dim=-1
+                )
 
                 body_overlap = (gt_arr * smpl_arr_fake.gt(0.0)
                                ).sum(dim=[1, 2]) / smpl_arr_fake.gt(0.0).sum(dim=[1, 2])
@@ -323,18 +323,22 @@ if __name__ == "__main__":
                 # save intermediate results
                 if (i == args.loop_smpl - 1) and (not args.novis):
 
-                    per_loop_lst.extend([
-                        in_tensor["image"],
-                        in_tensor["T_normal_F"],
-                        in_tensor["normal_F"],
-                        diff_S[:, :, :512].unsqueeze(1).repeat(1, 3, 1, 1),
-                    ])
-                    per_loop_lst.extend([
-                        in_tensor["image"],
-                        in_tensor["T_normal_B"],
-                        in_tensor["normal_B"],
-                        diff_S[:, :, 512:].unsqueeze(1).repeat(1, 3, 1, 1),
-                    ])
+                    per_loop_lst.extend(
+                        [
+                            in_tensor["image"],
+                            in_tensor["T_normal_F"],
+                            in_tensor["normal_F"],
+                            diff_S[:, :, :512].unsqueeze(1).repeat(1, 3, 1, 1),
+                        ]
+                    )
+                    per_loop_lst.extend(
+                        [
+                            in_tensor["image"],
+                            in_tensor["T_normal_B"],
+                            in_tensor["normal_B"],
+                            diff_S[:, :, 512:].unsqueeze(1).repeat(1, 3, 1, 1),
+                        ]
+                    )
                     per_data_lst.append(
                         get_optim_grid_image(per_loop_lst, None, nrow=N_body * 2, type="smpl")
                     )
@@ -354,11 +358,13 @@ if __name__ == "__main__":
         if not args.novis:
             img_crop_path = osp.join(args.out_dir, cfg.name, "png", f"{data['name']}_crop.png")
             torchvision.utils.save_image(
-                torch.cat([
-                    data["img_crop"][:, :3], (in_tensor['normal_F'].detach().cpu() + 1.0) * 0.5,
-                    (in_tensor['normal_B'].detach().cpu() + 1.0) * 0.5
-                ],
-                          dim=3), img_crop_path
+                torch.cat(
+                    [
+                        data["img_crop"][:, :3], (in_tensor['normal_F'].detach().cpu() + 1.0) * 0.5,
+                        (in_tensor['normal_B'].detach().cpu() + 1.0) * 0.5
+                    ],
+                    dim=3
+                ), img_crop_path
             )
 
             rgb_norm_F = blend_rgb_norm(in_tensor["normal_F"], data)
@@ -387,25 +393,27 @@ if __name__ == "__main__":
                 smpl_obj.export(smpl_obj_path)
                 smpl_info = {
                     "betas":
-                    optimed_betas[idx].detach().cpu().unsqueeze(0),
+                        optimed_betas[idx].detach().cpu().unsqueeze(0),
                     "body_pose":
-                    rotation_matrix_to_angle_axis(optimed_pose_mat[idx].detach()
-                                                 ).cpu().unsqueeze(0),
+                        rotation_matrix_to_angle_axis(optimed_pose_mat[idx].detach()
+                                                     ).cpu().unsqueeze(0),
                     "global_orient":
-                    rotation_matrix_to_angle_axis(optimed_orient_mat[idx].detach()
-                                                 ).cpu().unsqueeze(0),
+                        rotation_matrix_to_angle_axis(optimed_orient_mat[idx].detach()
+                                                     ).cpu().unsqueeze(0),
                     "transl":
-                    optimed_trans[idx].detach().cpu(),
+                        optimed_trans[idx].detach().cpu(),
                     "expression":
-                    data["exp"][idx].cpu().unsqueeze(0),
+                        data["exp"][idx].cpu().unsqueeze(0),
                     "jaw_pose":
-                    rotation_matrix_to_angle_axis(data["jaw_pose"][idx]).cpu().unsqueeze(0),
+                        rotation_matrix_to_angle_axis(data["jaw_pose"][idx]).cpu().unsqueeze(0),
                     "left_hand_pose":
-                    rotation_matrix_to_angle_axis(data["left_hand_pose"][idx]).cpu().unsqueeze(0),
+                        rotation_matrix_to_angle_axis(data["left_hand_pose"][idx]
+                                                     ).cpu().unsqueeze(0),
                     "right_hand_pose":
-                    rotation_matrix_to_angle_axis(data["right_hand_pose"][idx]).cpu().unsqueeze(0),
+                        rotation_matrix_to_angle_axis(data["right_hand_pose"][idx]
+                                                     ).cpu().unsqueeze(0),
                     "scale":
-                    data["scale"][idx].cpu(),
+                        data["scale"][idx].cpu(),
                 }
                 np.save(
                     smpl_obj_path.replace(".obj", ".npy"),
@@ -427,8 +435,8 @@ if __name__ == "__main__":
 
         per_data_lst = []
 
-        batch_smpl_verts = in_tensor["smpl_verts"].detach() * torch.tensor([1.0, -1.0, 1.0],
-                                                                           device=device)
+        batch_smpl_verts = in_tensor["smpl_verts"].detach(
+        ) * torch.tensor([1.0, -1.0, 1.0], device=device)
         batch_smpl_faces = in_tensor["smpl_faces"].detach()[:, :, [0, 2, 1]]
 
         in_tensor["depth_F"], in_tensor["depth_B"] = dataset.render_depth(
@@ -484,10 +492,12 @@ if __name__ == "__main__":
 
                 # mesh completion via IF-net
                 in_tensor.update(
-                    dataset.depth_to_voxel({
-                        "depth_F": BNI_object.F_depth.unsqueeze(0), "depth_B":
-                        BNI_object.B_depth.unsqueeze(0)
-                    })
+                    dataset.depth_to_voxel(
+                        {
+                            "depth_F": BNI_object.F_depth.unsqueeze(0), "depth_B":
+                                BNI_object.B_depth.unsqueeze(0)
+                        }
+                    )
                 )
 
                 occupancies = VoxelGrid.from_mesh(side_mesh, cfg.vol_res, loc=[

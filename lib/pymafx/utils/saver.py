@@ -105,7 +105,7 @@ class CheckpointSaver():
                 optimizers[optimizer].load_state_dict(checkpoint[optimizer])
         return {
             'epoch': checkpoint['epoch'], 'batch_idx': checkpoint['batch_idx'], 'batch_size':
-            checkpoint['batch_size'], 'total_step_count': checkpoint['total_step_count']
+                checkpoint['batch_size'], 'total_step_count': checkpoint['total_step_count']
         }
 
     def get_latest_checkpoint(self):

@@ -78,14 +78,19 @@ def query_color(verts, faces, image, device, paint_normal=True):
     visibility = get_visibility(xy, z, faces[:, [0, 2, 1]]).flatten()
     uv = xy.unsqueeze(0).unsqueeze(2)    # [B, N, 2]
     uv = uv * torch.tensor([1.0, -1.0]).type_as(uv)
-    colors = ((
-        torch.nn.functional.grid_sample(image, uv, align_corners=True)[0, :, :, 0].permute(1, 0) +
-        1.0
-    ) * 0.5 * 255.0)
+    colors = (
+        (
+            torch.nn.functional.grid_sample(image, uv, align_corners=True)[0, :, :,
+                                                                           0].permute(1, 0) + 1.0
+        ) * 0.5 * 255.0
+    )
     if paint_normal:
-        colors[visibility == 0.0] = ((
-            Meshes(verts.unsqueeze(0), faces.unsqueeze(0)).verts_normals_padded().squeeze(0) + 1.0
-        ) * 0.5 * 255.0)[visibility == 0.0]
+        colors[visibility == 0.0] = (
+            (
+                Meshes(verts.unsqueeze(0), faces.unsqueeze(0)).verts_normals_padded().squeeze(0) +
+                1.0
+            ) * 0.5 * 255.0
+        )[visibility == 0.0]
     else:
         colors[visibility == 0.0] = torch.tensor([0.0, 0.0, 0.0]).to(device)
 
@@ -123,24 +128,34 @@ class Render:
 
         self.cam_pos = {
             "front":
-            torch.tensor([
-                (0, self.mesh_y_center, self.dis),
-                (0, self.mesh_y_center, -self.dis),
-            ]), "frontback":
-            torch.tensor([
-                (0, self.mesh_y_center, self.dis),
-                (0, self.mesh_y_center, -self.dis),
-            ]), "four":
-            torch.tensor([
-                (0, self.mesh_y_center, self.dis),
-                (self.dis, self.mesh_y_center, 0),
-                (0, self.mesh_y_center, -self.dis),
-                (-self.dis, self.mesh_y_center, 0),
-            ]), "around":
-            torch.tensor([(
-                100.0 * math.cos(np.pi / 180 * angle), self.mesh_y_center,
-                100.0 * math.sin(np.pi / 180 * angle)
-            ) for angle in range(0, 360, self.step)])
+                torch.tensor(
+                    [
+                        (0, self.mesh_y_center, self.dis),
+                        (0, self.mesh_y_center, -self.dis),
+                    ]
+                ), "frontback":
+                    torch.tensor(
+                        [
+                            (0, self.mesh_y_center, self.dis),
+                            (0, self.mesh_y_center, -self.dis),
+                        ]
+                    ), "four":
+                        torch.tensor(
+                            [
+                                (0, self.mesh_y_center, self.dis),
+                                (self.dis, self.mesh_y_center, 0),
+                                (0, self.mesh_y_center, -self.dis),
+                                (-self.dis, self.mesh_y_center, 0),
+                            ]
+                        ), "around":
+                            torch.tensor(
+                                [
+                                    (
+                                        100.0 * math.cos(np.pi / 180 * angle), self.mesh_y_center,
+                                        100.0 * math.sin(np.pi / 180 * angle)
+                                    ) for angle in range(0, 360, self.step)
+                                ]
+                            )
         }
 
         self.type = "color"
@@ -347,10 +362,12 @@ class Render:
         for cam_id in pbar:
             img_raw = data["img_raw"]
             num_obj = len(mesh_renders) // 2
-            img_smpl = blend_rgb_norm((torch.stack(mesh_renders)[:num_obj, cam_id] - 0.5) * 2.0,
-                                      data)
-            img_cloth = blend_rgb_norm((torch.stack(mesh_renders)[num_obj:, cam_id] - 0.5) * 2.0,
-                                       data)
+            img_smpl = blend_rgb_norm(
+                (torch.stack(mesh_renders)[:num_obj, cam_id] - 0.5) * 2.0, data
+            )
+            img_cloth = blend_rgb_norm(
+                (torch.stack(mesh_renders)[num_obj:, cam_id] - 0.5) * 2.0, data
+            )
             final_img = torch.cat([img_raw, img_smpl, img_cloth],
                                   dim=-1).squeeze(0).permute(1, 2, 0).numpy().astype(np.uint8)
 

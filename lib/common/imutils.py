@@ -41,8 +41,9 @@ def get_affine_matrix_box(boxes, w2, h2):
     # boxes [left, top, right, bottom]
     width = boxes[:, 2] - boxes[:, 0]    #(N,)
     height = boxes[:, 3] - boxes[:, 1]    #(N,)
-    center = torch.tensor([(boxes[:, 0] + boxes[:, 2]) / 2.0,
-                           (boxes[:, 1] + boxes[:, 3]) / 2.0]).T    #(N,2)
+    center = torch.tensor(
+        [(boxes[:, 0] + boxes[:, 2]) / 2.0, (boxes[:, 1] + boxes[:, 3]) / 2.0]
+    ).T    #(N,2)
     scale = torch.min(torch.tensor([w2 / width, h2 / height]),
                       dim=0)[0].unsqueeze(1).repeat(1, 2) * 0.9    #(N,2)
     transl = torch.cat([w2 / 2.0 - center[:, 0:1], h2 / 2.0 - center[:, 1:2]], dim=1)    #(N,2)
@@ -114,13 +115,16 @@ def get_pymafx(image, landmarks):
     # image [3,512,512]
 
     item = {
-        'img_body': F.interpolate(image.unsqueeze(0), size=224, mode='bicubic',
-                                  align_corners=True)[0]
+        'img_body':
+            F.interpolate(image.unsqueeze(0), size=224, mode='bicubic', align_corners=True)[0]
     }
 
     for part in ['lhand', 'rhand', 'face']:
+
         kp2d = landmarks[part]
         kp2d_valid = kp2d[kp2d[:, 3] > 0.]
+        kp2d_valid[:, :2] = (kp2d_valid[:, :2] - 0.5) * 2.0    # [0,1]->[-1,1]
+
         if len(kp2d_valid) > 0:
             bbox = [
                 min(kp2d_valid[:, 0]),
@@ -129,7 +133,7 @@ def get_pymafx(image, landmarks):
                 max(kp2d_valid[:, 1])
             ]
             center_part = [(bbox[2] + bbox[0]) / 2., (bbox[3] + bbox[1]) / 2.]
-            scale_part = 2. * max(bbox[2] - bbox[0], bbox[3] - bbox[1]) / 2
+            scale_part = 1.01 * max(bbox[2] - bbox[0], bbox[3] - bbox[1])
 
         # handle invalid part keypoints
         if len(kp2d_valid) < 1 or scale_part < 0.01:
@@ -214,7 +218,7 @@ def process_image(img_file, hps_type, single, input_res, detector):
 
     uncrop_param = {
         "ori_shape": [in_height, in_width], "box_shape": [input_res, input_res], "square_shape":
-        [tgt_res, tgt_res], "M_square": M_square, "M_crop": M_crop
+            [tgt_res, tgt_res], "M_square": M_square, "M_crop": M_crop
     }
 
     for idx in range(len(boxes)):
@@ -225,11 +229,11 @@ def process_image(img_file, hps_type, single, input_res, detector):
         else:
             mask_detection = masks[0] * 0.
 
-        img_square_rgba = torch.cat([
-            img_square.squeeze(0).permute(1, 2, 0),
-            torch.tensor(mask_detection < 0.4) * 255
-        ],
-                                    dim=2)
+        img_square_rgba = torch.cat(
+            [img_square.squeeze(0).permute(1, 2, 0),
+             torch.tensor(mask_detection < 0.4) * 255],
+            dim=2
+        )
 
         img_crop = warp_affine(
             img_square_rgba.unsqueeze(0).permute(0, 3, 1, 2),
@@ -262,6 +266,7 @@ def process_image(img_file, hps_type, single, input_res, detector):
         hands_visibility_lst.append(hands_visibility)
 
         if hps_type == 'pymafx':
+
             img_pymafx_lst.append(
                 get_pymafx(
                     transform_to_tensor(512, constants.IMG_NORM_MEAN,

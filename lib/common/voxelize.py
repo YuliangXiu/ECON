@@ -146,63 +146,76 @@ class VoxelGrid:
         f2_r_x, f2_r_y, f2_r_z = np.where(f2_r)
         f3_r_x, f3_r_y, f3_r_z = np.where(f3_r)
 
-        faces_1_l = np.stack([
-            v_idx[f1_l_x, f1_l_y, f1_l_z],
-            v_idx[f1_l_x, f1_l_y, f1_l_z + 1],
-            v_idx[f1_l_x, f1_l_y + 1, f1_l_z + 1],
-            v_idx[f1_l_x, f1_l_y + 1, f1_l_z],
-        ],
-                             axis=1)
+        faces_1_l = np.stack(
+            [
+                v_idx[f1_l_x, f1_l_y, f1_l_z],
+                v_idx[f1_l_x, f1_l_y, f1_l_z + 1],
+                v_idx[f1_l_x, f1_l_y + 1, f1_l_z + 1],
+                v_idx[f1_l_x, f1_l_y + 1, f1_l_z],
+            ],
+            axis=1
+        )
 
-        faces_1_r = np.stack([
-            v_idx[f1_r_x, f1_r_y, f1_r_z],
-            v_idx[f1_r_x, f1_r_y + 1, f1_r_z],
-            v_idx[f1_r_x, f1_r_y + 1, f1_r_z + 1],
-            v_idx[f1_r_x, f1_r_y, f1_r_z + 1],
-        ],
-                             axis=1)
+        faces_1_r = np.stack(
+            [
+                v_idx[f1_r_x, f1_r_y, f1_r_z],
+                v_idx[f1_r_x, f1_r_y + 1, f1_r_z],
+                v_idx[f1_r_x, f1_r_y + 1, f1_r_z + 1],
+                v_idx[f1_r_x, f1_r_y, f1_r_z + 1],
+            ],
+            axis=1
+        )
 
-        faces_2_l = np.stack([
-            v_idx[f2_l_x, f2_l_y, f2_l_z],
-            v_idx[f2_l_x + 1, f2_l_y, f2_l_z],
-            v_idx[f2_l_x + 1, f2_l_y, f2_l_z + 1],
-            v_idx[f2_l_x, f2_l_y, f2_l_z + 1],
-        ],
-                             axis=1)
+        faces_2_l = np.stack(
+            [
+                v_idx[f2_l_x, f2_l_y, f2_l_z],
+                v_idx[f2_l_x + 1, f2_l_y, f2_l_z],
+                v_idx[f2_l_x + 1, f2_l_y, f2_l_z + 1],
+                v_idx[f2_l_x, f2_l_y, f2_l_z + 1],
+            ],
+            axis=1
+        )
 
-        faces_2_r = np.stack([
-            v_idx[f2_r_x, f2_r_y, f2_r_z],
-            v_idx[f2_r_x, f2_r_y, f2_r_z + 1],
-            v_idx[f2_r_x + 1, f2_r_y, f2_r_z + 1],
-            v_idx[f2_r_x + 1, f2_r_y, f2_r_z],
-        ],
-                             axis=1)
+        faces_2_r = np.stack(
+            [
+                v_idx[f2_r_x, f2_r_y, f2_r_z],
+                v_idx[f2_r_x, f2_r_y, f2_r_z + 1],
+                v_idx[f2_r_x + 1, f2_r_y, f2_r_z + 1],
+                v_idx[f2_r_x + 1, f2_r_y, f2_r_z],
+            ],
+            axis=1
+        )
 
-        faces_3_l = np.stack([
-            v_idx[f3_l_x, f3_l_y, f3_l_z],
-            v_idx[f3_l_x, f3_l_y + 1, f3_l_z],
-            v_idx[f3_l_x + 1, f3_l_y + 1, f3_l_z],
-            v_idx[f3_l_x + 1, f3_l_y, f3_l_z],
-        ],
-                             axis=1)
+        faces_3_l = np.stack(
+            [
+                v_idx[f3_l_x, f3_l_y, f3_l_z],
+                v_idx[f3_l_x, f3_l_y + 1, f3_l_z],
+                v_idx[f3_l_x + 1, f3_l_y + 1, f3_l_z],
+                v_idx[f3_l_x + 1, f3_l_y, f3_l_z],
+            ],
+            axis=1
+        )
 
-        faces_3_r = np.stack([
-            v_idx[f3_r_x, f3_r_y, f3_r_z],
-            v_idx[f3_r_x + 1, f3_r_y, f3_r_z],
-            v_idx[f3_r_x + 1, f3_r_y + 1, f3_r_z],
-            v_idx[f3_r_x, f3_r_y + 1, f3_r_z],
-        ],
-                             axis=1)
+        faces_3_r = np.stack(
+            [
+                v_idx[f3_r_x, f3_r_y, f3_r_z],
+                v_idx[f3_r_x + 1, f3_r_y, f3_r_z],
+                v_idx[f3_r_x + 1, f3_r_y + 1, f3_r_z],
+                v_idx[f3_r_x, f3_r_y + 1, f3_r_z],
+            ],
+            axis=1
+        )
 
-        faces = np.concatenate([
-            faces_1_l,
-            faces_1_r,
-            faces_2_l,
-            faces_2_r,
-            faces_3_l,
-            faces_3_r,
-        ],
-                               axis=0)
+        faces = np.concatenate(
+            [
+                faces_1_l,
+                faces_1_r,
+                faces_2_l,
+                faces_2_r,
+                faces_3_l,
+                faces_3_r,
+            ], axis=0
+        )
 
         vertices = self.loc + self.scale * vertices
         mesh = trimesh.Trimesh(vertices, faces, process=False)

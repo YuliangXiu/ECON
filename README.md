@@ -185,11 +185,10 @@ Then check `./experiments/<filename>/mesh` for the results.
 
 ## Applications
 
-|                                        ![SHHQ](assets/SHHQ.gif)                                        |         ![crowd](assets/crowd.gif)          |
-| :----------------------------------------------------------------------------------------------------: | :-----------------------------------------: |
+|                                  ![SHHQ](assets/SHHQ.gif)                                   | ![crowd](assets/crowd.gif)  |
+| :-----------------------------------------------------------------------------------------: | :-------------------------: |
 | _ECON as "3D Guidance" in [SHHQ Dataset](https://github.com/stylegan-human/StyleGAN-Human)_ | _Multi-person w/ Occlusion_ |
 
-<br/>
 <br/>
 
 ## Citation

@@ -117,9 +117,9 @@ def query_func_IF(batch, netG, points):
 
 
 def batch_mean(res, key):
-    return torch.stack([
-        x[key] if torch.is_tensor(x[key]) else torch.as_tensor(x[key]) for x in res
-    ]).mean()
+    return torch.stack(
+        [x[key] if torch.is_tensor(x[key]) else torch.as_tensor(x[key]) for x in res]
+    ).mean()
 
 
 def accumulate(outputs, rot_num, split):

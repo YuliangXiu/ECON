@@ -22,7 +22,6 @@ logging.getLogger("lightning").setLevel(logging.ERROR)
 logging.getLogger("trimesh").setLevel(logging.ERROR)
 
 import glob
-import os.path as osp
 
 import numpy as np
 import torch
@@ -32,7 +31,6 @@ from termcolor import colored
 from torchvision import transforms
 from torchvision.models import detection
 
-from lib.common.config import cfg
 from lib.common.imutils import process_image
 from lib.common.render import Render
 from lib.common.train_util import Format
@@ -63,8 +61,9 @@ class TestDataset:
         keep_lst = sorted(glob.glob(f"{self.image_dir}/*"))
         img_fmts = ["jpg", "png", "jpeg", "JPG", "bmp", "exr"]
 
-        self.subject_list = sorted([item for item in keep_lst if item.split(".")[-1] in img_fmts],
-                                   reverse=False)
+        self.subject_list = sorted(
+            [item for item in keep_lst if item.split(".")[-1] in img_fmts], reverse=False
+        )
 
         # smpl related
         self.smpl_data = SMPLX()

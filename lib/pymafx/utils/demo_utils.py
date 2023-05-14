@@ -112,10 +112,9 @@ def smplify_runner(
         pred_pose = pred_rotmat
 
     # Calculate camera parameters for smplify
-    pred_cam_t = torch.stack([
-        pred_cam[:, 1], pred_cam[:, 2], 2 * 5000 / (224 * pred_cam[:, 0] + 1e-9)
-    ],
-                             dim=-1)
+    pred_cam_t = torch.stack(
+        [pred_cam[:, 1], pred_cam[:, 2], 2 * 5000 / (224 * pred_cam[:, 0] + 1e-9)], dim=-1
+    )
 
     gt_keypoints_2d_orig = j2d
     # Before running compute reprojection error of the network
@@ -286,11 +285,14 @@ def prepare_rendering_results(results_dict, nframes):
     for person_id, person_data in results_dict.items():
         for idx, frame_id in enumerate(person_data['frame_ids']):
             frame_results[frame_id][person_id] = {
-                'verts': person_data['verts'][idx],
+                'verts':
+                    person_data['verts'][idx],
                 'smplx_verts':
-                person_data['smplx_verts'][idx] if 'smplx_verts' in person_data else None,
-                'cam': person_data['orig_cam'][idx],
-                'cam_t': person_data['orig_cam_t'][idx] if 'orig_cam_t' in person_data else None,
+                    person_data['smplx_verts'][idx] if 'smplx_verts' in person_data else None,
+                'cam':
+                    person_data['orig_cam'][idx],
+                'cam_t':
+                    person_data['orig_cam_t'][idx] if 'orig_cam_t' in person_data else None,
             # 'cam': person_data['pred_cam'][idx],
             }
 
@@ -298,9 +300,9 @@ def prepare_rendering_results(results_dict, nframes):
     for frame_id, frame_data in enumerate(frame_results):
         # sort based on y-scale of the cam in original image coords
         sort_idx = np.argsort([v['cam'][1] for k, v in frame_data.items()])
-        frame_results[frame_id] = OrderedDict({
-            list(frame_data.keys())[i]: frame_data[list(frame_data.keys())[i]]
-            for i in sort_idx
-        })
+        frame_results[frame_id] = OrderedDict(
+            {list(frame_data.keys())[i]: frame_data[list(frame_data.keys())[i]]
+             for i in sort_idx}
+        )
 
     return frame_results

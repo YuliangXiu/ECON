@@ -186,15 +186,15 @@ class PyRenderer:
             if len(cam) == 4:
                 sx, sy, tx, ty = cam
                 # sy = sx
-                camera_translation = np.array([
-                    tx, ty, 2 * focal_length[0] / (resolution[0] * sy + 1e-9)
-                ])
+                camera_translation = np.array(
+                    [tx, ty, 2 * focal_length[0] / (resolution[0] * sy + 1e-9)]
+                )
             elif len(cam) == 3:
                 sx, tx, ty = cam
                 sy = sx
-                camera_translation = np.array([
-                    -tx, ty, 2 * focal_length[0] / (resolution[0] * sy + 1e-9)
-                ])
+                camera_translation = np.array(
+                    [-tx, ty, 2 * focal_length[0] / (resolution[0] * sy + 1e-9)]
+                )
             render_res = resolution
             self.renderer.viewport_width = render_res[1]
             self.renderer.viewport_height = render_res[0]
@@ -297,8 +297,12 @@ class OpenDRenderer:
         self.resolution = (resolution[0] * ratio, resolution[1] * ratio)
         self.ratio = ratio
         self.focal_length = 5000.
-        self.K = np.array([[self.focal_length, 0., self.resolution[1] / 2.],
-                           [0., self.focal_length, self.resolution[0] / 2.], [0., 0., 1.]])
+        self.K = np.array(
+            [
+                [self.focal_length, 0., self.resolution[1] / 2.],
+                [0., self.focal_length, self.resolution[0] / 2.], [0., 0., 1.]
+            ]
+        )
         self.colors_dict = {
             'red': np.array([0.5, 0.2, 0.2]),
             'pink': np.array([0.7, 0.5, 0.5]),
@@ -313,8 +317,12 @@ class OpenDRenderer:
 
     def reset_res(self, resolution):
         self.resolution = (resolution[0] * self.ratio, resolution[1] * self.ratio)
-        self.K = np.array([[self.focal_length, 0., self.resolution[1] / 2.],
-                           [0., self.focal_length, self.resolution[0] / 2.], [0., 0., 1.]])
+        self.K = np.array(
+            [
+                [self.focal_length, 0., self.resolution[1] / 2.],
+                [0., self.focal_length, self.resolution[0] / 2.], [0., 0., 1.]
+            ]
+        )
 
     def __call__(
         self,
@@ -452,22 +460,27 @@ class OpenDRenderer:
 #  https://github.com/classner/up/blob/master/up_tools/camera.py
 def rotateY(points, angle):
     """Rotate all points in a 2D array around the y axis."""
-    ry = np.array([[np.cos(angle), 0., np.sin(angle)], [0., 1., 0.],
-                   [-np.sin(angle), 0., np.cos(angle)]])
+    ry = np.array(
+        [[np.cos(angle), 0., np.sin(angle)], [0., 1., 0.], [-np.sin(angle), 0.,
+                                                            np.cos(angle)]]
+    )
     return np.dot(points, ry)
 
 
 def rotateX(points, angle):
     """Rotate all points in a 2D array around the x axis."""
-    rx = np.array([[1., 0., 0.], [0., np.cos(angle), -np.sin(angle)],
-                   [0., np.sin(angle), np.cos(angle)]])
+    rx = np.array(
+        [[1., 0., 0.], [0., np.cos(angle), -np.sin(angle)], [0., np.sin(angle),
+                                                             np.cos(angle)]]
+    )
     return np.dot(points, rx)
 
 
 def rotateZ(points, angle):
     """Rotate all points in a 2D array around the z axis."""
-    rz = np.array([[np.cos(angle), -np.sin(angle), 0.], [np.sin(angle),
-                                                         np.cos(angle), 0.], [0., 0., 1.]])
+    rz = np.array(
+        [[np.cos(angle), -np.sin(angle), 0.], [np.sin(angle), np.cos(angle), 0.], [0., 0., 1.]]
+    )
     return np.dot(points, rz)
 
 
@@ -515,8 +528,12 @@ class IUV_Renderer(object):
                                 break
                     np.save(dp_vert_pid_fname, np.array(dp_vert_pid))
 
-                textures_vts = np.array([(dp_vert_pid[i] / num_part, DP.U_norm[i], DP.V_norm[i])
-                                         for i in range(len(vert_mapping))])
+                textures_vts = np.array(
+                    [
+                        (dp_vert_pid[i] / num_part, DP.U_norm[i], DP.V_norm[i])
+                        for i in range(len(vert_mapping))
+                    ]
+                )
                 self.textures_vts = torch.from_numpy(
                     textures_vts[None].astype(np.float32)
                 )    # (1, 7829, 3)
@@ -566,8 +583,12 @@ class IUV_Renderer(object):
             #     range(n_verts)])
             self.textures_vts = torch.from_numpy(textures_vts[None].astype(np.float32))
 
-        K = np.array([[self.focal_length, 0., self.orig_size / 2.],
-                      [0., self.focal_length, self.orig_size / 2.], [0., 0., 1.]])
+        K = np.array(
+            [
+                [self.focal_length, 0., self.orig_size / 2.],
+                [0., self.focal_length, self.orig_size / 2.], [0., 0., 1.]
+            ]
+        )
 
         R = np.array([[-1., 0., 0.], [0., -1., 0.], [0., 0., 1.]])
 
@@ -613,10 +634,10 @@ class IUV_Renderer(object):
 
         K = self.K.repeat(batch_size, 1, 1)
         R = self.R.repeat(batch_size, 1, 1)
-        t = torch.stack([
-            -cam[:, 1], -cam[:, 2], 2 * self.focal_length / (self.orig_size * cam[:, 0] + 1e-9)
-        ],
-                        dim=-1)
+        t = torch.stack(
+            [-cam[:, 1], -cam[:, 2], 2 * self.focal_length / (self.orig_size * cam[:, 0] + 1e-9)],
+            dim=-1
+        )
 
         if cam.is_cuda:
             # device_id = cam.get_device()

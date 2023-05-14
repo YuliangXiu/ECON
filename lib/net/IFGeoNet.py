@@ -153,11 +153,13 @@ class IFGeoNet(nn.Module):
 
         # here every channel corresponse to one feature.
 
-        features = torch.cat((
-            feature_0_partial, feature_1_fused, feature_2, feature_3, feature_4, feature_5,
-            feature_6
-        ),
-                             dim=1)    # (B, features, 1,7,sample_num)
+        features = torch.cat(
+            (
+                feature_0_partial, feature_1_fused, feature_2, feature_3, feature_4, feature_5,
+                feature_6
+            ),
+            dim=1
+        )    # (B, features, 1,7,sample_num)
         shape = features.shape
         features = torch.reshape(
             features, (shape[0], shape[1] * shape[3], shape[4])

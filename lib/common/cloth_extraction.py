@@ -37,11 +37,13 @@ def load_segmentation(path, shape):
                 xy = np.vstack((x, y)).T
                 coordinates.append(xy)
 
-            segmentations.append({
-                "type": val["category_name"],
-                "type_id": val["category_id"],
-                "coordinates": coordinates,
-            })
+            segmentations.append(
+                {
+                    "type": val["category_name"],
+                    "type_id": val["category_id"],
+                    "coordinates": coordinates,
+                }
+            )
 
         return segmentations
 

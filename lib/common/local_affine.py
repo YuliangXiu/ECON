@@ -85,9 +85,9 @@ def register(target_mesh, src_mesh, device, verbose=True):
         src_mesh.verts_padded().shape[0], src_mesh.edges_packed()
     ).to(device)
 
-    optimizer_cloth = torch.optim.Adam([{'params': local_affine_model.parameters()}],
-                                       lr=1e-2,
-                                       amsgrad=True)
+    optimizer_cloth = torch.optim.Adam(
+        [{'params': local_affine_model.parameters()}], lr=1e-2, amsgrad=True
+    )
     scheduler_cloth = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer_cloth,
         mode="min",

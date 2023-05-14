@@ -127,10 +127,12 @@ class SMPLModel:
         for i in range(1, self.kintree_table.shape[1]):
             G[i] = G[self.parent[i]].dot(
                 self.with_zeros(
-                    np.hstack([
-                        self.R[i],
-                        ((self.J[i, :] - self.J[self.parent[i], :]).reshape([3, 1])),
-                    ])
+                    np.hstack(
+                        [
+                            self.R[i],
+                            ((self.J[i, :] - self.J[self.parent[i], :]).reshape([3, 1])),
+                        ]
+                    )
                 )
             )
         # remove the transformation due to the rest pose
@@ -162,17 +164,19 @@ class SMPLModel:
         r_hat = r / theta
         cos = np.cos(theta)
         z_stick = np.zeros(theta.shape[0])
-        m = np.dstack([
-            z_stick,
-            -r_hat[:, 0, 2],
-            r_hat[:, 0, 1],
-            r_hat[:, 0, 2],
-            z_stick,
-            -r_hat[:, 0, 0],
-            -r_hat[:, 0, 1],
-            r_hat[:, 0, 0],
-            z_stick,
-        ]).reshape([-1, 3, 3])
+        m = np.dstack(
+            [
+                z_stick,
+                -r_hat[:, 0, 2],
+                r_hat[:, 0, 1],
+                r_hat[:, 0, 2],
+                z_stick,
+                -r_hat[:, 0, 0],
+                -r_hat[:, 0, 1],
+                r_hat[:, 0, 0],
+                z_stick,
+            ]
+        ).reshape([-1, 3, 3])
         i_cube = np.broadcast_to(np.expand_dims(np.eye(3), axis=0), [theta.shape[0], 3, 3])
         A = np.transpose(r_hat, axes=[0, 2, 1])
         B = r_hat
@@ -354,10 +358,12 @@ class TetraSMPLModel:
         for i in range(1, self.kintree_table.shape[1]):
             G[i] = G[self.parent[i]].dot(
                 self.with_zeros(
-                    np.hstack([
-                        self.R[i],
-                        ((self.J[i, :] - self.J[self.parent[i], :]).reshape([3, 1])),
-                    ])
+                    np.hstack(
+                        [
+                            self.R[i],
+                            ((self.J[i, :] - self.J[self.parent[i], :]).reshape([3, 1])),
+                        ]
+                    )
                 )
             )
         # remove the transformation due to the rest pose
@@ -393,17 +399,19 @@ class TetraSMPLModel:
         r_hat = r / theta
         cos = np.cos(theta)
         z_stick = np.zeros(theta.shape[0])
-        m = np.dstack([
-            z_stick,
-            -r_hat[:, 0, 2],
-            r_hat[:, 0, 1],
-            r_hat[:, 0, 2],
-            z_stick,
-            -r_hat[:, 0, 0],
-            -r_hat[:, 0, 1],
-            r_hat[:, 0, 0],
-            z_stick,
-        ]).reshape([-1, 3, 3])
+        m = np.dstack(
+            [
+                z_stick,
+                -r_hat[:, 0, 2],
+                r_hat[:, 0, 1],
+                r_hat[:, 0, 2],
+                z_stick,
+                -r_hat[:, 0, 0],
+                -r_hat[:, 0, 1],
+                r_hat[:, 0, 0],
+                z_stick,
+            ]
+        ).reshape([-1, 3, 3])
         i_cube = np.broadcast_to(np.expand_dims(np.eye(3), axis=0), [theta.shape[0], 3, 3])
         A = np.transpose(r_hat, axes=[0, 2, 1])
         B = r_hat

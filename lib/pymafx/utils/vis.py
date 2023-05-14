@@ -193,13 +193,15 @@ def vis_one_image(
         print(dataset.classes[classes[i]], score)
         # show box (off by default, box_alpha=0.0)
         ax.add_patch(
-            plt.Rectangle((bbox[0], bbox[1]),
-                          bbox[2] - bbox[0],
-                          bbox[3] - bbox[1],
-                          fill=False,
-                          edgecolor='g',
-                          linewidth=0.5,
-                          alpha=box_alpha)
+            plt.Rectangle(
+                (bbox[0], bbox[1]),
+                bbox[2] - bbox[0],
+                bbox[3] - bbox[1],
+                fill=False,
+                edgecolor='g',
+                linewidth=0.5,
+                alpha=box_alpha
+            )
         )
 
         if show_class:

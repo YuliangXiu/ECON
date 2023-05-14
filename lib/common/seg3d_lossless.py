@@ -375,8 +375,10 @@ class Seg3dLossless(nn.Module):
 
                 with torch.no_grad():
                     # conflicts
-                    conflicts = ((occupancys_interp - self.balance_value) *
-                                 (occupancys_topk - self.balance_value) < 0)[0, 0]
+                    conflicts = (
+                        (occupancys_interp - self.balance_value) *
+                        (occupancys_topk - self.balance_value) < 0
+                    )[0, 0]
 
                     if self.visualize:
                         self.plot(occupancys, coords, final_D, final_H, final_W)
@@ -402,9 +404,12 @@ class Seg3dLossless(nn.Module):
                                 title="conflicts",
                             )
 
-                        conflicts_boundary = ((
-                            conflicts_coords.int() + self.gird8_offsets.unsqueeze(1) * stride.int()
-                        ).reshape(-1, 3).long().unique(dim=0))
+                        conflicts_boundary = (
+                            (
+                                conflicts_coords.int() +
+                                self.gird8_offsets.unsqueeze(1) * stride.int()
+                            ).reshape(-1, 3).long().unique(dim=0)
+                        )
                         conflicts_boundary[:, 0] = conflicts_boundary[:, 0].clamp(
                             0,
                             calculated.size(2) - 1
@@ -458,8 +463,10 @@ class Seg3dLossless(nn.Module):
 
                     with torch.no_grad():
                         # conflicts
-                        conflicts = ((occupancys_interp - self.balance_value) *
-                                     (occupancys_topk - self.balance_value) < 0)[0, 0]
+                        conflicts = (
+                            (occupancys_interp - self.balance_value) *
+                            (occupancys_topk - self.balance_value) < 0
+                        )[0, 0]
 
                     # put mask point predictions to the right places on the upsampled grid.
                     point_indices = point_indices.unsqueeze(1).expand(-1, C, -1)

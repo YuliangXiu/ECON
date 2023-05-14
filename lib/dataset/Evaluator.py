@@ -279,10 +279,12 @@ class Evaluator:
 
         # error_hf = ((((src_normal_arr - tgt_normal_arr) * sim_mask)**2).sum(dim=0).mean()) * 4.0
 
-        normal_img = Image.fromarray((
-            torch.cat([src_normal_arr, tgt_normal_arr],
-                      dim=1).permute(1, 2, 0).detach().cpu().numpy() * 255.0
-        ).astype(np.uint8))
+        normal_img = Image.fromarray(
+            (
+                torch.cat([src_normal_arr, tgt_normal_arr],
+                          dim=1).permute(1, 2, 0).detach().cpu().numpy() * 255.0
+            ).astype(np.uint8)
+        )
         normal_img.save(normal_path)
 
         return error

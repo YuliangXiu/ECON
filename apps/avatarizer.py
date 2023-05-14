@@ -201,10 +201,9 @@ econ_lbs_weights /= econ_lbs_weights.sum(dim=1, keepdims=True)
 
 rot_mat_da = smpl_out_lst[2].vertex_transformation.detach()[0][idx[:, 0]]
 econ_da_verts = torch.tensor(econ_da.vertices).float()
-econ_cano_verts = torch.inverse(rot_mat_da) @ torch.cat([
-    econ_da_verts, torch.ones_like(econ_da_verts)[..., :1]
-],
-                                                        dim=1).unsqueeze(-1)
+econ_cano_verts = torch.inverse(rot_mat_da) @ torch.cat(
+    [econ_da_verts, torch.ones_like(econ_da_verts)[..., :1]], dim=1
+).unsqueeze(-1)
 econ_cano_verts = econ_cano_verts[:, :3, 0].double()
 
 # ----------------------------------------------------
@@ -213,7 +212,8 @@ econ_cano_verts = econ_cano_verts[:, :3, 0].double()
 
 rot_mat_pose = smpl_out_lst[3].vertex_transformation.detach()[0][idx[:, 0]]
 posed_econ_verts = rot_mat_pose @ torch.cat(
-    [econ_cano_verts.float(), torch.ones_like(econ_cano_verts.float())[..., :1]], dim=1
+    [econ_cano_verts.float(),
+     torch.ones_like(econ_cano_verts.float())[..., :1]], dim=1
 ).unsqueeze(-1)
 posed_econ_verts = posed_econ_verts[:, :3, 0].double()
 

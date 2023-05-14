@@ -41,9 +41,9 @@ def get_keypoints():
         'left_knee', 'right_knee', 'left_ankle', 'right_ankle'
     ]
     keypoint_flip_map = {
-        'left_eye': 'right_eye', 'left_ear': 'right_ear', 'left_shoulder': 'right_shoulder',
-        'left_elbow': 'right_elbow', 'left_wrist': 'right_wrist', 'left_hip': 'right_hip',
-        'left_knee': 'right_knee', 'left_ankle': 'right_ankle'
+        'left_eye': 'right_eye', 'left_ear': 'right_ear', 'left_shoulder':
+            'right_shoulder', 'left_elbow': 'right_elbow', 'left_wrist': 'right_wrist', 'left_hip':
+                'right_hip', 'left_knee': 'right_knee', 'left_ankle': 'right_ankle'
     }
     return keypoints, keypoint_flip_map
 
@@ -229,9 +229,9 @@ def compute_oks(src_keypoints, src_roi, dst_keypoints, dst_roi):
     dst_roi: Nx4
     """
 
-    sigmas = np.array([
-        .26, .25, .25, .35, .35, .79, .79, .72, .72, .62, .62, 1.07, 1.07, .87, .87, .89, .89
-    ]) / 10.0
+    sigmas = np.array(
+        [.26, .25, .25, .35, .35, .79, .79, .72, .72, .62, .62, 1.07, 1.07, .87, .87, .89, .89]
+    ) / 10.0
     vars = (sigmas * 2)**2
 
     # area

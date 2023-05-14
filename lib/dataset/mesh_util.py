@@ -74,56 +74,65 @@ class SMPLX:
         self.smplx_vertex_lmkid = np.load(self.smplx_vertex_lmkid_path)
 
         self.smpl_vert_seg = json.load(open(self.smpl_vert_seg_path))
-        self.smpl_mano_vid = np.concatenate([
-            self.smpl_vert_seg["rightHand"], self.smpl_vert_seg["rightHandIndex1"],
-            self.smpl_vert_seg["leftHand"], self.smpl_vert_seg["leftHandIndex1"]
-        ])
+        self.smpl_mano_vid = np.concatenate(
+            [
+                self.smpl_vert_seg["rightHand"], self.smpl_vert_seg["rightHandIndex1"],
+                self.smpl_vert_seg["leftHand"], self.smpl_vert_seg["leftHandIndex1"]
+            ]
+        )
 
         self.smplx_eyeball_fid_mask = np.load(self.smplx_eyeball_fid_path)
         self.smplx_mouth_fid = np.load(self.smplx_fill_mouth_fid_path)
         self.smplx_mano_vid_dict = np.load(self.smplx_mano_vid_path, allow_pickle=True)
-        self.smplx_mano_vid = np.concatenate([
-            self.smplx_mano_vid_dict["left_hand"], self.smplx_mano_vid_dict["right_hand"]
-        ])
+        self.smplx_mano_vid = np.concatenate(
+            [self.smplx_mano_vid_dict["left_hand"], self.smplx_mano_vid_dict["right_hand"]]
+        )
         self.smplx_flame_vid = np.load(self.smplx_flame_vid_path, allow_pickle=True)
         self.smplx_front_flame_vid = self.smplx_flame_vid[np.load(self.front_flame_path)]
 
         # hands
         self.smplx_mano_vertex_mask = torch.zeros(self.smplx_verts.shape[0], ).index_fill_(
-            0, torch.tensor(self.smplx_mano_vid), 1.0
+            0, torch.tensor(self.smplx_mano_vid, dtype=torch.int64), 1.0
         )
         self.smpl_mano_vertex_mask = torch.zeros(self.smpl_verts.shape[0], ).index_fill_(
-            0, torch.tensor(self.smpl_mano_vid), 1.0
+            0, torch.tensor(self.smpl_mano_vid, dtype=torch.int64), 1.0
         )
 
         # face
         self.front_flame_vertex_mask = torch.zeros(self.smplx_verts.shape[0], ).index_fill_(
-            0, torch.tensor(self.smplx_front_flame_vid), 1.0
+            0, torch.tensor(self.smplx_front_flame_vid, dtype=torch.int64), 1.0
         )
         self.eyeball_vertex_mask = torch.zeros(self.smplx_verts.shape[0], ).index_fill_(
-            0, torch.tensor(self.smplx_faces[self.smplx_eyeball_fid_mask].flatten()), 1.0
+            0,
+            torch.tensor(
+                self.smplx_faces[self.smplx_eyeball_fid_mask].flatten(), dtype=torch.int64
+            ), 1.0
         )
 
         self.smplx_to_smpl = cPickle.load(open(self.smplx_to_smplx_path, "rb"))
 
         self.model_dir = osp.join(self.current_dir, "models")
 
-        self.ghum_smpl_pairs = torch.tensor([(0, 24), (2, 26), (5, 25), (7, 28), (8, 27), (11, 16),
-                                             (12, 17), (13, 18), (14, 19), (15, 20), (16, 21),
-                                             (17, 39), (18, 44), (19, 36), (20, 41), (21, 35),
-                                             (22, 40), (23, 1), (24, 2), (25, 4), (26, 5), (27, 7),
-                                             (28, 8), (29, 31), (30, 34), (31, 29),
-                                             (32, 32)]).long()
+        self.ghum_smpl_pairs = torch.tensor(
+            [
+                (0, 24), (2, 26), (5, 25), (7, 28), (8, 27), (11, 16), (12, 17), (13, 18), (14, 19),
+                (15, 20), (16, 21), (17, 39), (18, 44), (19, 36), (20, 41), (21, 35), (22, 40),
+                (23, 1), (24, 2), (25, 4), (26, 5), (27, 7), (28, 8), (29, 31), (30, 34), (31, 29),
+                (32, 32)
+            ]
+        ).long()
 
         # smpl-smplx correspondence
         self.smpl_joint_ids_24 = np.arange(22).tolist() + [68, 73]
         self.smpl_joint_ids_24_pixie = np.arange(22).tolist() + [61 + 68, 72 + 68]
         self.smpl_joint_ids_45 = np.arange(22).tolist() + [68, 73] + np.arange(55, 76).tolist()
 
-        self.extra_joint_ids = np.array([
-            61, 72, 66, 69, 58, 68, 57, 56, 64, 59, 67, 75, 70, 65, 60, 61, 63, 62, 76, 71, 72, 74,
-            73
-        ])
+        self.extra_joint_ids = np.array(
+            [
+                61, 72, 66, 69, 58, 68, 57, 56, 64, 59, 67, 75, 70, 65, 60, 61, 63, 62, 76, 71, 72,
+                74, 73
+            ]
+        )
 
         self.extra_joint_ids += 68
 
@@ -429,8 +438,8 @@ def read_smpl_constants(folder):
 
     return_dict = {
         "smpl_vertex_code": torch.tensor(smpl_vertex_code), "smpl_face_code":
-        torch.tensor(smpl_face_code), "smpl_faces": torch.tensor(smpl_faces), "smpl_tetras":
-        torch.tensor(smpl_tetras)
+            torch.tensor(smpl_face_code), "smpl_faces": torch.tensor(smpl_faces), "smpl_tetras":
+                torch.tensor(smpl_tetras)
     }
 
     return return_dict
@@ -631,18 +640,20 @@ def get_optim_grid_image(per_loop_lst, loss=None, nrow=4, type="smpl"):
             draw.text((10, 5), f"error: {loss:.3f}", (255, 0, 0), font=font)
 
         if type == "smpl":
-            for col_id, col_txt in enumerate([
-                "image",
-                "smpl-norm(render)",
-                "cloth-norm(pred)",
-                "diff-norm",
-                "diff-mask",
-            ]):
+            for col_id, col_txt in enumerate(
+                [
+                    "image",
+                    "smpl-norm(render)",
+                    "cloth-norm(pred)",
+                    "diff-norm",
+                    "diff-mask",
+                ]
+            ):
                 draw.text((10 + (col_id * grid_size), 5), col_txt, (255, 0, 0), font=font)
         elif type == "cloth":
-            for col_id, col_txt in enumerate([
-                "image", "cloth-norm(recon)", "cloth-norm(pred)", "diff-norm"
-            ]):
+            for col_id, col_txt in enumerate(
+                ["image", "cloth-norm(recon)", "cloth-norm(pred)", "diff-norm"]
+            ):
                 draw.text((10 + (col_id * grid_size), 5), col_txt, (255, 0, 0), font=font)
             for col_id, col_txt in enumerate(["0", "90", "180", "270"]):
                 draw.text(

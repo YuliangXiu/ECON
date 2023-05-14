@@ -558,7 +558,7 @@ class PreTrainedModel(nn.Module):
         if output_loading_info:
             loading_info = {
                 "missing_keys": missing_keys, "unexpected_keys": unexpected_keys, "error_msgs":
-                error_msgs
+                    error_msgs
             }
             return model, loading_info
 
@@ -897,8 +897,9 @@ class SequenceSummary(nn.Module):
                 )
             else:
                 token_ids = token_ids.unsqueeze(-1).unsqueeze(-1)
-                token_ids = token_ids.expand((-1, ) * (token_ids.dim() - 1) +
-                                             (hidden_states.size(-1), ))
+                token_ids = token_ids.expand(
+                    (-1, ) * (token_ids.dim() - 1) + (hidden_states.size(-1), )
+                )
             # shape of token_ids: (bsz, XX, 1, hidden_size) where XX are optional leading dim of hidden_states
             output = hidden_states.gather(-2,
                                           token_ids).squeeze(-2)    # shape (bsz, XX, hidden_size)

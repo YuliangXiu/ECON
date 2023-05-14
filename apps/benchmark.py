@@ -183,10 +183,12 @@ if __name__ == "__main__":
 
                 # mesh completion via IF-net
                 in_tensor.update(
-                    dataset.depth_to_voxel({
-                        "depth_F": BNI_object.F_depth.unsqueeze(0).to(device), "depth_B":
-                        BNI_object.B_depth.unsqueeze(0).to(device)
-                    })
+                    dataset.depth_to_voxel(
+                        {
+                            "depth_F": BNI_object.F_depth.unsqueeze(0).to(device), "depth_B":
+                                BNI_object.B_depth.unsqueeze(0).to(device)
+                        }
+                    )
                 )
 
                 occupancies = VoxelGrid.from_mesh(side_mesh, cfg.vol_res, loc=[

@@ -273,13 +273,15 @@ def print_module_summary(module, inputs, max_nesting=3, skip_redundant=True):
         buffer_size = sum(t.numel() for t in e.unique_buffers)
         output_shapes = [str(list(e.outputs[0].shape)) for t in e.outputs]
         output_dtypes = [str(t.dtype).split('.')[-1] for t in e.outputs]
-        rows += [[
-            name + (':0' if len(e.outputs) >= 2 else ''),
-            str(param_size) if param_size else '-',
-            str(buffer_size) if buffer_size else '-',
-            (output_shapes + ['-'])[0],
-            (output_dtypes + ['-'])[0],
-        ]]
+        rows += [
+            [
+                name + (':0' if len(e.outputs) >= 2 else ''),
+                str(param_size) if param_size else '-',
+                str(buffer_size) if buffer_size else '-',
+                (output_shapes + ['-'])[0],
+                (output_dtypes + ['-'])[0],
+            ]
+        ]
         for idx in range(1, len(e.outputs)):
             rows += [[name + f':{idx}', '-', '-', output_shapes[idx], output_dtypes[idx]]]
         param_total += param_size

@@ -103,18 +103,24 @@ class DensePoseMethods:
         FaceIndicesNow = np.where(self.FaceIndices == I_point)
         FacesNow = self.FacesDensePose[FaceIndicesNow]
         #
-        P_0 = np.vstack((
-            self.U_norm[FacesNow][:, 0], self.V_norm[FacesNow][:, 0],
-            np.zeros(self.U_norm[FacesNow][:, 0].shape)
-        )).transpose()
-        P_1 = np.vstack((
-            self.U_norm[FacesNow][:, 1], self.V_norm[FacesNow][:, 1],
-            np.zeros(self.U_norm[FacesNow][:, 1].shape)
-        )).transpose()
-        P_2 = np.vstack((
-            self.U_norm[FacesNow][:, 2], self.V_norm[FacesNow][:, 2],
-            np.zeros(self.U_norm[FacesNow][:, 2].shape)
-        )).transpose()
+        P_0 = np.vstack(
+            (
+                self.U_norm[FacesNow][:, 0], self.V_norm[FacesNow][:, 0],
+                np.zeros(self.U_norm[FacesNow][:, 0].shape)
+            )
+        ).transpose()
+        P_1 = np.vstack(
+            (
+                self.U_norm[FacesNow][:, 1], self.V_norm[FacesNow][:, 1],
+                np.zeros(self.U_norm[FacesNow][:, 1].shape)
+            )
+        ).transpose()
+        P_2 = np.vstack(
+            (
+                self.U_norm[FacesNow][:, 2], self.V_norm[FacesNow][:, 2],
+                np.zeros(self.U_norm[FacesNow][:, 2].shape)
+            )
+        ).transpose()
         #
 
         for i, [P0, P1, P2] in enumerate(zip(P_0, P_1, P_2)):
