@@ -38,7 +38,7 @@ smplx_param = np.load(smpl_path, allow_pickle=True).item()
 # export econ obj with pre-computed normals
 econ_path = f"{prefix}_0_full.obj"
 econ_obj = trimesh.load(econ_path)
-assert (econ_obj.vertex_normals.shape[1] == 3)
+assert econ_obj.vertex_normals.shape[1] == 3
 econ_obj.export(f"{prefix}_econ_raw.ply")
 
 # align econ with SMPL-X
@@ -56,9 +56,9 @@ smpl_model = smplx.create(
     age="adult",
     use_face_contour=False,
     use_pca=False,
-    num_betas=smplx_param['betas'].shape[1],
+    num_betas=smplx_param["betas"].shape[1],
     num_expression_coeffs=smplx_param["expression"].shape[1],
-    ext='pkl'
+    ext="pkl",
 )
 
 smpl_out_lst = []
@@ -78,7 +78,7 @@ for pose_type in ["a-pose", "t-pose", "da-pose", "pose"]:
             return_full_pose=True,
             return_joint_transformation=True,
             return_vertex_transformation=True,
-            pose_type=pose_type
+            pose_type=pose_type,
         )
     )
 
@@ -93,24 +93,29 @@ smpl_tree = cKDTree(smpl_verts.cpu().numpy())
 dist, idx = smpl_tree.query(econ_obj.vertices, k=5)
 
 if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.obj"):
-
     # t-pose for ECON
     econ_verts = torch.tensor(econ_obj.vertices).float()
     rot_mat_t = smpl_out_lst[3].vertex_transformation.detach()[0][idx[:, 0]]
     homo_coord = torch.ones_like(econ_verts)[..., :1]
-    econ_cano_verts = torch.inverse(rot_mat_t) @ torch.cat([econ_verts, homo_coord],
-                                                           dim=1).unsqueeze(-1)
+    econ_cano_verts = torch.inverse(rot_mat_t) @ torch.cat(
+        [econ_verts, homo_coord], dim=1
+    ).unsqueeze(-1)
     econ_cano_verts = econ_cano_verts[:, :3, 0].cpu()
     econ_cano = trimesh.Trimesh(econ_cano_verts, econ_obj.faces)
 
     # da-pose for ECON
     rot_mat_da = smpl_out_lst[2].vertex_transformation.detach()[0][idx[:, 0]]
-    econ_da_verts = rot_mat_da @ torch.cat([econ_cano_verts, homo_coord], dim=1).unsqueeze(-1)
+    econ_da_verts = rot_mat_da @ torch.cat(
+        [econ_cano_verts, homo_coord], dim=1
+    ).unsqueeze(-1)
     econ_da = trimesh.Trimesh(econ_da_verts[:, :3, 0].cpu(), econ_obj.faces)
 
     # da-pose for SMPL-X
     smpl_da = trimesh.Trimesh(
-        smpl_out_lst[2].vertices.detach()[0], smpl_model.faces, maintain_orders=True, process=False
+        smpl_out_lst[2].vertices.detach()[0],
+        smpl_model.faces,
+        maintain_orders=True,
+        process=False,
     )
     smpl_da.export(f"{prefix}_smpl_da.obj")
 
@@ -124,7 +129,9 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
     # remove SMPL-X hand and face
     register_mask = ~np.isin(
         np.arange(smpl_da.vertices.shape[0]),
-        np.concatenate([smplx_container.smplx_mano_vid, smplx_container.smplx_front_flame_vid])
+        np.concatenate(
+            [smplx_container.smplx_mano_vid, smplx_container.smplx_front_flame_vid]
+        ),
     )
     register_mask *= ~smplx_container.eyeball_vertex_mask.bool().numpy()
     smpl_da_body = smpl_da.copy()
@@ -143,12 +150,22 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
     # remove over-streched+hand faces from ECON
     econ_da_body = econ_da.copy()
     edge_before = np.sqrt(
-        ((econ_obj.vertices[econ_cano.edges[:, 0]] -
-          econ_obj.vertices[econ_cano.edges[:, 1]])**2).sum(axis=1)
+        (
+            (
+                econ_obj.vertices[econ_cano.edges[:, 0]]
+                - econ_obj.vertices[econ_cano.edges[:, 1]]
+            )
+            ** 2
+        ).sum(axis=1)
     )
     edge_after = np.sqrt(
-        ((econ_da.vertices[econ_cano.edges[:, 0]] -
-          econ_da.vertices[econ_cano.edges[:, 1]])**2).sum(axis=1)
+        (
+            (
+                econ_da.vertices[econ_cano.edges[:, 0]]
+                - econ_da.vertices[econ_cano.edges[:, 1]]
+            )
+            ** 2
+        ).sum(axis=1)
     )
     edge_diff = edge_after / edge_before.clip(1e-2)
     streched_mask = np.unique(econ_cano.edges[edge_diff > 6])
@@ -185,7 +202,7 @@ print("Start building the SMPL-X compatible ECON model...")
 
 smpl_tree = cKDTree(smpl_da.vertices)
 dist, idx = smpl_tree.query(econ_da.vertices, k=5)
-knn_weights = np.exp(-dist**2)
+knn_weights = np.exp(-(dist**2))
 knn_weights /= knn_weights.sum(axis=1, keepdims=True)
 
 econ_J_regressor = (smpl_model.J_regressor[:, idx] * knn_weights[None]).sum(dim=-1)
@@ -193,8 +210,14 @@ econ_lbs_weights = (smpl_model.lbs_weights.T[:, idx] * knn_weights[None]).sum(di
 
 num_posedirs = smpl_model.posedirs.shape[0]
 econ_posedirs = (
-    smpl_model.posedirs.view(num_posedirs, -1, 3)[:, idx, :] * knn_weights[None, ..., None]
-).sum(dim=-2).view(num_posedirs, -1).float()
+    (
+        smpl_model.posedirs.view(num_posedirs, -1, 3)[:, idx, :]
+        * knn_weights[None, ..., None]
+    )
+    .sum(dim=-2)
+    .view(num_posedirs, -1)
+    .float()
+)
 
 econ_J_regressor /= econ_J_regressor.sum(dim=1, keepdims=True).clip(min=1e-10)
 econ_lbs_weights /= econ_lbs_weights.sum(dim=1, keepdims=True)
@@ -212,8 +235,7 @@ econ_cano_verts = econ_cano_verts[:, :3, 0].double()
 
 rot_mat_pose = smpl_out_lst[3].vertex_transformation.detach()[0][idx[:, 0]]
 posed_econ_verts = rot_mat_pose @ torch.cat(
-    [econ_cano_verts.float(),
-     torch.ones_like(econ_cano_verts.float())[..., :1]], dim=1
+    [econ_cano_verts.float(), torch.ones_like(econ_cano_verts.float())[..., :1]], dim=1
 ).unsqueeze(-1)
 posed_econ_verts = posed_econ_verts[:, :3, 0].double()
 
@@ -221,7 +243,7 @@ aligned_econ_verts = posed_econ_verts.detach().cpu().numpy()
 aligned_econ_verts += smplx_param["transl"].cpu().numpy()
 aligned_econ_verts *= smplx_param["scale"].cpu().numpy() * np.array([1.0, -1.0, -1.0])
 econ_pose = trimesh.Trimesh(aligned_econ_verts, econ_da.faces)
-assert (econ_pose.vertex_normals.shape[1] == 3)
+assert econ_pose.vertex_normals.shape[1] == 3
 econ_pose.export(f"{prefix}_econ_pose.ply")
 
 cache_path = f"{prefix.replace('obj','cache')}"
@@ -270,10 +292,14 @@ if osp.exists(vt_cache) and osp.exists(ft_cache):
     ft = torch.load(ft_cache).to(device)
 else:
     import xatlas
+
     atlas = xatlas.Atlas()
     atlas.add_mesh(v_np, f_np)
     chart_options = xatlas.ChartOptions()
+    pack_options = xatlas.PackOptions()
     chart_options.max_iterations = 4
+    pack_options.resolution = 8192
+    pack_options.bruteForce = True
     atlas.generate(chart_options=chart_options)
     vmapping, ft_np, vt_np = atlas[0]
 
@@ -283,7 +309,7 @@ else:
     torch.save(ft.cpu(), ft_cache)
 
 # UV texture rendering
-uv_rasterizer = Pytorch3dRasterizer(image_size=512, device=device)
+uv_rasterizer = Pytorch3dRasterizer(image_size=8192, device=device)
 texture_npy = uv_rasterizer.get_texture(
     torch.cat([(vt - 0.5) * 2.0, torch.ones_like(vt[:, :1])], dim=1),
     ft,
@@ -294,7 +320,9 @@ texture_npy = uv_rasterizer.get_texture(
 
 gray_texture = texture_npy.copy()
 gray_texture[texture_npy.sum(axis=2) == 0.0] = 0.5
-Image.fromarray((gray_texture * 255.0).astype(np.uint8)).save(f"{cache_path}/texture.png")
+Image.fromarray((gray_texture * 255.0).astype(np.uint8)).save(
+    f"{cache_path}/texture.png"
+)
 
 # UV mask for TEXTure (https://readpaper.com/paper/4720151447010820097)
 white_texture = texture_npy.copy()
@@ -303,7 +331,7 @@ Image.fromarray((white_texture * 255.0).astype(np.uint8)).save(f"{cache_path}/ma
 
 # generate a-pose vertices
 new_pose = smpl_out_lst[0].full_pose
-new_pose[:, :3] = 0.
+new_pose[:, :3] = 0.0
 
 posed_econ_verts, _ = general_lbs(
     pose=new_pose,
@@ -311,18 +339,20 @@ posed_econ_verts, _ = general_lbs(
     posedirs=econ_posedirs,
     J_regressor=econ_J_regressor,
     parents=smpl_model.parents,
-    lbs_weights=econ_lbs_weights
+    lbs_weights=econ_lbs_weights,
 )
 
 # export mtl file
-with open(f"{cache_path}/material.mtl", 'w') as fp:
-    fp.write(f'newmtl mat0 \n')
-    fp.write(f'Ka 1.000000 1.000000 1.000000 \n')
-    fp.write(f'Kd 1.000000 1.000000 1.000000 \n')
-    fp.write(f'Ks 0.000000 0.000000 0.000000 \n')
-    fp.write(f'Tr 1.000000 \n')
-    fp.write(f'illum 1 \n')
-    fp.write(f'Ns 0.000000 \n')
-    fp.write(f'map_Kd texture.png \n')
+with open(f"{cache_path}/material.mtl", "w") as fp:
+    fp.write(f"newmtl mat0 \n")
+    fp.write(f"Ka 1.000000 1.000000 1.000000 \n")
+    fp.write(f"Kd 1.000000 1.000000 1.000000 \n")
+    fp.write(f"Ks 0.000000 0.000000 0.000000 \n")
+    fp.write(f"Tr 1.000000 \n")
+    fp.write(f"illum 1 \n")
+    fp.write(f"Ns 0.000000 \n")
+    fp.write(f"map_Kd texture.png \n")
 
-export_obj(posed_econ_verts[0].detach().cpu().numpy(), f_np, vt, ft, f"{cache_path}/mesh.obj")
+export_obj(
+    posed_econ_verts[0].detach().cpu().numpy(), f_np, vt, ft, f"{cache_path}/mesh.obj"
+)
