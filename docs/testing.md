@@ -5,7 +5,7 @@
 ![dataset](../assets/dataset.png)
 
 - OOD pose (CAPE, [download](https://github.com/YuliangXiu/ICON/blob/master/docs/evaluation.md#cape-testset)): [`pose.txt`](../pose.txt)
-- OOD outfits (RenderPeople, [link](https://renderpeople.com/)): [`loose.txt`](../loose.txt)
+- OOD outfits (RenderPeople, [commercial scans](https://renderpeople.com/), [SMPL(-X) fits](https://agora.is.tue.mpg.de/)): [`loose.txt`](../loose.txt)
 
 ## Run the evaluation
 

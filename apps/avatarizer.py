@@ -15,7 +15,6 @@ from lib.dataset.mesh_util import (
     SMPLX,
     export_obj,
     keep_largest,
-    o3d_ransac,
     poisson,
     remesh_laplacian,
 )
@@ -97,17 +96,14 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
     econ_verts = torch.tensor(econ_obj.vertices).float()
     rot_mat_t = smpl_out_lst[3].vertex_transformation.detach()[0][idx[:, 0]]
     homo_coord = torch.ones_like(econ_verts)[..., :1]
-    econ_cano_verts = torch.inverse(rot_mat_t) @ torch.cat(
-        [econ_verts, homo_coord], dim=1
-    ).unsqueeze(-1)
+    econ_cano_verts = torch.inverse(rot_mat_t) @ torch.cat([econ_verts, homo_coord],
+                                                           dim=1).unsqueeze(-1)
     econ_cano_verts = econ_cano_verts[:, :3, 0].cpu()
     econ_cano = trimesh.Trimesh(econ_cano_verts, econ_obj.faces)
 
     # da-pose for ECON
     rot_mat_da = smpl_out_lst[2].vertex_transformation.detach()[0][idx[:, 0]]
-    econ_da_verts = rot_mat_da @ torch.cat(
-        [econ_cano_verts, homo_coord], dim=1
-    ).unsqueeze(-1)
+    econ_da_verts = rot_mat_da @ torch.cat([econ_cano_verts, homo_coord], dim=1).unsqueeze(-1)
     econ_da = trimesh.Trimesh(econ_da_verts[:, :3, 0].cpu(), econ_obj.faces)
 
     # da-pose for SMPL-X
@@ -129,9 +125,7 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
     # remove SMPL-X hand and face
     register_mask = ~np.isin(
         np.arange(smpl_da.vertices.shape[0]),
-        np.concatenate(
-            [smplx_container.smplx_mano_vid, smplx_container.smplx_front_flame_vid]
-        ),
+        np.concatenate([smplx_container.smplx_mano_vid, smplx_container.smplx_front_flame_vid]),
     )
     register_mask *= ~smplx_container.eyeball_vertex_mask.bool().numpy()
     smpl_da_body = smpl_da.copy()
@@ -150,22 +144,12 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
     # remove over-streched+hand faces from ECON
     econ_da_body = econ_da.copy()
     edge_before = np.sqrt(
-        (
-            (
-                econ_obj.vertices[econ_cano.edges[:, 0]]
-                - econ_obj.vertices[econ_cano.edges[:, 1]]
-            )
-            ** 2
-        ).sum(axis=1)
+        ((econ_obj.vertices[econ_cano.edges[:, 0]] -
+          econ_obj.vertices[econ_cano.edges[:, 1]])**2).sum(axis=1)
     )
     edge_after = np.sqrt(
-        (
-            (
-                econ_da.vertices[econ_cano.edges[:, 0]]
-                - econ_da.vertices[econ_cano.edges[:, 1]]
-            )
-            ** 2
-        ).sum(axis=1)
+        ((econ_da.vertices[econ_cano.edges[:, 0]] -
+          econ_da.vertices[econ_cano.edges[:, 1]])**2).sum(axis=1)
     )
     edge_diff = edge_after / edge_before.clip(1e-2)
     streched_mask = np.unique(econ_cano.edges[edge_diff > 6])
@@ -209,15 +193,9 @@ econ_J_regressor = (smpl_model.J_regressor[:, idx] * knn_weights[None]).sum(dim=
 econ_lbs_weights = (smpl_model.lbs_weights.T[:, idx] * knn_weights[None]).sum(dim=-1).T
 
 num_posedirs = smpl_model.posedirs.shape[0]
-econ_posedirs = (
-    (
-        smpl_model.posedirs.view(num_posedirs, -1, 3)[:, idx, :]
-        * knn_weights[None, ..., None]
-    )
-    .sum(dim=-2)
-    .view(num_posedirs, -1)
-    .float()
-)
+econ_posedirs = ((
+    smpl_model.posedirs.view(num_posedirs, -1, 3)[:, idx, :] * knn_weights[None, ..., None]
+).sum(dim=-2).view(num_posedirs, -1).float())
 
 econ_J_regressor /= econ_J_regressor.sum(dim=1, keepdims=True).clip(min=1e-10)
 econ_lbs_weights /= econ_lbs_weights.sum(dim=1, keepdims=True)
@@ -235,9 +213,11 @@ econ_cano_verts = econ_cano_verts[:, :3, 0].double()
 # ----------------------------------------------------
 
 rot_mat_pose = smpl_out_lst[3].vertex_transformation.detach()[0][idx[:, 0]]
-posed_econ_verts = rot_mat_pose @ torch.cat(
-    [econ_cano_verts.float(), torch.ones_like(econ_cano_verts.float())[..., :1]], dim=1
-).unsqueeze(-1)
+posed_econ_verts = rot_mat_pose @ torch.cat([
+    econ_cano_verts.float(),
+    torch.ones_like(econ_cano_verts.float())[..., :1]
+],
+                                            dim=1).unsqueeze(-1)
 posed_econ_verts = posed_econ_verts[:, :3, 0].double()
 
 aligned_econ_verts = posed_econ_verts.detach().cpu().numpy()
@@ -321,9 +301,7 @@ texture_npy = uv_rasterizer.get_texture(
 
 gray_texture = texture_npy.copy()
 gray_texture[texture_npy.sum(axis=2) == 0.0] = 0.5
-Image.fromarray((gray_texture * 255.0).astype(np.uint8)).save(
-    f"{cache_path}/texture.png"
-)
+Image.fromarray((gray_texture * 255.0).astype(np.uint8)).save(f"{cache_path}/texture.png")
 
 # UV mask for TEXTure (https://readpaper.com/paper/4720151447010820097)
 white_texture = texture_npy.copy()
@@ -354,6 +332,4 @@ with open(f"{cache_path}/material.mtl", "w") as fp:
     fp.write(f"Ns 0.000000 \n")
     fp.write(f"map_Kd texture.png \n")
 
-export_obj(
-    posed_econ_verts[0].detach().cpu().numpy(), f_np, vt, ft, f"{cache_path}/mesh.obj"
-)
+export_obj(posed_econ_verts[0].detach().cpu().numpy(), f_np, vt, ft, f"{cache_path}/mesh.obj")

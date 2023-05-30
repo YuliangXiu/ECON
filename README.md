@@ -37,7 +37,7 @@
     </a>
     <a href='https://xiuyuliang.cn/econ/'>
       <img src='https://img.shields.io/badge/ECON-Page-orange?style=for-the-badge&logo=Google%20chrome&logoColor=white&labelColor=D35400' alt='Project Page'></a>
-    <a href="https://youtu.be/j5hw4tsWpoY"><img alt="youtube views" title="Subscribe to my YouTube channel" src="https://img.shields.io/youtube/views/j5hw4tsWpoY?logo=youtube&labelColor=ce4630&style=for-the-badge"/></a>
+    <a href="https://youtu.be/5PEd_p90kS0"><img alt="youtube views" title="Subscribe to my YouTube channel" src="https://img.shields.io/youtube/views/5PEd_p90kS0?logo=youtube&labelColor=ce4630&style=for-the-badge"/></a>
   </p>
 </p>
 
