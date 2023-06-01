@@ -3,7 +3,7 @@
 Start by cloning the repo:
 
 ```bash
-git clone --depth 1 git@github.com:YuliangXiu/ECON.git
+git clone git@github.com:YuliangXiu/ECON.git
 cd ECON
 ```
 ## Environment

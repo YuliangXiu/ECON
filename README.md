@@ -49,6 +49,7 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 ## News :triangular_flag_on_post:
 
+- [2023/06/01] [Lee Kwan Joong](https://github.com/kwan3854) updates a Blender Addon ([Github](https://github.com/kwan3854/CEB_ECON), [Tutorial](https://youtu.be/SDVfCeaI4AY)).
 - [2023/04/16] <a href="https://huggingface.co/spaces/Yuliang/ECON"  style='padding-left: 0.5rem;'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-orange'></a> is ready to use!
 - [2023/02/27] ECON got accepted by CVPR 2023 as Highlight (top 10%)!
 - [2023/01/12] [Carlos Barreto](https://twitter.com/carlosedubarret/status/1613252471035494403) creates a Blender Addon ([Download](https://carlosedubarreto.gumroad.com/l/CEB_ECON), [Tutorial](https://youtu.be/sbWZbTf6ZYk)).
@@ -56,7 +57,6 @@ ECON is designed for "Human digitization from a color image", which combines the
 - [2023/01/06] [Justin John](https://github.com/justinjohn0306) and [Carlos Barreto](https://github.com/carlosedubarreto) creates [install-on-windows](docs/installation-windows.md) for ECON .
 - [2022/12/22] <a href='https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing' style='padding-left: 0.5rem;'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a> is now available, created by [Aron Arzoomand](https://github.com/AroArz).
 - [2022/12/15] Both <a href="#demo">demo</a> and <a href="https://arxiv.org/abs/2212.07422">arXiv</a> are available.
-
 
 ## Key idea: d-BiNI
 
@@ -101,7 +101,6 @@ d-BiNI jointly optimizes front-back 2.5D surfaces such that: (1) high-frequency 
     </li>
   </ol>
 </details>
-
 <br/>
 
 ## Instructions
@@ -113,9 +112,8 @@ d-BiNI jointly optimizes front-back 2.5D surfaces such that: (1) high-frequency 
 - See [testing](docs/testing.md) to prepare the testing data and evaluate ECON
 
 ## Demo
- 
- 
-- Terminal
+
+- ### Terminal
 
 ```bash
 # For single-person image-based reconstruction (w/ l visualization steps, 1.8min)
@@ -131,7 +129,7 @@ python -m apps.multi_render -n <filename>
 python -m apps.avatarizer -n <filename>
 ```
 
-- Gradio Demo
+- ### Gradio Demo
 
 We also provide a UI for testing our method that is built with gradio. This demo also supports pose&prompt guided human image generation! Running the following command in a terminal will launch the demo:
 
@@ -142,7 +140,7 @@ python app.py
 
 This demo is also hosted on HuggingFace Space <a href="https://huggingface.co/spaces/Yuliang/ECON"  style='padding-left: 0.5rem;'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-ECON-orange'></a>
 
-- Full Texture Generation 
+- ### Full Texture Generation
 
 Please firstly follow the [TEXTure's installation](https://github.com/YuliangXiu/TEXTure#installation-floppy_disk) to setup the env of TEXTure.
 
@@ -154,6 +152,14 @@ python -m scripts.run_texture --config_path=configs/text_guided/avatar.yaml
 ```
 
 Then check `./experiments/<filename>/mesh` for the results.
+
+- ### Blender "all in one" Add-on
+
+This [Blender add-on](https://github.com/kwan3854/CEB_ECON) supports the 1) reconstructor for geometry, 2) avatarizer for animation, and 3) TEXTure features for texture. It also provides the functionality to adjust configuration settings as required.
+
+<p align="center">
+<img src="assets/blender-demo.gif"/>
+</p>
 
 <br/>
 
@@ -167,9 +173,9 @@ Then check `./experiments/<filename>/mesh` for the results.
 
 ## Applications
 
-|                                        ![SHHQ](assets/SHHQ.gif)                                        |         ![crowd](assets/crowd.gif)          |
-| :----------------------------------------------------------------------------------------------------: | :-----------------------------------------: |
-| _ECON could provide pseudo 3D GT for [SHHQ Dataset](https://github.com/stylegan-human/StyleGAN-Human)_ | _ECON supports multi-person reconstruction_ |
+|                               ![SHHQ](assets/SHHQ.gif)                               |         ![crowd](assets/crowd.gif)         |
+| :----------------------------------------------------------------------------------: | :----------------------------------------: |
+| _"3D guidance" for [SHHQ Dataset](https://github.com/stylegan-human/StyleGAN-Human)_ | _multi-person reconstruction w/ occlusion_ |
 
 <br/>
 <br/>
