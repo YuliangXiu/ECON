@@ -49,6 +49,8 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 ## News :triangular_flag_on_post:
 
+- [2023/06/01] [Lee Kwan Joong](https://github.com/kwan3854) updates a Blender Addon ([Github](https://github.com/kwan3854/CEB_ECON), [Tutorial](https://youtu.be/SDVfCeaI4AY)).
+
 - [2023/04/16] <a href="https://huggingface.co/spaces/Yuliang/ECON"  style='padding-left: 0.5rem;'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-orange'></a> is ready to use!
 - [2023/02/27] ECON got accepted by CVPR 2023 as Highlight (top 10%)!
 - [2023/01/12] [Carlos Barreto](https://twitter.com/carlosedubarret/status/1613252471035494403) creates a Blender Addon ([Download](https://carlosedubarreto.gumroad.com/l/CEB_ECON), [Tutorial](https://youtu.be/sbWZbTf6ZYk)).
@@ -101,7 +103,6 @@ d-BiNI jointly optimizes front-back 2.5D surfaces such that: (1) high-frequency 
     </li>
   </ol>
 </details>
-
 <br/>
 
 ## Instructions
@@ -113,8 +114,8 @@ d-BiNI jointly optimizes front-back 2.5D surfaces such that: (1) high-frequency 
 - See [testing](docs/testing.md) to prepare the testing data and evaluate ECON
 
 ## Demo
- 
- 
+
+
 - Terminal
 
 ```bash
@@ -154,6 +155,12 @@ python -m scripts.run_texture --config_path=configs/text_guided/avatar.yaml
 ```
 
 Then check `./experiments/<filename>/mesh` for the results.
+
+- Blender all in one add-on
+
+This [Blender add-on](https://github.com/kwan3854/CEB_ECON) supports the use of single-person reconstruction, avatarizer, and TEXTure features. It also provides the functionality to adjust configuration settings as required.
+
+![blender-demo](assets/blender-demo.gif)
 
 <br/>
 
