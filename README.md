@@ -27,11 +27,6 @@
     <a href="https://twitter.com/yuliangxiu"><img alt='Twitter' src="https://img.shields.io/twitter/follow/yuliangxiu?label=%40yuliangxiu"></a>
     <a href="https://discord.gg/Vqa7KBGRyk"><img alt="discord invitation link" src="https://dcbadge.vercel.app/api/server/Vqa7KBGRyk?style=flat"></a>
     <br></br>
-    <a href='https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing'><img src='https://colab.research.google.com/assets/colab-badge.svg' alt='Google Colab'></a>
-    <a href="https://huggingface.co/spaces/Yuliang/ECON"  style='padding-left: 0.5rem;'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-ECON-orange'></a>
-    <a href='https://github.com/YuliangXiu/ECON/blob/master/docs/installation-docker.md'><img src='https://img.shields.io/badge/Docker-9cf.svg?logo=Docker' alt='Docker'></a>
-    <a href='https://carlosedubarreto.gumroad.com/l/CEB_ECON'><img src='https://img.shields.io/badge/Blender-F6DDCC.svg?logo=Blender' alt='Blender'></a>
-    <br></br>
     <a href="https://arxiv.org/abs/2212.07422">
       <img src='https://img.shields.io/badge/Paper-PDF-green?style=for-the-badge&logo=adobeacrobatreader&logoWidth=20&logoColor=white&labelColor=66cc00&color=94DD15' alt='Paper PDF'>
     </a>
@@ -45,6 +40,16 @@
 
 ECON is designed for "Human digitization from a color image", which combines the best properties of implicit and explicit representations, to infer high-fidelity 3D clothed humans from in-the-wild images, even with **loose clothing** or in **challenging poses**. ECON also supports **multi-person reconstruction** and **SMPL-X based animation**.
 <br/>
+
+<div align="center">
+
+|                                                                            **HuggingFace Demo**                                                                            |                                                                                             **Google Colab**                                                                                              |                                                                                                                                                                        **Blender Add-on**                                                                                                                                                                        |                                                             **Windows**                                                             |                                                                                **Docker**                                                                                 |
+| :------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+| <a href="https://huggingface.co/spaces/Yuliang/ECON"  style='padding-left: 0.5rem;'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-ECON-orange'></a> | <a href='https://colab.research.google.com/drive/1YRgwoRCZIrSB2e7auEWFyG10Xzjbrbno?usp=sharing'><img src='https://img.shields.io/badge/Vanilla Colab-ec740b.svg?logo=googlecolab' alt='Google Colab'></a> | <a href='https://carlosedubarreto.gumroad.com/l/CEB_ECON'><img src='https://img.shields.io/badge/ECON-F6DDCC.svg?logo=Blender' alt='Blender'></a> <a href="https://youtu.be/sbWZbTf6ZYk"><img alt="youtube views" title="Subscribe to my YouTube channel" src="https://img.shields.io/youtube/views/sbWZbTf6ZYk?logo=youtube&labelColor=ce4630&style=flat"/></a> | <a href='./docs/installation-windows.md'><img src='https://img.shields.io/badge/Windows-0078D6.svg?logo=windows' alt='Windows'></a> | <a href='https://github.com/YuliangXiu/ECON/blob/master/docs/installation-docker.md'><img src='https://img.shields.io/badge/Docker-9cf.svg?logo=Docker' alt='Docker'></a> |
+|                                                                                                                                                                            |                        <a href='https://github.com/camenduru/ECON-colab'><img src='https://img.shields.io/badge/Gradio Colab-ec740b.svg?logo=googlecolab' alt='Google Colab'></a>                         |  <a href='https://github.com/kwan3854/CEB_ECON'><img src='https://img.shields.io/badge/ECON+TEXTure-F6DDCC.svg?logo=Blender' alt='Blender'></a> <a href="https://youtu.be/SDVfCeaI4AY"><img alt="youtube views" title="Subscribe to my YouTube channel" src="https://img.shields.io/youtube/views/SDVfCeaI4AY?logo=youtube&labelColor=ce4630&style=flat"/></a>   |                                                                                                                                     |                                                                                                                                                                           |
+
+</div>
+
 <br/>
 
 ## News :triangular_flag_on_post:
@@ -91,7 +96,7 @@ d-BiNI jointly optimizes front-back 2.5D surfaces such that: (1) high-frequency 
       <a href="#instructions">Instructions</a>
     </li>
     <li>
-      <a href="#demo">Demo</a>
+      <a href="#demos">Demos</a>
     </li>
     <li>
       <a href="#applications">Applications</a>
@@ -111,9 +116,9 @@ d-BiNI jointly optimizes front-back 2.5D surfaces such that: (1) high-frequency 
 - See [magic tricks](docs/tricks.md) to know a few technical tricks to further improve and accelerate ECON
 - See [testing](docs/testing.md) to prepare the testing data and evaluate ECON
 
-## Demo
+## Demos
 
-- ### Terminal
+- ### Quick Start
 
 ```bash
 # For single-person image-based reconstruction (w/ l visualization steps, 1.8min)
@@ -123,11 +128,40 @@ python -m apps.infer -cfg ./configs/econ.yaml -in_dir ./examples -out_dir ./resu
 python -m apps.infer -cfg ./configs/econ.yaml -in_dir ./examples -out_dir ./results -multi
 
 # To generate the demo video of reconstruction results
-python -m apps.multi_render -n <filename>
+python -m apps.multi_render -n <file_name>
 
-# To animate the reconstruction with SMPL-X pose parameters
-python -m apps.avatarizer -n <filename>
 ```
+
+- ### Animation with SMPL-X sequences (ECON + [HybrIK-X](https://github.com/Jeff-sjtu/HybrIK#smpl-x))
+
+```bash
+# 1. Use HybrIK-X to estimate SMPL-X pose sequences from input video
+# 2. Rig ECON's reconstruction mesh, to be compatible with SMPL-X's parametrization.
+# 3. Animate with SMPL-X pose sequences obtained from HybrIK-X, getting <file_name>_motion.npz
+# 4. Render the frames with Blender (rgb-partial texture, normal-normal colors), and combine them to get final video
+
+python -m apps.avatarizer -n <file_name>
+python -m apps.animation -n <file_name> -m <motion_name>
+
+# Note: to install missing python packages into Blender
+# blender -b --python-expr "__import__('pip._internal')._internal.main(['install', 'moviepy'])"
+
+wget https://download.is.tue.mpg.de/icon/econ_empty.blend
+blender -b --python apps.blender_dance.py -- normal <file_name> 10 > /tmp/NULL
+```
+
+<details><summary>Please consider cite <strong>HybrIK-X</strong> if it also helps on your project</summary>
+
+```bibtex
+@article{li2023hybrik,
+  title={HybrIK-X: Hybrid Analytical-Neural Inverse Kinematics for Whole-body Mesh Recovery},
+  author={Li, Jiefeng and Bian, Siyuan and Xu, Chao and Chen, Zhicun and Yang, Lixin and Lu, Cewu},
+  journal={arXiv preprint arXiv:2304.05690},
+  year={2023}
+}
+```
+
+</details>
 
 - ### Gradio Demo
 
@@ -145,21 +179,32 @@ This demo is also hosted on HuggingFace Space <a href="https://huggingface.co/sp
 Please firstly follow the [TEXTure's installation](https://github.com/YuliangXiu/TEXTure#installation-floppy_disk) to setup the env of TEXTure.
 
 ```bash
+
+# generate required UV atlas
+python -m apps.avatarizer -n <file_name> -uv
+
+# generate new texture using TEXTure
 git clone https://github.com/YuliangXiu/TEXTure
 cd TEXTure
 ln -s ../ECON/results/econ/cache
 python -m scripts.run_texture --config_path=configs/text_guided/avatar.yaml
 ```
 
-Then check `./experiments/<filename>/mesh` for the results.
+Then check `./experiments/<file_name>/mesh` for the results.
 
-- ### Blender "all in one" Add-on
+<details><summary>Please consider cite <strong>TEXTure</strong> if it also helps on your project</summary>
 
-This [Blender add-on](https://github.com/kwan3854/CEB_ECON) supports the 1) reconstructor for geometry, 2) avatarizer for animation, and 3) TEXTure features for texture. It also provides the functionality to adjust configuration settings as required.
+```bibtex
+@article{richardson2023texture,
+  title={Texture: Text-guided texturing of 3d shapes},
+  author={Richardson, Elad and Metzer, Gal and Alaluf, Yuval and Giryes, Raja and Cohen-Or, Daniel},
+  journal={ACM Transactions on Graphics (TOG)},
+  publisher={ACM New York, NY, USA},
+  year={2023}
+}
+```
 
-<p align="center">
-<img src="assets/blender-demo.gif"/>
-</p>
+</details>
 
 <br/>
 
@@ -173,9 +218,11 @@ This [Blender add-on](https://github.com/kwan3854/CEB_ECON) supports the 1) reco
 
 ## Applications
 
-|                               ![SHHQ](assets/SHHQ.gif)                               |         ![crowd](assets/crowd.gif)         |
-| :----------------------------------------------------------------------------------: | :----------------------------------------: |
-| _"3D guidance" for [SHHQ Dataset](https://github.com/stylegan-human/StyleGAN-Human)_ | _multi-person reconstruction w/ occlusion_ |
+|                              ![SHHQ](assets/SHHQ.gif)                              |                                                ![crowd](assets/crowd.gif)                                                 |
+| :--------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------: |
+| "3D guidance" for [SHHQ Dataset](https://github.com/stylegan-human/StyleGAN-Human) |                                         multi-person reconstruction w/ occlusion                                          |
+|                        ![Blender](assets/blender-demo.gif)                         |                                            ![Animation](assets/animation.gif)                                             |
+|        "All-in-One" [Blender add-on](https://github.com/kwan3854/CEB_ECON)         | SMPL-X based Animation ([Instruction](https://github.com/YuliangXiu/ECON#animation-with-smpl-x-sequences-econ--hybrik-x)) |
 
 <br/>
 <br/>

@@ -19,3 +19,5 @@ dist
 run.sh
 *.log
 gradio_cached_examples/
+*.blend
+*.blend1

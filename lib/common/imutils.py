@@ -58,7 +58,7 @@ def load_img(img_file):
     if img_file.endswith("exr"):
         img = cv2.imread(img_file, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
     else:
-        img = cv2.imread(img_file, cv2.IMREAD_UNCHANGED)
+        img = cv2.imread(img_file, cv2.IMREAD_COLOR)
 
     # considering non 8-bit image
     if img.dtype != np.uint8:
@@ -67,10 +67,7 @@ def load_img(img_file):
     if len(img.shape) == 2:
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
-    if not img_file.endswith("png"):
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    else:
-        img = cv2.cvtColor(img, cv2.COLOR_RGBA2BGR)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
     return torch.tensor(img).permute(2, 0, 1).unsqueeze(0).float(), img.shape[:2]
 

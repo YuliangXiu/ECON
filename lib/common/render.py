@@ -87,7 +87,29 @@ def query_color(verts, faces, image, device, paint_normal=True):
             Meshes(verts.unsqueeze(0), faces.unsqueeze(0)).verts_normals_padded().squeeze(0) + 1.0
         ) * 0.5 * 255.0)[visibility == 0.0]
     else:
-        colors[visibility == 0.0] = torch.tensor([0.0, 0.0, 0.0]).to(device)
+        colors[visibility == 0.0] = (torch.tensor([0.5, 0.5, 0.5]) * 255.0).to(device)
+
+    return colors.detach().cpu()
+
+
+def query_normal_color(verts, faces, device):
+    """query normal colors
+
+    Args:
+        verts ([B, 3]): [query verts]
+        faces ([M, 3]): [query faces]
+
+    Returns:
+        [np.float]: [return colors]
+    """
+
+    verts = verts.float().to(device)
+    faces = faces.long().to(device)
+
+    colors = (
+        (Meshes(verts.unsqueeze(0), faces.unsqueeze(0)).verts_normals_padded().squeeze(0) + 1.0) *
+        0.5 * 255.0
+    )
 
     return colors.detach().cpu()
 

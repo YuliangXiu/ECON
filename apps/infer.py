@@ -560,9 +560,10 @@ if __name__ == "__main__":
                 face_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_face.obj")
                 full_lst += [face_mesh]
 
-            if "hand" in cfg.bni.use_smpl and (True in data['hands_visibility'][idx]):
+            if "hand" in cfg.bni.use_smpl:
 
                 hand_mask = torch.zeros(SMPLX_object.smplx_verts.shape[0], )
+
                 if data['hands_visibility'][idx][0]:
                     hand_mask.index_fill_(
                         0, torch.tensor(SMPLX_object.smplx_mano_vid_dict["left_hand"]), 1.0

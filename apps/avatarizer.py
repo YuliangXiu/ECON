@@ -24,6 +24,7 @@ from lib.smplx.lbs import general_lbs
 parser = argparse.ArgumentParser()
 parser.add_argument("-n", "--name", type=str, default="")
 parser.add_argument("-g", "--gpu", type=int, default=0)
+parser.add_argument("-uv", action="store_true")
 args = parser.parse_args()
 
 smplx_container = SMPLX()
@@ -238,98 +239,134 @@ print("Start Color mapping...")
 from PIL import Image
 from torchvision import transforms
 
-from lib.common.render import query_color
+from lib.common.render import query_color, query_normal_color
 from lib.common.render_utils import Pytorch3dRasterizer
+
+# choice 1: pixels to visible regions, normals to invisible regions
 
 if not osp.exists(f"{prefix}_econ_icp_rgb.ply"):
     masked_image = f"./results/econ/png/{args.name}_cloth.png"
     tensor_image = transforms.ToTensor()(Image.open(masked_image))[:, :, :512]
-    final_colors = query_color(
+
+    final_rgb = query_color(
         torch.tensor(econ_pose.vertices).float(),
         torch.tensor(econ_pose.faces).long(),
         ((tensor_image - 0.5) * 2.0).unsqueeze(0).to(device),
         device=device,
         paint_normal=False,
-    )
-    final_colors[final_colors == tensor_image[:, 0, 0] * 255.0] = 0.0
-    final_colors = final_colors.detach().cpu().numpy()
-    econ_pose.visual.vertex_colors = final_colors
+    ).numpy()
+    final_rgb[final_rgb == tensor_image[:, 0, 0] * 255.0] = 0.5 * 255.0
+
+    econ_pose.visual.vertex_colors = final_rgb
     econ_pose.export(f"{prefix}_econ_icp_rgb.ply")
 else:
     mesh = trimesh.load(f"{prefix}_econ_icp_rgb.ply")
-    final_colors = mesh.visual.vertex_colors[:, :3]
+    final_rgb = mesh.visual.vertex_colors[:, :3]
 
-print("Start UV texture generation...")
+# choice 2: normals to all the regions
 
-# Generate UV coords
-v_np = econ_pose.vertices
-f_np = econ_pose.faces
+if not osp.exists(f"{prefix}_econ_icp_normal.ply"):
 
-vt_cache = osp.join(cache_path, "vt.pt")
-ft_cache = osp.join(cache_path, "ft.pt")
+    file_normal = query_normal_color(
+        torch.tensor(econ_pose.vertices).float(),
+        torch.tensor(econ_pose.faces).long(),
+        device=device,
+    ).numpy()
 
-if osp.exists(vt_cache) and osp.exists(ft_cache):
-    vt = torch.load(vt_cache).to(device)
-    ft = torch.load(ft_cache).to(device)
+    econ_pose.visual.vertex_colors = file_normal
+    econ_pose.export(f"{prefix}_econ_icp_normal.ply")
 else:
-    import xatlas
+    mesh = trimesh.load(f"{prefix}_econ_icp_normal.ply")
+    file_normal = mesh.visual.vertex_colors[:, :3]
 
-    atlas = xatlas.Atlas()
-    atlas.add_mesh(v_np, f_np)
-    chart_options = xatlas.ChartOptions()
-    pack_options = xatlas.PackOptions()
-    chart_options.max_iterations = 4
-    pack_options.resolution = 8192
-    pack_options.bruteForce = True
-    atlas.generate(chart_options=chart_options)
-    vmapping, ft_np, vt_np = atlas[0]
+# econ data used for animation and rendering
 
-    vt = torch.from_numpy(vt_np.astype(np.float32)).float().to(device)
-    ft = torch.from_numpy(ft_np.astype(np.int64)).int().to(device)
-    torch.save(vt.cpu(), vt_cache)
-    torch.save(ft.cpu(), ft_cache)
+econ_dict = {
+    "v_template": econ_cano_verts.unsqueeze(0),
+    "posedirs": econ_posedirs,
+    "J_regressor": econ_J_regressor,
+    "parents": smpl_model.parents,
+    "lbs_weights": econ_lbs_weights,
+    "final_rgb": final_rgb,
+    "final_normal": file_normal,
+    "faces": econ_pose.faces,
+}
 
-# UV texture rendering
-uv_rasterizer = Pytorch3dRasterizer(image_size=8192, device=device)
-texture_npy = uv_rasterizer.get_texture(
-    torch.cat([(vt - 0.5) * 2.0, torch.ones_like(vt[:, :1])], dim=1),
-    ft,
-    torch.tensor(v_np).unsqueeze(0).float(),
-    torch.tensor(f_np).unsqueeze(0).long(),
-    torch.tensor(final_colors).unsqueeze(0).float() / 255.0,
-)
+torch.save(econ_dict, f"{cache_path}/econ.pt")
 
-gray_texture = texture_npy.copy()
-gray_texture[texture_npy.sum(axis=2) == 0.0] = 0.5
-Image.fromarray((gray_texture * 255.0).astype(np.uint8)).save(f"{cache_path}/texture.png")
+if args.uv:
 
-# UV mask for TEXTure (https://readpaper.com/paper/4720151447010820097)
-white_texture = texture_npy.copy()
-white_texture[texture_npy.sum(axis=2) == 0.0] = 1.0
-Image.fromarray((white_texture * 255.0).astype(np.uint8)).save(f"{cache_path}/mask.png")
+    print("Start UV texture generation...")
 
-# generate a-pose vertices
-new_pose = smpl_out_lst[0].full_pose
-new_pose[:, :3] = 0.0
+    # Generate UV coords
+    v_np = econ_pose.vertices
+    f_np = econ_pose.faces
 
-posed_econ_verts, _ = general_lbs(
-    pose=new_pose,
-    v_template=econ_cano_verts.unsqueeze(0),
-    posedirs=econ_posedirs,
-    J_regressor=econ_J_regressor,
-    parents=smpl_model.parents,
-    lbs_weights=econ_lbs_weights,
-)
+    vt_cache = osp.join(cache_path, "vt.pt")
+    ft_cache = osp.join(cache_path, "ft.pt")
 
-# export mtl file
-with open(f"{cache_path}/material.mtl", "w") as fp:
-    fp.write(f"newmtl mat0 \n")
-    fp.write(f"Ka 1.000000 1.000000 1.000000 \n")
-    fp.write(f"Kd 1.000000 1.000000 1.000000 \n")
-    fp.write(f"Ks 0.000000 0.000000 0.000000 \n")
-    fp.write(f"Tr 1.000000 \n")
-    fp.write(f"illum 1 \n")
-    fp.write(f"Ns 0.000000 \n")
-    fp.write(f"map_Kd texture.png \n")
+    if osp.exists(vt_cache) and osp.exists(ft_cache):
+        vt = torch.load(vt_cache).to(device)
+        ft = torch.load(ft_cache).to(device)
+    else:
+        import xatlas
 
-export_obj(posed_econ_verts[0].detach().cpu().numpy(), f_np, vt, ft, f"{cache_path}/mesh.obj")
+        atlas = xatlas.Atlas()
+        atlas.add_mesh(v_np, f_np)
+        chart_options = xatlas.ChartOptions()
+        pack_options = xatlas.PackOptions()
+        chart_options.max_iterations = 4
+        pack_options.resolution = 8192
+        pack_options.bruteForce = True
+        atlas.generate(chart_options=chart_options)
+        vmapping, ft_np, vt_np = atlas[0]
+
+        vt = torch.from_numpy(vt_np.astype(np.float32)).float().to(device)
+        ft = torch.from_numpy(ft_np.astype(np.int64)).int().to(device)
+        torch.save(vt.cpu(), vt_cache)
+        torch.save(ft.cpu(), ft_cache)
+
+    # UV texture rendering
+    uv_rasterizer = Pytorch3dRasterizer(image_size=8192, device=device)
+    texture_npy = uv_rasterizer.get_texture(
+        torch.cat([(vt - 0.5) * 2.0, torch.ones_like(vt[:, :1])], dim=1),
+        ft,
+        torch.tensor(v_np).unsqueeze(0).float(),
+        torch.tensor(f_np).unsqueeze(0).long(),
+        torch.tensor(final_rgb).unsqueeze(0).float() / 255.0,
+    )
+
+    gray_texture = texture_npy.copy()
+    gray_texture[texture_npy.sum(axis=2) == 0.0] = 0.5
+    Image.fromarray((gray_texture * 255.0).astype(np.uint8)).save(f"{cache_path}/texture.png")
+
+    # UV mask for TEXTure (https://readpaper.com/paper/4720151447010820097)
+    white_texture = texture_npy.copy()
+    white_texture[texture_npy.sum(axis=2) == 0.0] = 1.0
+    Image.fromarray((white_texture * 255.0).astype(np.uint8)).save(f"{cache_path}/mask.png")
+
+    # generate a-pose vertices
+    new_pose = smpl_out_lst[0].full_pose
+    new_pose[:, :3] = 0.0
+
+    posed_econ_verts, _ = general_lbs(
+        pose=new_pose,
+        v_template=econ_cano_verts.unsqueeze(0),
+        posedirs=econ_posedirs,
+        J_regressor=econ_J_regressor,
+        parents=smpl_model.parents,
+        lbs_weights=econ_lbs_weights,
+    )
+
+    # export mtl file
+    with open(f"{cache_path}/material.mtl", "w") as fp:
+        fp.write(f"newmtl mat0 \n")
+        fp.write(f"Ka 1.000000 1.000000 1.000000 \n")
+        fp.write(f"Kd 1.000000 1.000000 1.000000 \n")
+        fp.write(f"Ks 0.000000 0.000000 0.000000 \n")
+        fp.write(f"Tr 1.000000 \n")
+        fp.write(f"illum 1 \n")
+        fp.write(f"Ns 0.000000 \n")
+        fp.write(f"map_Kd texture.png \n")
+
+    export_obj(posed_econ_verts[0].detach().cpu().numpy(), f_np, vt, ft, f"{cache_path}/mesh.obj")
