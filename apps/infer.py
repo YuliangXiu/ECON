@@ -565,13 +565,26 @@ if __name__ == "__main__":
                 hand_mask = torch.zeros(SMPLX_object.smplx_verts.shape[0], )
 
                 if data['hands_visibility'][idx][0]:
-                    hand_mask.index_fill_(
-                        0, torch.tensor(SMPLX_object.smplx_mano_vid_dict["left_hand"]), 1.0
+
+                    mano_left_vid = np.unique(
+                        np.concatenate([
+                            SMPLX_object.smplx_vert_seg["leftHand"],
+                            SMPLX_object.smplx_vert_seg["leftHandIndex1"],
+                        ])
                     )
+
+                    hand_mask.index_fill_(0, torch.tensor(mano_left_vid), 1.0)
+
                 if data['hands_visibility'][idx][1]:
-                    hand_mask.index_fill_(
-                        0, torch.tensor(SMPLX_object.smplx_mano_vid_dict["right_hand"]), 1.0
+
+                    mano_right_vid = np.unique(
+                        np.concatenate([
+                            SMPLX_object.smplx_vert_seg["rightHand"],
+                            SMPLX_object.smplx_vert_seg["rightHandIndex1"],
+                        ])
                     )
+
+                    hand_mask.index_fill_(0, torch.tensor(mano_right_vid), 1.0)
 
                 # only hands
                 hand_mesh = apply_vertex_mask(hand_mesh, hand_mask)

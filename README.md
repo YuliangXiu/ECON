@@ -50,6 +50,14 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 </div>
 
+## Applications
+
+|                              ![SHHQ](assets/SHHQ.gif)                              |                                                ![crowd](assets/crowd.gif)                                                 |
+| :--------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------: |
+| "3D guidance" for [SHHQ Dataset](https://github.com/stylegan-human/StyleGAN-Human) |                                         multi-person reconstruction w/ occlusion                                          |
+|                        ![Blender](assets/blender-demo.gif)                         |                                            ![Animation](assets/animation.gif)                                             |
+|        "All-in-One" [Blender add-on](https://github.com/kwan3854/CEB_ECON)         | SMPL-X based Animation ([Instruction](https://github.com/YuliangXiu/ECON#animation-with-smpl-x-sequences-econ--hybrik-x)) |
+
 <br/>
 
 ## News :triangular_flag_on_post:
@@ -99,9 +107,6 @@ d-BiNI jointly optimizes front-back 2.5D surfaces such that: (1) high-frequency 
       <a href="#demos">Demos</a>
     </li>
     <li>
-      <a href="#applications">Applications</a>
-    </li>
-    <li>
       <a href="#citation">Citation</a>
     </li>
   </ol>
@@ -136,7 +141,7 @@ python -m apps.multi_render -n <file_name>
 
 ```bash
 # 1. Use HybrIK-X to estimate SMPL-X pose sequences from input video
-# 2. Rig ECON's reconstruction mesh, to be compatible with SMPL-X's parametrization.
+# 2. Rig ECON's reconstruction mesh, to be compatible with SMPL-X's parametrization (-dress for dress/skirts).
 # 3. Animate with SMPL-X pose sequences obtained from HybrIK-X, getting <file_name>_motion.npz
 # 4. Render the frames with Blender (rgb-partial texture, normal-normal colors), and combine them to get final video
 
@@ -215,14 +220,6 @@ Then check `./experiments/<file_name>/mesh` for the results.
 |          _Challenging Poses_           |
 | ![OOD Clothes](assets/OOD-outfits.jpg) |
 |            _Loose Clothes_             |
-
-## Applications
-
-|                              ![SHHQ](assets/SHHQ.gif)                              |                                                ![crowd](assets/crowd.gif)                                                 |
-| :--------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------------: |
-| "3D guidance" for [SHHQ Dataset](https://github.com/stylegan-human/StyleGAN-Human) |                                         multi-person reconstruction w/ occlusion                                          |
-|                        ![Blender](assets/blender-demo.gif)                         |                                            ![Animation](assets/animation.gif)                                             |
-|        "All-in-One" [Blender add-on](https://github.com/kwan3854/CEB_ECON)         | SMPL-X based Animation ([Instruction](https://github.com/YuliangXiu/ECON#animation-with-smpl-x-sequences-econ--hybrik-x)) |
 
 <br/>
 <br/>

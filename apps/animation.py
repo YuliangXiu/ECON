@@ -3,7 +3,6 @@ import os
 
 import numpy as np
 import torch
-import trimesh
 from tqdm import tqdm
 
 from lib.net.geometry import rotation_matrix_to_angle_axis

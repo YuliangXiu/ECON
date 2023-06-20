@@ -33,6 +33,75 @@ export CUDA_VISIBLE_DEVICES=1; python -m apps.benchmark
 
 **\*OOD: Out-of-Distribution**
 
+## Baselines with code+models
+
+|            |                        PIFu                        |                          PIFuHD                           |                       PaMIR                        |                    ARCH                    |                    CAR                     |                    ICON                    |                    ECON                    |
+| :--------: | :------------------------------------------------: | :-------------------------------------------------------: | :------------------------------------------------: | :----------------------------------------: | :----------------------------------------: | :----------------------------------------: | :----------------------------------------: |
+|  official  |   [PIFu ](https://github.com/shunsukesaito/PIFu)   |  [PIFuHD\*](https://github.com/facebookresearch/pifuhd)   |   [PaMIR](https://github.com/ZhengZerong/PaMIR)    |                     -                      | [CAR](https://github.com/TingtingLiao/CAR) | [ICON](https://github.com/YuliangXiu/ICON) | [ECON](https://github.com/YuliangXiu/ECON) |
+| unofficial | [ICON &#8593;](https://github.com/YuliangXiu/ICON) | [Open-PIFuHD](https://github.com/lingtengqiu/Open-PIFuhd) | [ICON &#8593;](https://github.com/YuliangXiu/ICON) | [CAR](https://github.com/TingtingLiao/CAR) |                     -                      |                     -                      |                     -                      |
+
+**\* test only, w/o training code**
+
+**&#8593; better performance than official version**
+
+<details><summary>Please cite these baselines in experiment section or related works</summary>
+
+```bibtex
+@inproceedings{saito2019pifu,
+    author      = {Shunsuke Saito and Zeng Huang and Ryota Natsume and Shigeo Morishima and Hao Li and Angjoo Kanazawa},
+    title       = {{PIFu}: {P}ixel-Aligned Implicit Function for High-Resolution Clothed Human Digitization},
+    booktitle   = ICCV,
+    year        = {2019}
+}
+
+@inproceedings{saito2020pifuhd,
+    title       = {{PIFuHD}: {M}ulti-Level Pixel-Aligned Implicit Function for High-Resolution {3D} Human Digitization},
+    author      = {Shunsuke Saito and Tomas Simon and Jason M. Saragih and Hanbyul Joo},
+    booktitle   = CVPR,
+    year        = {2020}
+}
+
+@article{zheng2020pamir,
+    title       = {{PaMIR}: {P}arametric Model-Conditioned Implicit Representation for Image-based Human Reconstruction},
+    author      = {Zerong Zheng and Tao Yu and Yebin Liu and Qionghai Dai},
+    journal     = PAMI,
+    year        = {2022}
+}
+
+@inproceedings{huang2020arch,
+    title       = {{ARCH}: {A}nimatable Reconstruction of Clothed Humans},
+    author      = {Zeng Huang and Yuanlu Xu and Christoph Lassner and Hao Li and Tony Tung},
+    booktitle   = CVPR,
+    year        = {2020}
+}
+
+@inproceedings{liao2023car,
+  title     = {{High-Fidelity Clothed Avatar Reconstruction from a Single Image}},
+  author    = {Liao, Tingting and Zhang, Xiaomei and Xiu, Yuliang and Yi, Hongwei and Liu, Xudong and Qi, Guo-Jun and Zhang, Yong and Wang, Xuan and Zhu, Xiangyu and Lei, Zhen},
+  booktitle = CVPR,
+  year      = {2023},
+}
+
+@inproceedings{xiu2022icon,
+    title       = {{ICON}: {I}mplicit {C}lothed humans {O}btained from {N}ormals},
+    author      = {Xiu, Yuliang and Yang, Jinlong and Tzionas, Dimitrios and Black, Michael J.},
+    booktitle   = CVPR,
+    year        = {2022}
+}
+
+@inproceedings{xiu2023econ,
+  title     = {{ECON: Explicit Clothed humans Optimized via Normal integration}},
+  author    = {Xiu, Yuliang and Yang, Jinlong and Cao, Xu and Tzionas, Dimitrios and Black, Michael J.},
+  booktitle = CVPR,
+  year      = {2023},
+}
+
+
+```
+
+</details>
+<br>
+
 ## Citation
 
 :+1: Please cite these CAPE-related papers

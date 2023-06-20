@@ -1,6 +1,6 @@
 # Windows installation tutorial
 
-Another [issue#16](https://github.com/YuliangXiu/ECON/issues/16) shows the whole process to deploy ECON on *Windows*
+Another [issue#16](https://github.com/YuliangXiu/ECON/issues/16) shows the whole process to deploy ECON on _Windows_
 
 ## Dependencies and Installation
 
@@ -16,8 +16,6 @@ Another [issue#16](https://github.com/YuliangXiu/ECON/issues/16) shows the whole
 - [Visual Studio Community 2022](https://visualstudio.microsoft.com/) (Make sure to check all the boxes as shown in the image below)
 
 ![image](https://user-images.githubusercontent.com/34035011/210983023-4e5a0024-68f0-4adb-8089-6ff598aec220.PNG)
-
-
 
 ## Getting started
 
@@ -56,6 +54,10 @@ cd ../libvoxelize
 python setup.py build_ext --inplace
 ```
 
+[Issue#69: Discussion of additional argument `--compiler=msvc` in `python setup.py build_ext --inplace`](https://github.com/YuliangXiu/ECON/issues/69)
+
+<br>
+
 ## Register at [ICON's website](https://icon.is.tue.mpg.de/)
 
 ![Register](../assets/register.png)
@@ -78,7 +80,6 @@ bash fetch_data.sh # requires username and password
 ## Citation
 
 :+1: Please consider citing these awesome HPS approaches: PyMAF-X, PIXIE
-
 
 ```
 @article{pymafx2022,

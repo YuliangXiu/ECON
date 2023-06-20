@@ -8,6 +8,7 @@ import trimesh
 from pytorch3d.ops import SubdivideMeshes
 from pytorch3d.structures import Meshes
 from scipy.spatial import cKDTree
+from termcolor import colored
 
 import lib.smplx as smplx
 from lib.common.local_affine import register
@@ -16,7 +17,6 @@ from lib.dataset.mesh_util import (
     export_obj,
     keep_largest,
     poisson,
-    remesh_laplacian,
 )
 from lib.smplx.lbs import general_lbs
 
@@ -25,6 +25,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-n", "--name", type=str, default="")
 parser.add_argument("-g", "--gpu", type=int, default=0)
 parser.add_argument("-uv", action="store_true")
+parser.add_argument("-dress", action="store_true")
 args = parser.parse_args()
 
 smplx_container = SMPLX()
@@ -36,10 +37,10 @@ smpl_path = f"{prefix}_smpl_00.npy"
 smplx_param = np.load(smpl_path, allow_pickle=True).item()
 
 # export econ obj with pre-computed normals
-econ_path = f"{prefix}_0_full.obj"
+econ_path = f"{prefix}_0_full_soups.ply"
 econ_obj = trimesh.load(econ_path)
 assert econ_obj.vertex_normals.shape[1] == 3
-econ_obj.export(f"{prefix}_econ_raw.ply")
+os.makedirs(f"{prefix}/", exist_ok=True)
 
 # align econ with SMPL-X
 econ_obj.vertices *= np.array([1.0, -1.0, -1.0])
@@ -90,9 +91,10 @@ for pose_type in ["a-pose", "t-pose", "da-pose", "pose"]:
 
 smpl_verts = smpl_out_lst[3].vertices.detach()[0]
 smpl_tree = cKDTree(smpl_verts.cpu().numpy())
-dist, idx = smpl_tree.query(econ_obj.vertices, k=5)
+dist, idx = smpl_tree.query(econ_obj.vertices, k=3)
 
-if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.obj"):
+if not osp.exists(f"{prefix}/econ_da.obj") or not osp.exists(f"{prefix}/smpl_da.obj"):
+
     # t-pose for ECON
     econ_verts = torch.tensor(econ_obj.vertices).float()
     rot_mat_t = smpl_out_lst[3].vertex_transformation.detach()[0][idx[:, 0]]
@@ -114,21 +116,28 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
         maintain_orders=True,
         process=False,
     )
-    smpl_da.export(f"{prefix}_smpl_da.obj")
+    smpl_da.export(f"{prefix}/smpl_da.obj")
 
-    # remove hands from ECON for next registeration
+    # ignore parts: hands, front_flame, eyeball
+    ignore_vid = np.concatenate([
+        smplx_container.smplx_mano_vid,
+        smplx_container.smplx_front_flame_vid,
+        smplx_container.smplx_eyeball_vid,
+    ])
+
+    # a trick to avoid torn dress/skirt
+    if args.dress:
+        ignore_vid = np.concatenate([ignore_vid, smplx_container.smplx_leg_vid])
+
+    # remove ignore parts from ECON
     econ_da_body = econ_da.copy()
     mano_mask = ~np.isin(idx[:, 0], smplx_container.smplx_mano_vid)
     econ_da_body.update_faces(mano_mask[econ_da.faces].all(axis=1))
     econ_da_body.remove_unreferenced_vertices()
     econ_da_body = keep_largest(econ_da_body)
 
-    # remove SMPL-X hand and face
-    register_mask = ~np.isin(
-        np.arange(smpl_da.vertices.shape[0]),
-        np.concatenate([smplx_container.smplx_mano_vid, smplx_container.smplx_front_flame_vid]),
-    )
-    register_mask *= ~smplx_container.eyeball_vertex_mask.bool().numpy()
+    # remove ignore parts from SMPL-X
+    register_mask = ~np.isin(np.arange(smpl_da.vertices.shape[0]), ignore_vid)
     smpl_da_body = smpl_da.copy()
     smpl_da_body.update_faces(register_mask[smpl_da.faces].all(axis=1))
     smpl_da_body.remove_unreferenced_vertices()
@@ -153,9 +162,9 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
           econ_da.vertices[econ_cano.edges[:, 1]])**2).sum(axis=1)
     )
     edge_diff = edge_after / edge_before.clip(1e-2)
-    streched_mask = np.unique(econ_cano.edges[edge_diff > 6])
-    mano_mask = ~np.isin(idx[:, 0], smplx_container.smplx_mano_vid)
-    mano_mask[streched_mask] = False
+
+    streched_vid = np.unique(econ_cano.edges[edge_diff > 6])
+    mano_mask[streched_vid] = False
     econ_da_body.update_faces(mano_mask[econ_cano.faces].all(axis=1))
     econ_da_body.remove_unreferenced_vertices()
 
@@ -170,12 +179,15 @@ if not osp.exists(f"{prefix}_econ_da.obj") or not osp.exists(f"{prefix}_smpl_da.
         smplx_container.smplx_mano_vertex_mask.numpy()[smpl_hand.faces].all(axis=1)
     )
     smpl_hand.remove_unreferenced_vertices()
+
+    # combination of ECON body, SMPL-X side parts, SMPL-X hands
     econ_da = sum([smpl_hand, smpl_da_body, econ_da_body])
-    econ_da = poisson(econ_da, f"{prefix}_econ_da.obj", depth=10, face_count=50000)
-    econ_da = remesh_laplacian(econ_da, f"{prefix}_econ_da.obj")
+    econ_da = poisson(
+        econ_da, f"{prefix}/econ_da.obj", depth=10, face_count=1e5, laplacian_remeshing=True
+    )
 else:
-    econ_da = trimesh.load(f"{prefix}_econ_da.obj")
-    smpl_da = trimesh.load(f"{prefix}_smpl_da.obj", maintain_orders=True, process=False)
+    econ_da = trimesh.load(f"{prefix}/econ_da.obj")
+    smpl_da = trimesh.load(f"{prefix}/smpl_da.obj", maintain_orders=True, process=False)
 
 # ---------------------- SMPL-X compatible ECON ---------------------- #
 # 1. Find the new vertex-correspondence between NEW ECON and SMPL-X
@@ -186,7 +198,7 @@ else:
 print("Start building the SMPL-X compatible ECON model...")
 
 smpl_tree = cKDTree(smpl_da.vertices)
-dist, idx = smpl_tree.query(econ_da.vertices, k=5)
+dist, idx = smpl_tree.query(econ_da.vertices, k=3)
 knn_weights = np.exp(-(dist**2))
 knn_weights /= knn_weights.sum(axis=1, keepdims=True)
 
@@ -226,7 +238,7 @@ aligned_econ_verts += smplx_param["transl"].cpu().numpy()
 aligned_econ_verts *= smplx_param["scale"].cpu().numpy() * np.array([1.0, -1.0, -1.0])
 econ_pose = trimesh.Trimesh(aligned_econ_verts, econ_da.faces)
 assert econ_pose.vertex_normals.shape[1] == 3
-econ_pose.export(f"{prefix}_econ_pose.ply")
+econ_pose.export(f"{prefix}/econ_pose.ply")
 
 cache_path = f"{prefix.replace('obj','cache')}"
 os.makedirs(cache_path, exist_ok=True)
@@ -244,7 +256,7 @@ from lib.common.render_utils import Pytorch3dRasterizer
 
 # choice 1: pixels to visible regions, normals to invisible regions
 
-if not osp.exists(f"{prefix}_econ_icp_rgb.ply"):
+if not osp.exists(f"{prefix}/econ_icp_rgb.ply"):
     masked_image = f"./results/econ/png/{args.name}_cloth.png"
     tensor_image = transforms.ToTensor()(Image.open(masked_image))[:, :, :512]
 
@@ -258,14 +270,14 @@ if not osp.exists(f"{prefix}_econ_icp_rgb.ply"):
     final_rgb[final_rgb == tensor_image[:, 0, 0] * 255.0] = 0.5 * 255.0
 
     econ_pose.visual.vertex_colors = final_rgb
-    econ_pose.export(f"{prefix}_econ_icp_rgb.ply")
+    econ_pose.export(f"{prefix}/econ_icp_rgb.ply")
 else:
-    mesh = trimesh.load(f"{prefix}_econ_icp_rgb.ply")
+    mesh = trimesh.load(f"{prefix}/econ_icp_rgb.ply")
     final_rgb = mesh.visual.vertex_colors[:, :3]
 
 # choice 2: normals to all the regions
 
-if not osp.exists(f"{prefix}_econ_icp_normal.ply"):
+if not osp.exists(f"{prefix}/econ_icp_normal.ply"):
 
     file_normal = query_normal_color(
         torch.tensor(econ_pose.vertices).float(),
@@ -274,9 +286,9 @@ if not osp.exists(f"{prefix}_econ_icp_normal.ply"):
     ).numpy()
 
     econ_pose.visual.vertex_colors = file_normal
-    econ_pose.export(f"{prefix}_econ_icp_normal.ply")
+    econ_pose.export(f"{prefix}/econ_icp_normal.ply")
 else:
-    mesh = trimesh.load(f"{prefix}_econ_icp_normal.ply")
+    mesh = trimesh.load(f"{prefix}/econ_icp_normal.ply")
     file_normal = mesh.visual.vertex_colors[:, :3]
 
 # econ data used for animation and rendering
@@ -293,6 +305,13 @@ econ_dict = {
 }
 
 torch.save(econ_dict, f"{cache_path}/econ.pt")
+
+print(
+    colored(
+        "If the dress/skirt is torn in `<file_name>/econ_da.obj`, please delete ./file_name and regenerate them with `-dress` \n \
+    python -m apps.avatarizer -n <file_name> -dress", "yellow"
+    )
+)
 
 if args.uv:
 

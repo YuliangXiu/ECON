@@ -58,10 +58,14 @@ class SMPLX:
         self.smplx_flame_vid_path = osp.join(
             self.current_dir, "smpl_data/FLAME_SMPLX_vertex_ids.npy"
         )
-        self.smplx_mano_vid_path = osp.join(self.current_dir, "smpl_data/MANO_SMPLX_vertex_ids.pkl")
+        # smpl & smpl-x vertex semantic labels
         self.smpl_vert_seg_path = osp.join(
             osp.dirname(__file__), "../../lib/common/smpl_vert_segmentation.json"
         )
+        self.smplx_vert_seg_path = osp.join(
+            osp.dirname(__file__), "../../lib/common/smplx_vert_segmentation.json"
+        )
+
         self.front_flame_path = osp.join(self.current_dir, "smpl_data/FLAME_face_mask_ids.npy")
         self.smplx_vertex_lmkid_path = osp.join(
             self.current_dir, "smpl_data/smplx_vertex_lmkid.npy"
@@ -74,21 +78,45 @@ class SMPLX:
         self.smplx_vertex_lmkid = np.load(self.smplx_vertex_lmkid_path)
 
         self.smpl_vert_seg = json.load(open(self.smpl_vert_seg_path))
-        self.smpl_mano_vid = np.concatenate([
-            self.smpl_vert_seg["rightHand"], self.smpl_vert_seg["rightHandIndex1"],
-            self.smpl_vert_seg["leftHand"], self.smpl_vert_seg["leftHandIndex1"]
-        ])
+        self.smplx_vert_seg = json.load(open(self.smplx_vert_seg_path))
 
+        # hand vertex ids
+        self.smpl_mano_vid = np.unique(
+            np.concatenate([
+                self.smpl_vert_seg["rightHand"],
+                self.smpl_vert_seg["rightHandIndex1"],
+                self.smpl_vert_seg["leftHand"],
+                self.smpl_vert_seg["leftHandIndex1"],
+            ])
+        )
+
+        self.smplx_mano_vid = np.unique(
+            np.concatenate([
+                self.smplx_vert_seg["rightHand"],
+                self.smplx_vert_seg["rightHandIndex1"],
+                self.smplx_vert_seg["leftHand"],
+                self.smplx_vert_seg["leftHandIndex1"],
+            ])
+        )
+
+        # leg vertex ids
+
+        self.smplx_leg_vid = np.unique(
+            np.concatenate([
+                self.smplx_vert_seg["rightUpLeg"],
+                self.smplx_vert_seg["leftUpLeg"],
+            ])
+        )
+
+        # eyeball and mouth face ids
         self.smplx_eyeball_fid_mask = np.load(self.smplx_eyeball_fid_path)
+        self.smplx_eyeball_vid = self.smplx_faces[self.smplx_eyeball_fid_mask].flatten()
         self.smplx_mouth_fid = np.load(self.smplx_fill_mouth_fid_path)
-        self.smplx_mano_vid_dict = np.load(self.smplx_mano_vid_path, allow_pickle=True)
-        self.smplx_mano_vid = np.concatenate([
-            self.smplx_mano_vid_dict["left_hand"], self.smplx_mano_vid_dict["right_hand"]
-        ])
+
         self.smplx_flame_vid = np.load(self.smplx_flame_vid_path, allow_pickle=True)
         self.smplx_front_flame_vid = self.smplx_flame_vid[np.load(self.front_flame_path)]
 
-        # hands
+        # hands vertex mask
         self.smplx_mano_vertex_mask = torch.zeros(self.smplx_verts.shape[0], ).index_fill_(
             0, torch.tensor(self.smplx_mano_vid), 1.0
         )
@@ -96,12 +124,12 @@ class SMPLX:
             0, torch.tensor(self.smpl_mano_vid), 1.0
         )
 
-        # face
+        # face vertex mask
         self.front_flame_vertex_mask = torch.zeros(self.smplx_verts.shape[0], ).index_fill_(
             0, torch.tensor(self.smplx_front_flame_vid), 1.0
         )
         self.eyeball_vertex_mask = torch.zeros(self.smplx_verts.shape[0], ).index_fill_(
-            0, torch.tensor(self.smplx_faces[self.smplx_eyeball_fid_mask].flatten()), 1.0
+            0, torch.tensor(self.smplx_eyeball_vid), 1.0
         )
 
         self.smplx_to_smpl = cPickle.load(open(self.smplx_to_smplx_path, "rb"))
@@ -365,7 +393,8 @@ def mesh_edge_loss(meshes, target_length: float = 0.0):
 
 def remesh_laplacian(mesh, obj_path, face_count=50000):
 
-    mesh = mesh.simplify_quadratic_decimation(face_count)
+    if mesh.faces.shape[0] != face_count:
+        mesh = mesh.simplify_quadratic_decimation(face_count)
     mesh = trimesh.smoothing.filter_humphrey(
         mesh, alpha=0.1, beta=0.5, iterations=10, laplacian_operator=None
     )
@@ -374,7 +403,7 @@ def remesh_laplacian(mesh, obj_path, face_count=50000):
     return mesh
 
 
-def poisson(mesh, obj_path, depth=10, face_count=50000):
+def poisson(mesh, obj_path, depth=10, face_count=50000, laplacian_remeshing=False):
 
     pcd_path = obj_path[:-4] + "_soups.ply"
     assert (mesh.vertex_normals.shape[1] == 3)
@@ -387,10 +416,15 @@ def poisson(mesh, obj_path, depth=10, face_count=50000):
 
     # only keep the largest component
     largest_mesh = keep_largest(trimesh.Trimesh(np.array(mesh.vertices), np.array(mesh.triangles)))
-    largest_mesh.export(obj_path)
 
     # mesh decimation for faster rendering
     low_res_mesh = largest_mesh.simplify_quadratic_decimation(face_count)
+    if laplacian_remeshing:
+        low_res_mesh = trimesh.smoothing.filter_humphrey(
+            low_res_mesh, alpha=0.1, beta=0.5, iterations=10, laplacian_operator=None
+        )
+    low_res_mesh.export(obj_path)
+    
     return low_res_mesh
 
 
