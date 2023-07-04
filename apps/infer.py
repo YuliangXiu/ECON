@@ -543,25 +543,26 @@ if __name__ == "__main__":
 
                 # only face
                 face_mesh = apply_vertex_mask(face_mesh, SMPLX_object.front_flame_vertex_mask)
-                face_mesh.vertices = face_mesh.vertices - np.array([0, 0, cfg.bni.thickness])
 
-                # remove face neighbor triangles
-                BNI_object.F_B_trimesh = part_removal(
-                    BNI_object.F_B_trimesh,
-                    face_mesh,
-                    cfg.bni.face_thres,
-                    device,
-                    smplx_mesh,
-                    region="face"
-                )
-                side_mesh = part_removal(
-                    side_mesh, face_mesh, cfg.bni.face_thres, device, smplx_mesh, region="face"
-                )
-                face_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_face.obj")
-                full_lst += [face_mesh]
+                if not face_mesh.is_empty:
+                    face_mesh.vertices = face_mesh.vertices - np.array([0, 0, cfg.bni.thickness])
+
+                    # remove face neighbor triangles
+                    BNI_object.F_B_trimesh = part_removal(
+                        BNI_object.F_B_trimesh,
+                        face_mesh,
+                        cfg.bni.face_thres,
+                        device,
+                        smplx_mesh,
+                        region="face"
+                    )
+                    side_mesh = part_removal(
+                        side_mesh, face_mesh, cfg.bni.face_thres, device, smplx_mesh, region="face"
+                    )
+                    face_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_face.obj")
+                    full_lst += [face_mesh]
 
             if "hand" in cfg.bni.use_smpl:
-
                 hand_mask = torch.zeros(SMPLX_object.smplx_verts.shape[0], )
 
                 if data['hands_visibility'][idx][0]:
@@ -589,20 +590,21 @@ if __name__ == "__main__":
                 # only hands
                 hand_mesh = apply_vertex_mask(hand_mesh, hand_mask)
 
-                # remove hand neighbor triangles
-                BNI_object.F_B_trimesh = part_removal(
-                    BNI_object.F_B_trimesh,
-                    hand_mesh,
-                    cfg.bni.hand_thres,
-                    device,
-                    smplx_mesh,
-                    region="hand"
-                )
-                side_mesh = part_removal(
-                    side_mesh, hand_mesh, cfg.bni.hand_thres, device, smplx_mesh, region="hand"
-                )
-                hand_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_hand.obj")
-                full_lst += [hand_mesh]
+                if not hand_mesh.is_empty:
+                    # remove hand neighbor triangles
+                    BNI_object.F_B_trimesh = part_removal(
+                        BNI_object.F_B_trimesh,
+                        hand_mesh,
+                        cfg.bni.hand_thres,
+                        device,
+                        smplx_mesh,
+                        region="hand"
+                    )
+                    side_mesh = part_removal(
+                        side_mesh, hand_mesh, cfg.bni.hand_thres, device, smplx_mesh, region="hand"
+                    )
+                    hand_mesh.export(f"{args.out_dir}/{cfg.name}/obj/{data['name']}_{idx}_hand.obj")
+                    full_lst += [hand_mesh]
 
             full_lst += [BNI_object.F_B_trimesh]
 
