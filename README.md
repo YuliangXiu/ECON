@@ -62,6 +62,7 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 ## News :triangular_flag_on_post:
 
+- [2023/08/19] We released [TeCH](https://huangyangyi.github.io/TeCH/), which extends ECON with full texture support. 
 - [2023/06/01] [Lee Kwan Joong](https://github.com/kwan3854) updates a Blender Addon ([Github](https://github.com/kwan3854/CEB_ECON), [Tutorial](https://youtu.be/SDVfCeaI4AY)).
 - [2023/04/16] <a href="https://huggingface.co/spaces/Yuliang/ECON"  style='padding-left: 0.5rem;'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-orange'></a> is ready to use!
 - [2023/02/27] ECON got accepted by CVPR 2023 as Highlight (top 10%)!
@@ -181,6 +182,8 @@ This demo is also hosted on HuggingFace Space <a href="https://huggingface.co/sp
 
 - ### Full Texture Generation
 
+#### Method 1: ECON+TEXTure
+
 Please firstly follow the [TEXTure's installation](https://github.com/YuliangXiu/TEXTure#installation-floppy_disk) to setup the env of TEXTure.
 
 ```bash
@@ -206,6 +209,24 @@ Then check `./experiments/<file_name>/mesh` for the results.
   journal={ACM Transactions on Graphics (TOG)},
   publisher={ACM New York, NY, USA},
   year={2023}
+}
+```
+</details>
+
+#### Method 2: TeCH
+
+Please check out our new paper, *TeCH: Text-guided Reconstruction of Lifelike Clothed Humans* ([Page](https://huangyangyi.github.io/TeCH/), [Code](https://github.com/huangyangyi/TeCH))
+
+<details><summary>Please consider cite <strong>TeCH</strong> if it also helps on your project</summary>
+
+```bibtex
+@misc{huang2023tech,
+  title={TeCH: Text-guided Reconstruction of Lifelike Clothed Humans},
+  author={Huang, Yangyi and Yi, Hongwei and Xiu, Yuliang and Liao, Tingting and Tang, Jiaxiang and Cai, Deng and Justus Thies},
+  year={2023},
+  eprint={2308.08545},
+  archivePrefix={arXiv},
+  primaryClass={cs.CV}
 }
 ```
 
