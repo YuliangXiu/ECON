@@ -33,8 +33,8 @@ class MeshIntersector:
         points = self.rescale(points)
 
         # placeholder result with no hits we'll fill in later
-        contains = np.zeros(len(points), dtype=np.bool)
-        hole_points = np.zeros(len(points), dtype=np.bool)
+        contains = np.zeros(len(points), dtype=bool)
+        hole_points = np.zeros(len(points), dtype=bool)
 
         # cull points outside of the axis aligned bounding box
         # this avoids running ray tests unless points are close
@@ -129,7 +129,7 @@ class TriangleIntersector2d:
         return point_indices, tri_indices
 
     def check_triangles(self, points, triangles):
-        contains = np.zeros(points.shape[0], dtype=np.bool)
+        contains = np.zeros(points.shape[0], dtype=bool)
         A = triangles[:, :2] - triangles[:, 2:]
         A = A.transpose([0, 2, 1])
         y = points - triangles[:, 2]
