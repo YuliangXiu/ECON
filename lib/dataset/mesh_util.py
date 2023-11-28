@@ -139,9 +139,8 @@ class SMPLX:
         self.ghum_smpl_pairs = torch.tensor([(0, 24), (2, 26), (5, 25), (7, 28), (8, 27), (11, 16),
                                              (12, 17), (13, 18), (14, 19), (15, 20), (16, 21),
                                              (17, 39), (18, 44), (19, 36), (20, 41), (21, 35),
-                                             (22, 40), (23, 1), (24, 2), (25, 4), (26, 5), (27, 7),
-                                             (28, 8), (29, 31), (30, 34), (31, 29),
-                                             (32, 32)]).long()
+                                             (22, 40), (25, 4), (26, 5), (27, 7), (28, 8), (29, 31),
+                                             (30, 34), (31, 29), (32, 32)]).long()
 
         # smpl-smplx correspondence
         self.smpl_joint_ids_24 = np.arange(22).tolist() + [68, 73]
@@ -424,7 +423,7 @@ def poisson(mesh, obj_path, depth=10, face_count=50000, laplacian_remeshing=Fals
             low_res_mesh, alpha=0.1, beta=0.5, iterations=10, laplacian_operator=None
         )
     low_res_mesh.export(obj_path)
-    
+
     return low_res_mesh
 
 

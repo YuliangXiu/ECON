@@ -220,13 +220,11 @@ Please check out our new paper, *TeCH: Text-guided Reconstruction of Lifelike Cl
 <details><summary>Please consider cite <strong>TeCH</strong> if it also helps on your project</summary>
 
 ```bibtex
-@misc{huang2023tech,
-  title={TeCH: Text-guided Reconstruction of Lifelike Clothed Humans},
-  author={Huang, Yangyi and Yi, Hongwei and Xiu, Yuliang and Liao, Tingting and Tang, Jiaxiang and Cai, Deng and Justus Thies},
-  year={2023},
-  eprint={2308.08545},
-  archivePrefix={arXiv},
-  primaryClass={cs.CV}
+@inproceedings{huang2024tech,
+  title={{TeCH: Text-guided Reconstruction of Lifelike Clothed Humans}},
+  author={Huang, Yangyi and Yi, Hongwei and Xiu, Yuliang and Liao, Tingting and Tang, Jiaxiang and Cai, Deng and Thies, Justus},
+  booktitle={International Conference on 3D Vision (3DV)},
+  year={2024}
 }
 ```
 
