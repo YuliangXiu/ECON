@@ -118,18 +118,18 @@ class SMPLX:
 
         # hands vertex mask
         self.smplx_mano_vertex_mask = torch.zeros(self.smplx_verts.shape[0], ).index_fill_(
-            0, torch.tensor(self.smplx_mano_vid), 1.0
+            0, torch.tensor(self.smplx_mano_vid, dtype=torch.int64), 1.0
         )
         self.smpl_mano_vertex_mask = torch.zeros(self.smpl_verts.shape[0], ).index_fill_(
-            0, torch.tensor(self.smpl_mano_vid), 1.0
+            0, torch.tensor(self.smpl_mano_vid, dtype=torch.int64), 1.0
         )
 
         # face vertex mask
         self.front_flame_vertex_mask = torch.zeros(self.smplx_verts.shape[0], ).index_fill_(
-            0, torch.tensor(self.smplx_front_flame_vid), 1.0
+            0, torch.tensor(self.smplx_front_flame_vid, dtype=torch.int64), 1.0
         )
         self.eyeball_vertex_mask = torch.zeros(self.smplx_verts.shape[0], ).index_fill_(
-            0, torch.tensor(self.smplx_eyeball_vid), 1.0
+            0, torch.tensor(self.smplx_eyeball_vid, dtype=torch.int64), 1.0
         )
 
         self.smplx_to_smpl = cPickle.load(open(self.smplx_to_smplx_path, "rb"))
