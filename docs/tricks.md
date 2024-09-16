@@ -27,3 +27,60 @@
 # For single-person image-based reconstruction (w/o all visualization steps, 1.5min)
 python -m apps.infer -cfg ./configs/econ.yaml -in_dir ./examples -out_dir ./results -novis
 ```
+
+### Bending legs
+
+Related issues:
+- ECON: https://github.com/YuliangXiu/ECON/issues/133, https://github.com/YuliangXiu/ECON/issues/5
+- ICON: https://github.com/YuliangXiu/ICON/issues/68
+- TeCH: https://github.com/huangyangyi/TeCH/issues/14
+
+Reasons:
+
+- Most existing human pose estimators (HPS) have some bias towards a mean pose, which has the legs bent
+- The pseudo GT of HPS is obtained by fitting SMPL(-X) onto 2D landmarks, 2D landmarks has depth ambiguity, which make legs bent
+
+Solution:
+
+- The issue of "bending legs" could be significantly reduced by refining the pose of the SMPL(-X) body using an accurate **front clothed normal map** directly estimated from the input image. For this, we use [Sapiens](https://rawalkhirodkar.github.io/sapiens/).
+- The **back clothed normal map** is conditioned on the back body normal map, which is rendered from the SMPL(-X) body model. Therefore, the accuracy of the back clothed normal map benefits from the refined SMPL(-X) body model.
+
+Potential risk:
+
+- For extremely challenging poses, ECON's normal estimator might outperform Sapiens. ECON's normal estimation is conditioned on the SMPL(-X) body model, which encodes body articulation information, leaving only the normal disparity between the body and clothing to be estimated. In contrast, Sapiens directly estimates normal maps from the input image without SMPL(-X) conditioning. Thus, Sapiens might struggle with particularly challenging or rare poses.
+
+
+
+|                 Final Reconstruction                  |
+| :---------------------------------------------------: |
+|             w/ sapiens-normal refinement              |
+| ![recon-sapiens](../assets/sapiens/recon-sapiens.png) |
+|            Original ECON normal estimator             |
+|    ![recon-econ](../assets/sapiens/recon-econ.png)    |
+
+
+|                    Normal Estimation                    |
+| :-----------------------------------------------------: |
+|              w/ sapiens-normal refinement               |
+| ![normal-sapiens](../assets/sapiens/normal-sapiens.png) |
+|             Original ECON normal estimator              |
+|    ![normal-econ](../assets/sapiens/normal-econ.png)    |
+
+
+
+If you use Sapiens in your research, please consider citing it.
+
+
+```bibtex
+@inproceedings{khirodkar2024_sapiens,
+    title={Sapiens: Foundation for Human Vision Models},
+    author={Khirodkar, Rawal and Bagautdinov, Timur and Martinez, Julieta and Zhaoen, Su and James, Austin and Selednik, Peter and Anderson, Stuart and Saito, Shunsuke},
+    year={2024},
+    booktitle={European Conference on Computer Vision},
+}
+```
+
+
+
+
+

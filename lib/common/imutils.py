@@ -193,8 +193,8 @@ def process_image(img_file, hps_type, single, input_res, detector):
         top_score = predictions["scores"][predictions["labels"] == 1].max()
         human_ids = torch.where(predictions["scores"] == top_score)[0]
     else:
-        human_ids = torch.logical_and(predictions["labels"] == 1,
-                                      predictions["scores"] > 0.9).nonzero().squeeze(1)
+        human_ids = torch.logical_and(predictions["labels"] == 1, predictions["scores"]
+                                      > 0.9).nonzero().squeeze(1)
 
     boxes = predictions["boxes"][human_ids, :].detach().cpu().numpy()
     masks = predictions["masks"][human_ids, :, :].permute(0, 2, 3, 1).detach().cpu().numpy()
@@ -359,3 +359,28 @@ def unwrap(image, uncrop_param, idx):
     )
 
     return img_ori
+
+
+def wrap(image, uncrop_param, idx):
+
+    device = image.device
+
+    img_square = warp_affine(
+        image,
+        uncrop_param["M_square"][:, :2].to(device),
+        uncrop_param["square_shape"],
+        mode='bilinear',
+        padding_mode='zeros',
+        align_corners=True
+    )
+
+    img_crop = warp_affine(
+        img_square,
+        uncrop_param["M_crop"][idx:idx + 1, :2].to(device),
+        uncrop_param["box_shape"],
+        mode='bilinear',
+        padding_mode='zeros',
+        align_corners=True
+    )
+
+    return img_crop

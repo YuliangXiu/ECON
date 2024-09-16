@@ -15,4 +15,6 @@ einops
 boto3
 open3d
 xatlas
+huggingface_hub
+fast-simplification
 git+https://github.com/YuliangXiu/rembg.git

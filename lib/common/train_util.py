@@ -47,7 +47,7 @@ def init_loss():
     # Body: Silhouette_pred - Silhouette_smpl
         "silhouette": {"weight": 1e0, "value": 0.0},
     # Joint: reprojected joints difference
-        "joint": {"weight": 5e0, "value": 0.0},
+        "joint": {"weight": 1e0, "value": 0.0},
     }
 
     return losses

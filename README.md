@@ -62,6 +62,7 @@ ECON is designed for "Human digitization from a color image", which combines the
 
 ## News :triangular_flag_on_post:
 
+- [2024/09/16] 🌟 Bending leg issues [[1](https://github.com/YuliangXiu/ECON/issues/133),[2](https://github.com/YuliangXiu/ECON/issues/5),[3](https://github.com/YuliangXiu/ICON/issues/68),[4](https://github.com/huangyangyi/TeCH/issues/14)] get resolved with [Sapiens](https://rawalkhirodkar.github.io/sapiens/), details in [Bending legs](https://github.com/YuliangXiu/ECON/blob/master/docs/tricks.md#bending-legs).
 - [2023/08/19] We released [TeCH](https://huangyangyi.github.io/TeCH/), which extends ECON with full texture support. 
 - [2023/06/01] [Lee Kwan Joong](https://github.com/kwan3854) updates a Blender Addon ([Github](https://github.com/kwan3854/CEB_ECON), [Tutorial](https://youtu.be/SDVfCeaI4AY)).
 - [2023/04/16] <a href="https://huggingface.co/spaces/Yuliang/ECON"  style='padding-left: 0.5rem;'><img src='https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-orange'></a> is ready to use!
@@ -267,6 +268,7 @@ Here are some great resources we benefit from:
 - [BiNI](https://github.com/hoshino042/bilateral_normal_integration) for Bilateral Normal Integration
 - [MonoPortDataset](https://github.com/Project-Splinter/MonoPortDataset) for Data Processing, [MonoPort](https://github.com/Project-Splinter/MonoPort) for fast implicit surface query
 - [rembg](https://github.com/danielgatis/rembg) for Human Segmentation
+- [Sapiens](https://rawalkhirodkar.github.io/sapiens/) for normal estimation
 - [MediaPipe](https://google.github.io/mediapipe/getting_started/python.html) for full-body landmark estimation
 - [PyTorch-NICP](https://github.com/wuhaozhe/pytorch-nicp) for non-rigid registration
 - [smplx](https://github.com/vchoutas/smplx), [PyMAF-X](https://www.liuyebin.com/pymaf-x/), [PIXIE](https://github.com/YadiraF/PIXIE) for Human Pose & Shape Estimation

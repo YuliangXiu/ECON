@@ -136,11 +136,18 @@ class SMPLX:
 
         self.model_dir = osp.join(self.current_dir, "models")
 
+        # self.ghum_smpl_pairs = torch.tensor([(0, 24), (2, 26), (5, 25), (7, 28), (8, 27), (11, 16),
+        #                                      (12, 17), (13, 18), (14, 19), (15, 20), (16, 21),
+        #                                      (17, 39), (18, 44), (19, 36), (20, 41), (21, 35),
+        #                                      (22, 40), (25, 4), (26, 5), (27, 7), (28, 8), (29, 31),
+        #                                      (30, 34), (31, 29), (32, 32)]).long()
+
+        # remove the hips, knees, ankles to reduce bending legs
         self.ghum_smpl_pairs = torch.tensor([(0, 24), (2, 26), (5, 25), (7, 28), (8, 27), (11, 16),
                                              (12, 17), (13, 18), (14, 19), (15, 20), (16, 21),
                                              (17, 39), (18, 44), (19, 36), (20, 41), (21, 35),
-                                             (22, 40), (25, 4), (26, 5), (27, 7), (28, 8), (29, 31),
-                                             (30, 34), (31, 29), (32, 32)]).long()
+                                             (22, 40), (29, 31), (30, 34), (31, 29),
+                                             (32, 32)]).long()
 
         # smpl-smplx correspondence
         self.smpl_joint_ids_24 = np.arange(22).tolist() + [68, 73]
@@ -393,7 +400,7 @@ def mesh_edge_loss(meshes, target_length: float = 0.0):
 def remesh_laplacian(mesh, obj_path, face_count=50000):
 
     if mesh.faces.shape[0] != face_count:
-        mesh = mesh.simplify_quadratic_decimation(face_count)
+        mesh = mesh.simplify_quadric_decimation(face_count=face_count)
     mesh = trimesh.smoothing.filter_humphrey(
         mesh, alpha=0.1, beta=0.5, iterations=10, laplacian_operator=None
     )
@@ -417,7 +424,7 @@ def poisson(mesh, obj_path, depth=10, face_count=50000, laplacian_remeshing=Fals
     largest_mesh = keep_largest(trimesh.Trimesh(np.array(mesh.vertices), np.array(mesh.triangles)))
 
     # mesh decimation for faster rendering
-    low_res_mesh = largest_mesh.simplify_quadratic_decimation(face_count)
+    low_res_mesh = largest_mesh.simplify_quadric_decimation(face_count=face_count)
     if laplacian_remeshing:
         low_res_mesh = trimesh.smoothing.filter_humphrey(
             low_res_mesh, alpha=0.1, beta=0.5, iterations=10, laplacian_operator=None
@@ -687,7 +694,7 @@ def get_optim_grid_image(per_loop_lst, loss=None, nrow=4, type="smpl"):
         else:
             print(f"{type} should be 'smpl' or 'cloth'")
 
-    grid_img = grid_img.resize((grid_img.size[0], grid_img.size[1]), Image.ANTIALIAS)
+    grid_img = grid_img.resize((grid_img.size[0], grid_img.size[1]))
 
     return grid_img
 

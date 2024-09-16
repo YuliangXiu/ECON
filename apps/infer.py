@@ -34,10 +34,12 @@ from tqdm.auto import tqdm
 
 from apps.IFGeo import IFGeo
 from apps.Normal import Normal
+from apps.sapiens import ImageProcessor
+
 from lib.common.BNI import BNI
 from lib.common.BNI_utils import save_normal_tensor
 from lib.common.config import cfg
-from lib.common.imutils import blend_rgb_norm
+from lib.common.imutils import blend_rgb_norm, load_img, transform_to_tensor, wrap
 from lib.common.local_affine import register
 from lib.common.render import query_color
 from lib.common.train_util import Format, init_loss
@@ -47,6 +49,8 @@ from lib.dataset.TestDataset import TestDataset
 from lib.net.geometry import rot6d_to_rotmat, rotation_matrix_to_angle_axis
 
 torch.backends.cudnn.benchmark = True
+torch.backends.cuda.matmul.allow_tf32 = True
+torch.backends.cudnn.allow_tf32 = True
 
 if __name__ == "__main__":
 
@@ -90,6 +94,9 @@ if __name__ == "__main__":
             f"Resume Normal Estimator from {Format.start} {cfg.normal_path} {Format.end}", "green"
         )
     )
+
+    if cfg.sapiens.use:
+        sapiens_normal_net = ImageProcessor(device=device)
 
     # SMPLX object
     SMPLX_object = SMPLX()
@@ -179,8 +186,24 @@ if __name__ == "__main__":
 
         smpl_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_smpl_00.obj"
 
+        # sapiens inference for current batch data
+
+        if cfg.sapiens.use:
+            
+            sapiens_normal = sapiens_normal_net.process_image(
+                Image.fromarray(
+                    data["img_raw"].squeeze(0).permute(1, 2, 0).numpy().astype(np.uint8)
+                ), cfg.sapiens.normal_model, cfg.sapiens.seg_model
+            )
+            print(colored("Estimating normal maps from input image, using Sapiens-normal", "green"))
+
+            sapiens_normal_square_lst = []
+            for idx in range(len(data["img_icon"])):
+                sapiens_normal_square_lst.append(wrap(sapiens_normal, data["uncrop_param"], idx))
+            sapiens_normal_square = torch.cat(sapiens_normal_square_lst)
+
         # remove this line if you change the loop_smpl and obtain different SMPL-X fits
-        if osp.exists(smpl_path):
+        if osp.exists(smpl_path) and (not cfg.force_smpl_optim):
 
             smpl_verts_lst = []
             smpl_faces_lst = []
@@ -261,7 +284,15 @@ if __name__ == "__main__":
                 T_mask_F, T_mask_B = dataset.render.get_image(type="mask")
 
                 with torch.no_grad():
+                    # [1, 3, 512, 512], (-1.0, 1.0)
                     in_tensor["normal_F"], in_tensor["normal_B"] = normal_net.netG(in_tensor)
+
+                # only replace the front cloth normals, and the back cloth normals will get improved accordingly
+                # as the back cloth normals are conditioned on the body cloth normals
+
+                if cfg.sapiens.use:
+
+                    in_tensor["normal_F"] = sapiens_normal_square
 
                 diff_F_smpl = torch.abs(in_tensor["T_normal_F"] - in_tensor["normal_F"])
                 diff_B_smpl = torch.abs(in_tensor["T_normal_B"] - in_tensor["normal_B"])
@@ -276,7 +307,7 @@ if __name__ == "__main__":
                 # for loose clothing, reply more on landmarks instead of silhouette+normal loss
                 cloth_overlap = diff_S.sum(dim=[1, 2]) / gt_arr.sum(dim=[1, 2])
                 cloth_overlap_flag = cloth_overlap > cfg.cloth_overlap_thres
-                losses["joint"]["weight"] = [50.0 if flag else 5.0 for flag in cloth_overlap_flag]
+                losses["joint"]["weight"] = [10.0 if flag else 1.0 for flag in cloth_overlap_flag]
 
                 # small body_overlap --> large occlusion or out-of-frame
                 # for highly occluded body, reply only on high-confidence landmarks, no silhouette+normal loss
@@ -294,10 +325,13 @@ if __name__ == "__main__":
                 body_overlap_mask = (gt_arr * smpl_arr_fake).unsqueeze(1)
                 body_overlap_flag = body_overlap < cfg.body_overlap_thres
 
-                losses["normal"]["value"] = (
-                    diff_F_smpl * body_overlap_mask[..., :512] +
-                    diff_B_smpl * body_overlap_mask[..., 512:]
-                ).mean() / 2.0
+                if not cfg.sapiens.use:
+                    losses["normal"]["value"] = (
+                        diff_F_smpl * body_overlap_mask[..., :512] +
+                        diff_B_smpl * body_overlap_mask[..., 512:]
+                    ).mean() / 2.0
+                else:
+                    losses["normal"]["value"] = diff_F_smpl * body_overlap_mask[..., :512]
 
                 losses["silhouette"]["weight"] = [0 if flag else 1.0 for flag in body_overlap_flag]
                 occluded_idx = torch.where(body_overlap_flag)[0]
@@ -383,7 +417,7 @@ if __name__ == "__main__":
 
             smpl_obj_path = f"{args.out_dir}/{cfg.name}/obj/{data['name']}_smpl_{idx:02d}.obj"
 
-            if not osp.exists(smpl_obj_path):
+            if not osp.exists(smpl_obj_path) or cfg.force_smpl_optim:
                 smpl_obj.export(smpl_obj_path)
                 smpl_info = {
                     "betas":

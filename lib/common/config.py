@@ -62,6 +62,12 @@ _C.clean_mesh = True
 _C.remesh = False
 _C.body_overlap_thres = 1.0
 _C.cloth_overlap_thres = 1.0
+_C.force_smpl_optim = True
+
+_C.sapiens = CN()
+_C.sapiens.use = True
+_C.sapiens.normal_model = "1b"
+_C.sapiens.seg_model = "fg-bg-1b"
 
 _C.batch_size = 4
 _C.num_threads = 8
